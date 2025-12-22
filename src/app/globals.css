@@ -990,6 +990,98 @@ html.dark.theme-accent-rose {
   @apply border-transparent hover:shadow-2xl hover:shadow-stone-500/30 hover:scale-110 hover:-translate-y-1 transition-all duration-300 ease-out;
 }
 
+/* AMBER button (Financiera - Guardian) */
+.home-card-button-amber {
+  @apply border-transparent hover:shadow-2xl hover:shadow-amber-400/30 hover:scale-110 hover:-translate-y-1 transition-all duration-300 ease-out;
+  background-color: rgb(254 243 199) !important; /* amber-100 */
+  color: rgb(146 64 14) !important; /* amber-800 */
+  border: 1px solid rgb(252 211 77) !important; /* amber-300 */
+}
+.home-card-button-amber:hover {
+  background-color: rgb(146 64 14) !important; /* amber-800 */
+  color: rgb(254 243 199) !important; /* amber-100 */
+  border-color: rgb(245 158 11) !important; /* amber-500 */
+}
+.home-card-button-amber:active {
+  transform: scale(1.05) !important;
+}
+.home-card-button-amber:focus {
+  background-color: rgb(146 64 14) !important;
+  color: rgb(254 243 199) !important;
+  border: none !important;
+}
+.dark .home-card-button-amber {
+  background-color: rgb(254 243 199) !important;
+  color: rgb(146 64 14) !important;
+  border: none !important;
+  transition: all 0.3s ease-out !important;
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0) !important;
+}
+.dark .home-card-button-amber:hover {
+  background-color: rgb(146 64 14) !important;
+  color: rgb(254 243 199) !important;
+  border: none !important;
+  transform: scale(1.1) translateY(-4px) !important;
+  box-shadow: 0 25px 50px -12px rgba(245, 158, 11, 0.5) !important;
+}
+.dark .home-card-button-amber:active {
+  background-color: rgb(146 64 14) !important;
+  color: rgb(254 243 199) !important;
+  transform: scale(1.05) !important;
+  border: none !important;
+}
+.dark .home-card-button-amber:focus {
+  background-color: rgb(146 64 14) !important;
+  color: rgb(254 243 199) !important;
+  border: none !important;
+}
+
+/* MINT button (Financiera - Guardian) - Verde menta distintivo */
+.home-card-button-mint {
+  @apply border-transparent hover:shadow-2xl hover:shadow-emerald-400/30 hover:scale-110 hover:-translate-y-1 transition-all duration-300 ease-out;
+  background-color: rgb(167 243 208) !important; /* emerald-200 */
+  color: rgb(6 78 59) !important; /* emerald-900 */
+  border: 1px solid rgb(52 211 153) !important; /* emerald-400 */
+}
+.home-card-button-mint:hover {
+  background-color: rgb(6 78 59) !important; /* emerald-900 */
+  color: rgb(167 243 208) !important; /* emerald-200 */
+  border-color: rgb(16 185 129) !important; /* emerald-500 */
+}
+.home-card-button-mint:active {
+  transform: scale(1.05) !important;
+}
+.home-card-button-mint:focus {
+  background-color: rgb(6 78 59) !important;
+  color: rgb(167 243 208) !important;
+  border: none !important;
+}
+.dark .home-card-button-mint {
+  background-color: rgb(167 243 208) !important;
+  color: rgb(6 78 59) !important;
+  border: none !important;
+  transition: all 0.3s ease-out !important;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0) !important;
+}
+.dark .home-card-button-mint:hover {
+  background-color: rgb(6 78 59) !important;
+  color: rgb(167 243 208) !important;
+  border: none !important;
+  transform: scale(1.1) translateY(-4px) !important;
+  box-shadow: 0 25px 50px -12px rgba(52, 211, 153, 0.5) !important;
+}
+.dark .home-card-button-mint:active {
+  background-color: rgb(6 78 59) !important;
+  color: rgb(167 243 208) !important;
+  transform: scale(1.05) !important;
+  border: none !important;
+}
+.dark .home-card-button-mint:focus {
+  background-color: rgb(6 78 59) !important;
+  color: rgb(167 243 208) !important;
+  border: none !important;
+}
+
 
 /* FAQ specific styles */
 .faq-answer {

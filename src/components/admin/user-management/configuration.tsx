@@ -9595,17 +9595,29 @@ function EditUserForm({ user, onClose, onUserUpdated, getRoleColor, getRoleIcon,
         try { window.dispatchEvent(new CustomEvent('guardiansUpdated', { detail: { action: 'update' } })); } catch {}
       }
 
-      // Update in main users if password changed
+      // Update in main users - include guardian-specific fields if guardian
       const mainUsers = JSON.parse(localStorage.getItem('smart-student-users') || '[]');
       const updatedMainUsers = mainUsers.map((u: any) => 
         u.username === user.username 
           ? { 
               ...u, 
               name: formData.name,
+              displayName: formData.name,
               username: formData.username,
               email: formData.email,
               isActive: formData.isActive,
-              ...(formData.password ? { password: formData.password } : {})
+              ...(formData.password ? { password: formData.password } : {}),
+              // Guardian-specific fields
+              ...(user.type === 'guardian' ? {
+                phone: formData.phone || '',
+                studentIds: formData.studentIds || [],
+                relationship: formData.relationship || 'tutor'
+              } : {}),
+              // Student-specific fields
+              ...(user.type === 'student' ? {
+                courseId: formData.courseId || '',
+                sectionId: formData.sectionId || ''
+              } : {})
             }
           : u
       );

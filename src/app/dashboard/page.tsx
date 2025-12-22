@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language-context';
 import { useAuth } from '@/contexts/auth-context';
-import { Library, Newspaper, Network, FileQuestion, ClipboardList, Home, Users, Settings, ClipboardCheck, MessageSquare, GraduationCap, Crown, Shield, UserCheck, TrendingUp, Megaphone, CalendarDays, BarChart3 } from 'lucide-react';
+import { Library, Newspaper, Network, FileQuestion, ClipboardList, Home, Users, Settings, ClipboardCheck, MessageSquare, GraduationCap, Crown, Shield, UserCheck, TrendingUp, Megaphone, CalendarDays, BarChart3, CreditCard } from 'lucide-react';
 import NotificationsPanel from '@/components/common/notifications-panel';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -272,6 +272,40 @@ const teacherCards = [
     targetPage: '/dashboard/calificaciones',
     icon: BarChart3,
   colorClass: 'indigo',
+    showBadge: false,
+  },
+];
+
+// Tarjetas específicas para apoderados (guardians)
+const guardianCards = [
+  // Comunicaciones para apoderados
+  {
+    titleKey: 'cardCommunicationsStudentTitle',
+    descKey: 'cardCommunicationsStudentDesc',
+    btnKey: 'cardCommunicationsStudentBtn',
+    targetPage: '/dashboard/comunicaciones',
+    icon: Megaphone,
+    colorClass: 'red',
+    showBadge: false,
+  },
+  // Calificaciones para apoderados
+  {
+    titleKey: 'cardGradesTitle',
+    descKey: 'cardGradesDesc',
+    btnKey: 'cardGradesBtn',
+    targetPage: '/dashboard/calificaciones',
+    icon: BarChart3,
+    colorClass: 'indigo',
+    showBadge: false,
+  },
+  // Financiera para apoderados (al final)
+  {
+    titleKey: 'cardFinanceTitle',
+    descKey: 'cardFinanceDesc',
+    btnKey: 'cardFinanceBtn',
+    targetPage: '/dashboard/financiera',
+    icon: CreditCard,
+    colorClass: 'mint',
     showBadge: false,
   },
 ];
@@ -1321,6 +1355,8 @@ export default function DashboardHomePage() {
   case 'gray': return 'home-card-button-gray';
   case 'silver': return 'home-card-button-silver';
   case 'stone': return 'home-card-button-stone';
+  case 'amber': return 'home-card-button-amber';
+  case 'mint': return 'home-card-button-mint';
       default: return '';
     }
   };
@@ -1344,6 +1380,8 @@ export default function DashboardHomePage() {
   case 'silver': return 'text-zinc-400 dark:text-zinc-300';
   // Stone (Calificaciones): subir un tono en light para diferenciarse de silver
   case 'stone': return 'text-stone-600 dark:text-stone-400';
+  case 'amber': return 'text-amber-500 dark:text-amber-400';
+  case 'mint': return 'text-emerald-400 dark:text-emerald-300';
       default: return 'text-muted-foreground';
     }
   };
@@ -1367,6 +1405,8 @@ export default function DashboardHomePage() {
   case 'silver': return 'border-zinc-300 dark:border-zinc-600';
   // Stone (Calificaciones): borde más visible para distinguir de Calendario (silver)
   case 'stone': return 'border-stone-400 dark:border-stone-600';
+  case 'amber': return 'border-amber-300 dark:border-amber-700';
+  case 'mint': return 'border-emerald-300 dark:border-emerald-600';
       default: return 'border-gray-200 dark:border-gray-800';
     }
   };
@@ -1644,12 +1684,16 @@ export default function DashboardHomePage() {
               if (card.titleKey === 'cardCommunicationsStudentTitle' && user?.role === 'admin') {
                 return false;
               }
-              // Ocultar tarjeta de Tareas para rol admin
-              if (card.titleKey === 'cardTasksTitle' && user?.role === 'admin') {
+              // Ocultar tarjeta de Tareas para rol admin y guardian
+              if (card.titleKey === 'cardTasksTitle' && (user?.role === 'admin' || user?.role === 'guardian')) {
                 return false;
               }
-              // Ocultar Calificaciones del bloque general cuando es admin (se muestra en adminCards)
-              if (card.titleKey === 'cardGradesTitle' && user?.role === 'admin') {
+              // Ocultar Calificaciones del bloque general cuando es admin o guardian (se muestra en adminCards/guardianCards)
+              if (card.titleKey === 'cardGradesTitle' && (user?.role === 'admin' || user?.role === 'guardian')) {
+                return false;
+              }
+              // Ocultar Comunicaciones del bloque general para guardian (se muestra en guardianCards)
+              if (card.titleKey === 'cardCommunicationsStudentTitle' && user?.role === 'guardian') {
                 return false;
               }
               if ((card.titleKey === 'cardTestsTitle' || card.titleKey === 'cardSlidesTitle') && user?.role !== 'teacher') {
@@ -1674,6 +1718,35 @@ export default function DashboardHomePage() {
                     {pendingPasswordRequestsCount > 99 ? '99+' : pendingPasswordRequestsCount}
                   </Badge>
                 )}
+                <card.icon className={`w-10 h-10 mb-3 ${getIconColorClass(card.colorClass)}`} />
+                <CardTitle className="text-lg font-semibold font-headline">{translate(card.titleKey)}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col flex-grow">
+                <CardDescription className="text-sm mb-4 flex-grow">
+                  {translate(card.descKey)}
+                </CardDescription>
+                <Button
+                  variant="outline"
+                  asChild
+                  className={cn(
+                    "home-card-button",
+                    getButtonColorClass(card.colorClass),
+                    "hover:shadow-lg transition-shadow duration-200"
+                  )}
+                >
+                  <Link href={card.targetPage}>{translate(card.btnKey)}</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+
+          {/* Guardian specific cards */}
+          {user?.role === 'guardian' && guardianCards.map((card) => (
+            <Card 
+              key={card.titleKey} 
+              className={`flex flex-col text-center shadow-sm hover:shadow-lg transition-shadow duration-300 ${getBorderColorClass(card.colorClass)}`}
+            >
+              <CardHeader className="items-center relative">
                 <card.icon className={`w-10 h-10 mb-3 ${getIconColorClass(card.colorClass)}`} />
                 <CardTitle className="text-lg font-semibold font-headline">{translate(card.titleKey)}</CardTitle>
               </CardHeader>

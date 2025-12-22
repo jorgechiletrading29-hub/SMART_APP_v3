@@ -1875,29 +1875,90 @@ export default function PerfilClient() {
                         if (!user?.username) return <div className="text-sm text-gray-600 dark:text-slate-300 italic">{translate('profileNoUserDataFound')}</div>;
                         
                         try {
+                          console.log('[Perfil Guardian] Starting lookup for user:', user?.username);
+                          
                           const storedUsers = localStorage.getItem('smart-student-users');
-                          const storedRelations = localStorage.getItem('smart-student-guardian-relations');
                           
                           if (!storedUsers) return <div className="text-sm text-gray-600 dark:text-slate-300 italic">{translate('profileNoUserDataFound')}</div>;
                           
                           const usersData = JSON.parse(storedUsers);
-                          const fullUserData = usersData.find((u: any) => u.username === user.username);
-                          if (!fullUserData) return <div className="text-sm text-gray-600 dark:text-slate-300 italic">{translate('profileNoGuardianDataFound') || 'Datos de apoderado no encontrados'}</div>;
+                          // Búsqueda case-insensitive en smart-student-users
+                          const fullUserData = usersData.find((u: any) => 
+                            u.username?.toLowerCase() === user.username?.toLowerCase()
+                          );
+                          console.log('[Perfil Guardian] fullUserData from smart-student-users:', fullUserData);
+                          
+                          // Obtener el año actual
+                          const currentYear = new Date().getFullYear();
+                          console.log('[Perfil Guardian] currentYear:', currentYear);
+                          
+                          // Obtener todos los años disponibles para buscar en cualquiera de ellos
+                          const availableYears = LocalStorageManager.listYears() || [currentYear];
+                          console.log('[Perfil Guardian] availableYears:', availableYears);
+                          
+                          // Buscar guardian en cualquier año disponible (priorizando año actual)
+                          let guardianFromYear: any = null;
+                          let yearUsed = currentYear;
+                          
+                          // Primero intentar el año actual
+                          const guardiansForCurrentYear = LocalStorageManager.getGuardiansForYear(currentYear) || [];
+                          console.log('[Perfil Guardian] guardiansForCurrentYear:', guardiansForCurrentYear.map((g: any) => ({ id: g.id, username: g.username, studentIds: g.studentIds })));
+                          
+                          guardianFromYear = guardiansForCurrentYear.find((g: any) => 
+                            g.username?.toLowerCase() === user.username?.toLowerCase()
+                          );
+                          
+                          // Si no se encuentra en el año actual, buscar en otros años
+                          if (!guardianFromYear) {
+                            for (const year of availableYears) {
+                              if (year === currentYear) continue;
+                              const guardiansForOtherYear = LocalStorageManager.getGuardiansForYear(year) || [];
+                              const found = guardiansForOtherYear.find((g: any) => 
+                                g.username?.toLowerCase() === user.username?.toLowerCase()
+                              );
+                              if (found && found.studentIds && found.studentIds.length > 0) {
+                                guardianFromYear = found;
+                                yearUsed = year;
+                                console.log('[Perfil Guardian] Found guardian in year', year, ':', found);
+                                break;
+                              }
+                            }
+                          }
+                          
+                          console.log('[Perfil Guardian] guardianFromYear (final):', guardianFromYear, 'yearUsed:', yearUsed);
+                          
+                          // Obtener relaciones usando LocalStorageManager (igual que en configuration.tsx)
+                          const relations = LocalStorageManager.getGuardianStudentRelationsForYear(yearUsed) || [];
+                          console.log('[Perfil Guardian] relations for year', yearUsed, ':', relations);
                           
                           // Obtener IDs de estudiantes asignados
                           let assignedStudentIds: string[] = [];
                           
-                          // Primero intentar desde relaciones
-                          if (storedRelations) {
-                            const relations = JSON.parse(storedRelations);
-                            assignedStudentIds = relations
-                              .filter((r: any) => r.guardianId === fullUserData.id)
-                              .map((r: any) => r.studentId);
+                          // Prioridad 1: desde guardiansForYear (datos más recientes del admin)
+                          if (guardianFromYear?.studentIds && guardianFromYear.studentIds.length > 0) {
+                            assignedStudentIds = guardianFromYear.studentIds;
+                            console.log('[Perfil Guardian] studentIds from guardiansForYear:', assignedStudentIds);
                           }
                           
-                          // Fallback: desde el propio usuario (studentIds)
-                          if (assignedStudentIds.length === 0 && fullUserData.studentIds) {
+                          // Prioridad 2: desde relaciones
+                          if (assignedStudentIds.length === 0 && relations.length > 0) {
+                            // Buscar por ID del guardian (en guardiansForYear o en smart-student-users)
+                            const guardianId = guardianFromYear?.id || fullUserData?.id;
+                            console.log('[Perfil Guardian] Looking for guardianId in relations:', guardianId);
+                            assignedStudentIds = relations
+                              .filter((r: any) => 
+                                r.guardianId === guardianId || 
+                                r.guardianId === user?.username
+                              )
+                              .map((r: any) => r.studentId);
+                            
+                            console.log('[Perfil Guardian] studentIds from relations:', assignedStudentIds);
+                          }
+                          
+                          // Prioridad 3: Fallback desde smart-student-users
+                          if (assignedStudentIds.length === 0 && fullUserData?.studentIds && fullUserData.studentIds.length > 0) {
                             assignedStudentIds = fullUserData.studentIds;
+                            console.log('[Perfil Guardian] studentIds from fullUserData:', assignedStudentIds);
                           }
                           
                           if (assignedStudentIds.length === 0) {
@@ -1913,33 +1974,66 @@ export default function PerfilClient() {
                             );
                           }
                           
-                          // Obtener datos de los estudiantes
-                          const courses = JSON.parse(localStorage.getItem('smart-student-courses') || '[]');
-                          const sections = JSON.parse(localStorage.getItem('smart-student-sections') || '[]');
+                          // Obtener datos de los estudiantes (usando el mismo año donde encontramos al guardian)
+                          const courses = LocalStorageManager.getCoursesForYear(yearUsed) || [];
+                          const sections = LocalStorageManager.getSectionsForYear(yearUsed) || [];
+                          const studentsForYear = LocalStorageManager.getStudentsForYear(yearUsed) || [];
+                          const studentAssignments = LocalStorageManager.getStudentAssignmentsForYear(yearUsed) || [];
                           
-                          const assignedStudents = usersData.filter((u: any) => 
-                            assignedStudentIds.includes(u.id) && (u.role === 'student' || u.type === 'student')
+                          console.log('[Perfil Guardian] Looking for students with IDs:', assignedStudentIds);
+                          console.log('[Perfil Guardian] studentsForYear (year', yearUsed, '):', studentsForYear.map((s: any) => ({ id: s.id, username: s.username, name: s.name })));
+                          console.log('[Perfil Guardian] usersData (students):', usersData.filter((u: any) => u.role === 'student' || u.type === 'student').map((u: any) => ({ id: u.id, username: u.username })));
+                          
+                          // Buscar estudiantes en studentsForYear primero (fuente principal)
+                          let assignedStudents = studentsForYear.filter((s: any) => 
+                            assignedStudentIds.includes(s.id) || assignedStudentIds.includes(s.username)
                           );
+                          
+                          // Si no se encontraron, buscar en usersData (smart-student-users)
+                          if (assignedStudents.length === 0) {
+                            assignedStudents = usersData.filter((u: any) => 
+                              (assignedStudentIds.includes(u.id) || assignedStudentIds.includes(u.username)) && 
+                              (u.role === 'student' || u.type === 'student')
+                            );
+                          }
+                          
+                          console.log('[Perfil Guardian] assignedStudents found:', assignedStudents);
                           
                           return (
                             <div className="space-y-3">
-                              {assignedStudents.map((student: any) => {
-                                const course = courses.find((c: any) => c.id === student.courseId);
-                                const section = sections.find((s: any) => s.id === student.sectionId);
-                                return (
-                                  <div key={student.id} className="flex items-center gap-2 flex-wrap bg-gray-100 dark:bg-slate-700/60 rounded-lg p-3 border border-gray-300 dark:border-slate-600/50">
-                                    <GraduationCap className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                    <span className="text-gray-800 dark:text-white font-medium">
-                                      {student.displayName || student.name || student.username}
-                                    </span>
-                                    {course && (
-                                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700">
-                                        {course.name}{section ? ` - ${section.name}` : ''}
-                                      </Badge>
-                                    )}
+                              {assignedStudents.length === 0 ? (
+                                <div className="space-y-2">
+                                  <div className="text-sm text-orange-600 dark:text-orange-400 italic">
+                                    {translate('profileNoAssignedStudents') || 'No hay estudiantes asignados'}
                                   </div>
-                                );
-                              })}
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {translate('profileContactAdminForStudents') || 'Contacta al administrador para asignar estudiantes'}
+                                  </div>
+                                </div>
+                              ) : (
+                                assignedStudents.map((student: any) => {
+                                  // Obtener curso/sección desde assignments o desde el propio estudiante
+                                  const assignment = studentAssignments.find((a: any) => a.studentId === student.id);
+                                  const courseId = assignment?.courseId || student.courseId;
+                                  const sectionId = assignment?.sectionId || student.sectionId;
+                                  
+                                  const course = courses.find((c: any) => c.id === courseId);
+                                  const section = sections.find((s: any) => s.id === sectionId);
+                                  return (
+                                    <div key={student.id} className="flex items-center gap-2 flex-wrap bg-gray-100 dark:bg-slate-700/60 rounded-lg p-3 border border-gray-300 dark:border-slate-600/50">
+                                      <GraduationCap className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                      <span className="text-gray-800 dark:text-white font-medium">
+                                        {student.displayName || student.name || student.username}
+                                      </span>
+                                      {course && (
+                                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700">
+                                          {course.name}{section ? ` - ${section.name}` : ''}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
                             </div>
                           );
                         } catch (error) {
