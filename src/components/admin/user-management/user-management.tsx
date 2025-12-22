@@ -57,7 +57,8 @@ import {
   Shield,
   Crown,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Users2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { UserFormDialog } from './UserFormDialog';
@@ -70,7 +71,7 @@ import {
   EducationAutomation
 } from '@/lib/education-utils';
 import { validateRut } from '@/lib/rut';
-import { Student, Teacher, UserFormData } from '@/types/education';
+import { Student, Teacher, UserFormData, Guardian } from '@/types/education';
 import { getAllAvailableSubjects, getSubjectsForLevel, SubjectColor } from '@/lib/subjects-colors';
 
 export default function UserManagement() {
@@ -78,6 +79,7 @@ export default function UserManagement() {
   const { translate } = useLanguage();
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [administrators, setAdministrators] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
@@ -88,8 +90,8 @@ export default function UserManagement() {
   
   // Form states
   const [showUserDialog, setShowUserDialog] = useState(false);
-  const [userType, setUserType] = useState<'student' | 'teacher' | 'admin'>('student');
-  const [editingUser, setEditingUser] = useState<Student | Teacher | any | null>(null);
+  const [userType, setUserType] = useState<'student' | 'teacher' | 'admin' | 'guardian'>('student');
+  const [editingUser, setEditingUser] = useState<Student | Teacher | Guardian | any | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [autoGenerateCredentials, setAutoGenerateCredentials] = useState(true);
 
@@ -113,15 +115,20 @@ export default function UserManagement() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Role filter state (for clickable statistic cards)
-  const [activeRoleFilter, setActiveRoleFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
+  const [activeRoleFilter, setActiveRoleFilter] = useState<'all' | 'student' | 'teacher' | 'admin' | 'guardian'>('all');
   const studentsSectionRef = useRef<HTMLDivElement | null>(null);
   const teachersSectionRef = useRef<HTMLDivElement | null>(null);
   const adminsSectionRef = useRef<HTMLDivElement | null>(null);
+  const guardiansSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Estado para selección de estudiantes en formulario de apoderado
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [guardianRelationship, setGuardianRelationship] = useState<'mother' | 'father' | 'tutor' | 'other'>('tutor');
 
   // Load persisted role filter (if any)
   useEffect(() => {
     try {
-      const saved = (localStorage.getItem('user-mgmt-role-filter') || 'all') as 'all' | 'student' | 'teacher' | 'admin';
+      const saved = (localStorage.getItem('user-mgmt-role-filter') || 'all') as 'all' | 'student' | 'teacher' | 'admin' | 'guardian';
       if (saved) setActiveRoleFilter(saved);
     } catch {}
   }, []);
@@ -195,6 +202,7 @@ export default function UserManagement() {
       const y = year ?? selectedYear;
       const studentsData = LocalStorageManager.getStudentsForYear(y);
       const teachersData = LocalStorageManager.getTeachersForYear(y);
+      const guardiansData = LocalStorageManager.getGuardiansForYear(y);
       const coursesData = LocalStorageManager.getCoursesForYear(y);
       const sectionsData = LocalStorageManager.getSectionsForYear(y);
       
@@ -229,6 +237,7 @@ export default function UserManagement() {
 
   setStudents(studentsData);
   setTeachers(teachersData);
+  setGuardians(guardiansData);
       setAdministrators(migratedAdmins);
   setCourses(coursesData);
   setSections(sectionsData);
@@ -360,7 +369,7 @@ export default function UserManagement() {
         errors.email = translate('userManagementEmailInvalid') || 'El formato del email no es válido';
       } else {
         // Check if email exists
-        const allUsers = [...students, ...teachers, ...administrators];
+        const allUsers = [...students, ...teachers, ...guardians, ...administrators];
         const existingUser = allUsers.find(u => 
           u.email === userForm.email && (!editingUser || u.id !== editingUser.id)
         );
@@ -408,6 +417,13 @@ export default function UserManagement() {
     if (userForm.role === 'teacher') {
       if (selectedSubjects.length === 0) {
         errors.subjects = translate('userManagementSelectSubjectForTeacher') || 'Selecciona al menos una asignatura para el profesor';
+      }
+    }
+
+    // Guardian-specific validations
+    if (userForm.role === 'guardian') {
+      if (selectedStudentIds.length === 0) {
+        errors.studentIds = translate('userManagementSelectStudentForGuardian') || 'Selecciona al menos un estudiante para el apoderado';
       }
     }
 
@@ -507,6 +523,34 @@ export default function UserManagement() {
       const updatedAdministrators = [...administrators, newAdmin];
       setAdministrators(updatedAdministrators);
       localStorage.setItem('smart-student-administrators', JSON.stringify(updatedAdministrators));
+    } else if (userForm.role === 'guardian') {
+      const newGuardian: Guardian = {
+        ...baseUser,
+        uniqueCode: EducationCodeGenerator.generateGuardianCode(),
+        role: 'guardian',
+        phone: (userForm as any).phone || '',
+        studentIds: [...selectedStudentIds],
+        relationship: guardianRelationship
+      };
+
+      const updatedGuardians = [...guardians, newGuardian];
+      setGuardians(updatedGuardians);
+      LocalStorageManager.setGuardiansForYear(selectedYear, updatedGuardians);
+
+      // Crear relaciones apoderado-estudiante
+      const existingRelations = LocalStorageManager.getGuardianStudentRelationsForYear(selectedYear);
+      const newRelations = selectedStudentIds.map((studentId, index) => ({
+        id: `gsr-${newGuardian.id}-${studentId}-${Date.now()}`,
+        guardianId: newGuardian.id,
+        studentId,
+        relationship: guardianRelationship,
+        isPrimary: index === 0, // El primero es el principal
+        createdAt: new Date()
+      }));
+      LocalStorageManager.setGuardianStudentRelationsForYear(selectedYear, [...existingRelations, ...newRelations]);
+      
+      // Disparar evento para notificar cambios en apoderados
+      window.dispatchEvent(new CustomEvent('guardiansUpdated'));
     }
 
     // Also save to main users array (for backward compatibility)
@@ -630,6 +674,36 @@ export default function UserManagement() {
         a.id === editingUser.id ? adminData : a
       );
       setAdministrators(updatedAdministrators);
+    } else if (editingUser.role === 'guardian') {
+      // Update guardian data
+      const guardianData = updatedUserData as Guardian;
+      guardianData.phone = (userForm as any).phone || guardianData.phone;
+      guardianData.studentIds = [...selectedStudentIds];
+      guardianData.relationship = guardianRelationship;
+      
+      const updatedGuardians = guardians.map(g => 
+        g.id === editingUser.id ? guardianData : g
+      );
+      setGuardians(updatedGuardians);
+      LocalStorageManager.setGuardiansForYear(selectedYear, updatedGuardians);
+
+      // Actualizar relaciones apoderado-estudiante
+      const existingRelations = LocalStorageManager.getGuardianStudentRelationsForYear(selectedYear);
+      // Eliminar relaciones anteriores de este apoderado
+      const filteredRelations = existingRelations.filter((r: any) => r.guardianId !== editingUser.id);
+      // Crear nuevas relaciones
+      const newRelations = selectedStudentIds.map((studentId, index) => ({
+        id: `gsr-${editingUser.id}-${studentId}-${Date.now()}`,
+        guardianId: editingUser.id,
+        studentId,
+        relationship: guardianRelationship,
+        isPrimary: index === 0,
+        createdAt: new Date()
+      }));
+      LocalStorageManager.setGuardianStudentRelationsForYear(selectedYear, [...filteredRelations, ...newRelations]);
+      
+      // Disparar evento para notificar cambios en apoderados
+      window.dispatchEvent(new CustomEvent('guardiansUpdated'));
     }
 
     // Update main users array
@@ -702,6 +776,18 @@ export default function UserManagement() {
       } else if (user.role === 'admin') {
         const updatedAdministrators = administrators.filter(a => a.id !== user.id);
         setAdministrators(updatedAdministrators);
+      } else if (user.role === 'guardian') {
+        const updatedGuardians = guardians.filter(g => g.id !== user.id);
+        setGuardians(updatedGuardians);
+        LocalStorageManager.setGuardiansForYear(selectedYear, updatedGuardians);
+        
+        // Eliminar relaciones apoderado-estudiante
+        const existingRelations = LocalStorageManager.getGuardianStudentRelationsForYear(selectedYear);
+        const filteredRelations = existingRelations.filter((r: any) => r.guardianId !== user.id);
+        LocalStorageManager.setGuardianStudentRelationsForYear(selectedYear, filteredRelations);
+        
+        // Disparar evento para notificar cambios en apoderados
+        window.dispatchEvent(new CustomEvent('guardiansUpdated'));
       }
 
       // Remove from main users array
@@ -758,12 +844,14 @@ export default function UserManagement() {
       sectionId: ''
     });
     setSelectedSubjects([]);
+    setSelectedStudentIds([]);
+    setGuardianRelationship('tutor');
     setValidationErrors({});
     setEditingUser(null);
     setAutoGenerateCredentials(true);
   };
 
-  const openEditDialog = (user: Student | Teacher | any) => {
+  const openEditDialog = (user: Student | Teacher | Guardian | any) => {
     setEditingUser(user);
     setUserForm({
       username: user.username,
@@ -774,12 +862,18 @@ export default function UserManagement() {
       confirmPassword: '', // Always empty when editing
       role: user.role,
       courseId: user.role === 'student' ? (user as Student).courseId || '' : '',
-      sectionId: user.role === 'student' ? (user as Student).sectionId || '' : ''
-    });
+      sectionId: user.role === 'student' ? (user as Student).sectionId || '' : '',
+      phone: user.role === 'guardian' ? (user as Guardian).phone || '' : ''
+    } as any);
     
     // Load selected subjects for teachers
     if (user.role === 'teacher') {
       setSelectedSubjects((user as Teacher).selectedSubjects || []);
+      setSelectedStudentIds([]);
+    } else if (user.role === 'guardian') {
+      setSelectedSubjects([]);
+      setSelectedStudentIds((user as Guardian).studentIds || []);
+      setGuardianRelationship((user as Guardian).relationship || 'tutor');
     } else {
       setSelectedSubjects([]);
     }
@@ -846,12 +940,41 @@ export default function UserManagement() {
     };
   };
 
+  // Obtener información de estudiantes a cargo de un apoderado
+  const getGuardianStudentsInfo = (guardian: Guardian) => {
+    const studentIds = guardian.studentIds || [];
+    const studentsInfo = studentIds.map(studentId => {
+      const student = students.find(s => s.id === studentId);
+      if (!student) return null;
+      const { courseName, sectionName } = getCourseAndSectionName(student);
+      return {
+        id: student.id,
+        name: student.name,
+        courseName,
+        sectionName
+      };
+    }).filter(Boolean);
+    return studentsInfo;
+  };
+
+  // Obtener texto de parentesco
+  const getRelationshipText = (relationship?: string) => {
+    switch (relationship) {
+      case 'mother': return translate('relationshipMother') || 'Madre';
+      case 'father': return translate('relationshipFather') || 'Padre';
+      case 'tutor': return translate('relationshipTutor') || 'Tutor';
+      case 'other': return translate('relationshipOther') || 'Otro';
+      default: return translate('relationshipTutor') || 'Tutor';
+    }
+  };
+
   // Function to get role badge colors (matching configuration)
   const getRoleColor = (role: string) => {
     switch (role) {
   case 'admin': return 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-900 dark:text-red-100 dark:border-red-700';
   case 'teacher': return 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700';
   case 'student': return 'bg-green-100 text-green-800 border border-green-300 dark:bg-green-900 dark:text-green-100 dark:border-green-700';
+  case 'guardian': return 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-900 dark:text-purple-100 dark:border-purple-700';
   default: return 'bg-gray-100 text-gray-800 border border-gray-300 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700';
     }
   };
@@ -862,17 +985,19 @@ export default function UserManagement() {
       case 'admin': return <Crown className="w-3 h-3 mr-1" />;
       case 'teacher': return <Shield className="w-3 h-3 mr-1" />;
       case 'student': return <GraduationCap className="w-3 h-3 mr-1" />;
+      case 'guardian': return <Users2 className="w-3 h-3 mr-1" />;
       default: return null;
     }
   };
 
-  const handleSelectRoleFilter = (role: 'all' | 'student' | 'teacher' | 'admin') => {
+  const handleSelectRoleFilter = (role: 'all' | 'student' | 'teacher' | 'admin' | 'guardian') => {
     setActiveRoleFilter(role);
     // Smooth scroll to the corresponding section (when visible)
     requestAnimationFrame(() => {
       const target = role === 'student' ? studentsSectionRef.current
         : role === 'teacher' ? teachersSectionRef.current
         : role === 'admin' ? adminsSectionRef.current
+        : role === 'guardian' ? guardiansSectionRef.current
         : null;
       if (target) {
         try { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
@@ -931,15 +1056,24 @@ export default function UserManagement() {
               courseId: userForm.courseId,
               sectionId: userForm.sectionId,
               selectedSubjects: selectedSubjects,
+              phone: (userForm as any).phone || '',
+              studentIds: selectedStudentIds,
+              relationship: guardianRelationship,
             }}
             setForm={(updater) => {
               setUserForm(prev => {
-                const withSel: any = { ...prev, selectedSubjects };
+                const withSel: any = { ...prev, selectedSubjects, studentIds: selectedStudentIds, relationship: guardianRelationship };
                 const next: any = updater(withSel);
                 if (JSON.stringify(next.selectedSubjects || []) !== JSON.stringify(selectedSubjects)) {
                   setSelectedSubjects(next.selectedSubjects || []);
                 }
-                const { selectedSubjects: _omit, section, ...rest } = next;
+                if (JSON.stringify(next.studentIds || []) !== JSON.stringify(selectedStudentIds)) {
+                  setSelectedStudentIds(next.studentIds || []);
+                }
+                if (next.relationship && next.relationship !== guardianRelationship) {
+                  setGuardianRelationship(next.relationship);
+                }
+                const { selectedSubjects: _omit, section, studentIds: _omit2, relationship: _omit3, ...rest } = next;
                 return { ...prev, ...rest };
               });
             }}
@@ -949,6 +1083,7 @@ export default function UserManagement() {
             availableCourses={courses}
             availableSections={sections}
             availableSubjects={getAllAvailableSubjects()}
+            availableStudents={students}
             showAutoGenerate={!editingUser}
             autoGenerateChecked={autoGenerateCredentials}
             onToggleAutoGenerate={(checked) => setAutoGenerateCredentials(checked)}
@@ -1022,6 +1157,27 @@ export default function UserManagement() {
         </Card>
 
         <Card
+          onClick={() => handleSelectRoleFilter('guardian')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectRoleFilter('guardian'); }}
+          className={`transition cursor-pointer hover:shadow ${activeRoleFilter === 'guardian' ? 'ring-2 ring-purple-500' : ''}`}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Users2 className="w-4 h-4 mr-2" />
+              {translate('userManagementGuardians') || 'Apoderados'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{guardians.length}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {guardians.filter(g => g.isActive !== false).length} {translate('userManagementActive') || 'activos'}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
           onClick={() => handleSelectRoleFilter('all')}
           role="button"
           tabIndex={0}
@@ -1034,7 +1190,7 @@ export default function UserManagement() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{students.length + teachers.length + administrators.length}</div>
+            <div className="text-2xl font-bold">{students.length + teachers.length + guardians.length + administrators.length}</div>
             <div className="text-xs text-muted-foreground mt-1">
               {translate('userManagementInTheSystem') || 'En el sistema'}
             </div>
@@ -1050,6 +1206,7 @@ export default function UserManagement() {
             <strong>
               {activeRoleFilter === 'student' ? (translate('userManagementStudents') || 'Estudiantes') :
                activeRoleFilter === 'teacher' ? (translate('userManagementTeachers') || 'Profesores') :
+               activeRoleFilter === 'guardian' ? (translate('userManagementGuardians') || 'Apoderados') :
                (translate('userManagementAdministrators') || 'Administradores')}
             </strong>
           </div>
@@ -1360,6 +1517,121 @@ export default function UserManagement() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      )}
+
+      {/* Guardians (Apoderados) Table */}
+      {(activeRoleFilter === 'all' || activeRoleFilter === 'guardian') && (
+      <Card ref={guardiansSectionRef as any}>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Users2 className="w-5 h-5 mr-2" />
+            {translate('userManagementGuardians') || 'Apoderados'} ({guardians.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {guardians.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>{translate('userManagementNoGuardiansRegistered') || 'No hay apoderados registrados'}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {guardians.map(guardian => {
+                const studentsInfo = getGuardianStudentsInfo(guardian);
+                return (
+                <div
+                  key={guardian.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <h4 className="font-medium">{guardian.name}</h4>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>@{guardian.username}</span>
+                          <span>•</span>
+                          <span>{guardian.email}</span>
+                          {guardian.phone && (
+                            <>
+                              <span>•</span>
+                              <span>{guardian.phone}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs dark:border-gray-600 dark:text-gray-200">
+                            {guardian.uniqueCode}
+                          </Badge>
+                          <Badge className={`text-xs ${getRoleColor('guardian')}`}>
+                            {getRoleIcon('guardian')}
+                            {translate('userManagementGuardian') || 'Apoderado'}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900 dark:text-purple-200 dark:border-purple-700">
+                            {getRelationshipText(guardian.relationship)}
+                          </Badge>
+                          {guardian.isActive === false && (
+                            <Badge variant="destructive" className="text-xs">
+                              {translate('statusInactive') || 'Inactivo'}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Estudiantes a cargo */}
+                        {studentsInfo.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <span className="text-xs text-muted-foreground">{translate('userManagementStudentsInCharge') || 'Estudiantes a cargo:'}</span>
+                            <div className="flex flex-wrap gap-2">
+                              {studentsInfo.map((student: any) => (
+                                <Badge 
+                                  key={student.id} 
+                                  variant="outline" 
+                                  className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-700"
+                                >
+                                  <GraduationCap className="w-3 h-3 mr-1" />
+                                  {student.name} ({student.courseName} - {student.sectionName})
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {studentsInfo.length === 0 && (
+                          <div className="mt-2">
+                            <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                              <AlertTriangle className="w-3 h-3 mr-1" />
+                              {translate('userManagementNoStudentsAssigned') || 'Sin estudiantes asignados'}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openEditDialog(guardian)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors dark:text-red-300 dark:hover:text-red-200 dark:hover:bg-red-900/40"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteUser(guardian)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors dark:text-red-300 dark:hover:text-red-200 dark:hover:bg-red-900/40"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

@@ -35,6 +35,10 @@ export class EducationCodeGenerator {
     return this.generateCode('ADM');
   }
 
+  static generateGuardianCode(): string {
+    return this.generateCode('GRD');
+  }
+
   static validateCode(code: string, expectedPrefix: string): boolean {
     const regex = new RegExp(`^${expectedPrefix}-[A-Z0-9]{5,8}$`);
     return regex.test(code);
@@ -87,6 +91,8 @@ export class LocalStorageManager {
     SUBJECTS: 'smart-student-subjects',
     STUDENTS: 'smart-student-students',
     TEACHERS: 'smart-student-teachers',
+    GUARDIANS: 'smart-student-guardians',
+    GUARDIAN_STUDENT_RELATIONS: 'smart-student-guardian-students',
     ASSIGNMENTS: 'smart-student-assignments',
     TEST_GRADES: 'smart-student-test-grades',
     ATTENDANCE: 'smart-student-attendance',
@@ -469,6 +475,94 @@ export class LocalStorageManager {
       const value2 = JSON.stringify(compact);
       this.setLargeItem(key, value2);
     }
+  }
+
+  // =====================================
+  // APODERADOS (GUARDIANS)
+  // =====================================
+  static getGuardians() {
+    const raw = this.getLargeItem(this.KEYS.GUARDIANS);
+    return JSON.parse(raw || '[]');
+  }
+
+  static setGuardians(guardians: any[]) {
+    const value = JSON.stringify(guardians);
+    this.setLargeItem(this.KEYS.GUARDIANS, value);
+  }
+
+  static getGuardiansForYear(year: number) {
+    const key = this.keyWithYear(this.KEYS.GUARDIANS, year);
+    const raw = this.getLargeItem(key);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      // Formato compacto si existiera
+      if (parsed && parsed.fmt === 'guardians-compact-v1' && Array.isArray(parsed.fields) && Array.isArray(parsed.rows)) {
+        const idx: Record<string, number> = {};
+        parsed.fields.forEach((f: string, i: number) => { idx[f] = i; });
+        return parsed.rows.map((r: any[]) => ({
+          id: r[idx.id],
+          username: r[idx.username],
+          rut: r[idx.rut],
+          name: r[idx.name],
+          displayName: r[idx.displayName],
+          email: r[idx.email],
+          phone: r[idx.phone],
+          studentIds: r[idx.studentIds] || [],
+          relationship: r[idx.relationship],
+          role: r[idx.role] || 'guardian',
+        }));
+      }
+      return parsed || [];
+    } catch {
+      return [];
+    }
+  }
+
+  static setGuardiansForYear(year: number, guardians: any[]) {
+    const key = this.keyWithYear(this.KEYS.GUARDIANS, year);
+    try {
+      const value = JSON.stringify(guardians);
+      this.setLargeItem(key, value);
+      return;
+    } catch (e) {
+      // Fallback compacto
+      const fields = ['id','username','rut','name','displayName','email','phone','studentIds','relationship','role'];
+      const rows = (guardians || []).map(g => [
+        g.id ?? '',
+        g.username ?? '',
+        g.rut ?? '',
+        g.name ?? '',
+        g.displayName ?? '',
+        g.email ?? '',
+        g.phone ?? '',
+        g.studentIds ?? [],
+        g.relationship ?? '',
+        g.role ?? 'guardian',
+      ]);
+      const compact = { fmt: 'guardians-compact-v1', fields, rows };
+      const value2 = JSON.stringify(compact);
+      this.setLargeItem(key, value2);
+    }
+  }
+
+  // Relaciones Apoderado-Estudiante
+  static getGuardianStudentRelationsForYear(year: number) {
+    const key = this.keyWithYear(this.KEYS.GUARDIAN_STUDENT_RELATIONS, year);
+    const raw = this.getLargeItem(key);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw) || [];
+    } catch {
+      return [];
+    }
+  }
+
+  static setGuardianStudentRelationsForYear(year: number, relations: any[]) {
+    const key = this.keyWithYear(this.KEYS.GUARDIAN_STUDENT_RELATIONS, year);
+    const value = JSON.stringify(relations);
+    this.setLargeItem(key, value);
   }
 
   static getAssignments() {

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter, useSearchParams } from 'next/navigation';
 import { initializeSQL } from '@/lib/sql-init';
 
-export type UserRole = 'admin' | 'student' | 'teacher' | 'estudiante';
+export type UserRole = 'admin' | 'student' | 'teacher' | 'guardian' | 'estudiante';
 
 // Interface for teacher-subject assignment
 export interface TeacherSubjectAssignment {

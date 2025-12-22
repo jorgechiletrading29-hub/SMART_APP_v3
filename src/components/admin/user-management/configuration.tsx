@@ -4255,14 +4255,16 @@ export default function Configuration() {
   const downloadUsersExcelTemplate = async () => {
     try {
       const XLSX = await import('xlsx');
-      const headers = ['role','name','rut','email','username','password','course','section','subjects'];
+      const headers = ['role','name','rut','email','username','password','course','section','subjects','student_ruts','relationship','phone'];
       const example = [
-        ['student','Juan Pérez','12345678-9','juan@example.com','juan.perez','1234','1ro Básico','A',''],
+        ['student','Juan Pérez','12345678-9','juan@example.com','juan.perez','1234','1ro Básico','A','','','',''],
   // Para profesores usa abreviaturas: MAT, LEN, HIST, CIEN, etc.
-  ['teacher','Ana López','11111111-1','ana@example.com','ana.lopez','1234','','','MAT, LEN'],
-        ['admin','Admin Colegio','99999999-9','admin@example.com','admin','1234','','',''],
+  ['teacher','Ana López','11111111-1','ana@example.com','ana.lopez','1234','','','MAT, LEN','','',''],
+        ['admin','Admin Colegio','99999999-9','admin@example.com','admin','1234','','','','','',''],
         // Nota: Si dejas username vacío, se auto-generará desde email o nombre+RUT
-        ['student','María Silva','22222222-2','maria@example.com','','1234','2do Básico','B','']
+        ['student','María Silva','22222222-2','maria@example.com','','1234','2do Básico','B','','','',''],
+        // Apoderado: student_ruts = RUTs de estudiantes separados por coma, relationship = mother/father/tutor/other
+        ['guardian','Carmen Madre','33333333-3','mama@example.com','carmen.madre','1234','','','','12345678-9, 22222222-2','mother','+56912345678']
       ];
       const aoa = [headers, ...example];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -4393,6 +4395,7 @@ export default function Configuration() {
         admins: 0,
         teachers: 0,
         students: 0,
+        guardians: 0,
         studentsUpdated: 0,
         errors: 0,
         errorMessages: [] as string[]
@@ -4488,6 +4491,14 @@ export default function Configuration() {
             console.log(`📚 [CARGA EXCEL] Consolidando materias para ${username}: ${existingData.subjects.join(', ')}`);
           } else {
             // Primera vez que vemos este usuario/curso/sección
+            // Procesar campos específicos de apoderado
+            const studentRuts = String(userData.student_ruts || userData.studentruts || '')
+              .split(',')
+              .map(r => r.trim())
+              .filter(r => r.length > 0);
+            const relationship = String(userData.relationship || 'tutor').toLowerCase();
+            const phone = String(userData.phone || '');
+
             userMap.set(userKey, {
               username,
               password: String(userData.password || '1234'),
@@ -4498,7 +4509,11 @@ export default function Configuration() {
               rut: String(userData.rut || ''),
               course: String(userData.course || ''),
               section: String(userData.section || ''),
-              subjects: subjectsInRow
+              subjects: subjectsInRow,
+              // Campos de apoderado
+              studentRuts,
+              relationship: ['mother', 'father', 'tutor', 'other'].includes(relationship) ? relationship : 'tutor',
+              phone
             });
           }
 
@@ -4545,6 +4560,7 @@ export default function Configuration() {
             if (newUser.role === 'admin') createdUsers.admins++;
             else if (newUser.role === 'teacher') createdUsers.teachers++;
             else if (newUser.role === 'student') createdUsers.students++;
+            else if (newUser.role === 'guardian' || newUser.role === 'apoderado') createdUsers.guardians++;
             console.log(`✨ [CARGA EXCEL] Usuario creado: ${userData.username} (${newUser.role})`);
           }
         } catch (error: any) {
@@ -4628,7 +4644,12 @@ export default function Configuration() {
         // Construir colecciones por año a partir de los usuarios globales importados
         const studentsYear: any[] = [];
         const teachersYear: any[] = [];
+        const guardiansYear: any[] = [];
         const studentAssignmentsToAdd: any[] = [];
+        const guardianStudentRelationsToAdd: any[] = [];
+
+        // Mapa de RUT → studentId para resolver relaciones apoderado-estudiante
+        const rutToStudentId = new Map<string, string>();
 
         // 🔎 Agregador por profesor (username) para recolectar secciones y materias desde el Excel
         // userMap conserva las filas por (username, course, section) — aquí consolidamos por username
@@ -4687,6 +4708,12 @@ export default function Configuration() {
             };
             studentsYear.push(studentRec);
 
+            // Agregar al mapa de RUT para resolver relaciones apoderado-estudiante
+            if (studentRec.rut) {
+              const normalizedRut = String(studentRec.rut).replace(/[^0-9kK-]/g, '').toLowerCase();
+              rutToStudentId.set(normalizedRut, studentRec.id);
+            }
+
             // Crear asignación estudiante→sección si tenemos ids
             if (studentRec.id && studentRec.sectionId) {
               studentAssignmentsToAdd.push({
@@ -4726,12 +4753,65 @@ export default function Configuration() {
             // Guardar id/username en el agregador para usarlos en el auto-creator de assignments
             if (agg) { agg.id = teacherRec.id; }
             teachersYear.push(teacherRec);
+          } else if (role === 'guardian' || role === 'apoderado') {
+            // Procesar apoderado
+            const studentRuts = Array.isArray(u.studentRuts) ? u.studentRuts : [];
+            const studentIds: string[] = [];
+            
+            // Resolver RUTs de estudiantes a IDs
+            for (const rut of studentRuts) {
+              const normalizedRut = String(rut).replace(/[^0-9kK-]/g, '').toLowerCase();
+              const studentId = rutToStudentId.get(normalizedRut);
+              if (studentId) {
+                studentIds.push(studentId);
+              } else {
+                // Buscar en estudiantes existentes del año
+                const existingStudent = studentsYear.find((s: any) => {
+                  const sRut = String(s.rut || '').replace(/[^0-9kK-]/g, '').toLowerCase();
+                  return sRut === normalizedRut;
+                });
+                if (existingStudent) {
+                  studentIds.push(existingStudent.id);
+                }
+              }
+            }
+
+            const guardianRec = {
+              id: u.id,
+              uniqueCode: `GRD-${Date.now().toString(36)}${Math.random().toString(36).substring(2, 5)}`.toUpperCase().substring(0, 12),
+              username: u.username,
+              name: u.displayName || u.name,
+              displayName: u.displayName || u.name,
+              email: u.email || '',
+              phone: u.phone || '',
+              rut: u.rut || '',
+              role: 'guardian',
+              isActive: true,
+              studentIds,
+              relationship: u.relationship || 'tutor',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            guardiansYear.push(guardianRec);
+
+            // Crear relaciones apoderado-estudiante
+            studentIds.forEach((studentId, index) => {
+              guardianStudentRelationsToAdd.push({
+                id: `gsr-${guardianRec.id}-${studentId}-${Date.now()}`,
+                guardianId: guardianRec.id,
+                studentId,
+                relationship: guardianRec.relationship,
+                isPrimary: index === 0,
+                createdAt: new Date().toISOString()
+              });
+            });
           }
         }
 
         // Guardar en claves segmentadas por año
         LocalStorageManager.setStudentsForYear(year, studentsYear);
         LocalStorageManager.setTeachersForYear(year, teachersYear);
+        LocalStorageManager.setGuardiansForYear(year, guardiansYear);
 
         // Mezclar asignaciones nuevas con existentes evitando duplicados
         if (studentAssignmentsToAdd.length > 0) {
@@ -4741,6 +4821,17 @@ export default function Configuration() {
           if (toAdd.length > 0) {
             LocalStorageManager.setStudentAssignmentsForYear(year, [...existingSA, ...toAdd]);
             try { window.dispatchEvent(new CustomEvent('studentAssignmentsChanged', { detail: { year, added: toAdd.length } })); } catch {}
+          }
+        }
+
+        // Guardar relaciones apoderado-estudiante
+        if (guardianStudentRelationsToAdd.length > 0) {
+          const existingGSR: any[] = LocalStorageManager.getGuardianStudentRelationsForYear(year) || [];
+          const keySet = new Set(existingGSR.map((r: any) => `${r.guardianId}:${r.studentId}`));
+          const toAdd = guardianStudentRelationsToAdd.filter((r: any) => !keySet.has(`${r.guardianId}:${r.studentId}`));
+          if (toAdd.length > 0) {
+            LocalStorageManager.setGuardianStudentRelationsForYear(year, [...existingGSR, ...toAdd]);
+            try { window.dispatchEvent(new CustomEvent('guardiansUpdated', { detail: { year, added: toAdd.length } })); } catch {}
           }
         }
 
@@ -4811,6 +4902,7 @@ export default function Configuration() {
         admins: createdUsers.admins,
         teachers: createdUsers.teachers,
         students: createdUsers.students,
+        guardians: createdUsers.guardians,
         studentsUpdated: createdUsers.studentsUpdated,
         errors: createdUsers.errors,
         totalProcesado: userMap.size,
@@ -4829,7 +4921,7 @@ export default function Configuration() {
       console.log('🎉 [CARGA EXCEL] Proceso completado exitosamente!');
       
       // Calcular total de usuarios creados
-      const totalCreated = createdUsers.admins + createdUsers.teachers + createdUsers.students;
+      const totalCreated = createdUsers.admins + createdUsers.teachers + createdUsers.students + createdUsers.guardians;
       
       console.log('=' .repeat(60));
       console.log('📊 RESUMEN FINAL DE IMPORTACIÓN:');
@@ -4838,6 +4930,7 @@ export default function Configuration() {
       console.log(`   - Administradores: ${createdUsers.admins}`);
       console.log(`   - Profesores: ${createdUsers.teachers}`);
       console.log(`   - Estudiantes: ${createdUsers.students}`);
+      console.log(`   - Apoderados: ${createdUsers.guardians}`);
       console.log(`   - TOTAL CREADOS: ${totalCreated}`);
       console.log(`🔄 Estudiantes actualizados: ${createdUsers.studentsUpdated}`);
       console.log(`❌ Errores: ${createdUsers.errors}`);

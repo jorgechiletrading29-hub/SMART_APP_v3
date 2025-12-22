@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Key, Eye, EyeOff, GraduationCap, Shield, Crown } from 'lucide-react';
+import { Mail, Key, Eye, EyeOff, GraduationCap, Shield, Crown, Users2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/language-context';
 import { SubjectColor, getAllAvailableSubjects } from '@/lib/subjects-colors';
 
-type Role = 'student' | 'teacher' | 'admin';
+type Role = 'student' | 'teacher' | 'admin' | 'guardian';
 
 export type SharedUserFormData = {
   name: string;
@@ -26,6 +26,10 @@ export type SharedUserFormData = {
   sectionId?: string; // unified key
   section?: string; // support existing config variant
   selectedSubjects?: string[];
+  // Guardian-specific fields
+  phone?: string;
+  studentIds?: string[];
+  relationship?: 'mother' | 'father' | 'tutor' | 'other';
 };
 
 export function UserFormDialog({
@@ -39,6 +43,7 @@ export function UserFormDialog({
   availableCourses = [],
   availableSections = [],
   availableSubjects = getAllAvailableSubjects(),
+  availableStudents = [],
   showAutoGenerate = true,
   autoGenerateChecked = false,
   onToggleAutoGenerate,
@@ -53,14 +58,57 @@ export function UserFormDialog({
   availableCourses?: any[];
   availableSections?: any[];
   availableSubjects?: SubjectColor[];
+  availableStudents?: any[];
   showAutoGenerate?: boolean;
   autoGenerateChecked?: boolean;
   onToggleAutoGenerate?: (checked: boolean) => void;
 }) {
   const { translate } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
 
-  const getRoleIcon = (role: string) => role === 'admin' ? <Crown className="w-4 h-4 mr-1"/> : role === 'teacher' ? <Shield className="w-4 h-4 mr-1"/> : <GraduationCap className="w-4 h-4 mr-1"/>;
+  const getRoleIcon = (role: string) => {
+    if (role === 'admin') return <Crown className="w-4 h-4 mr-1"/>;
+    if (role === 'teacher') return <Shield className="w-4 h-4 mr-1"/>;
+    if (role === 'guardian') return <Users2 className="w-4 h-4 mr-1"/>;
+    return <GraduationCap className="w-4 h-4 mr-1"/>;
+  };
+
+  // Filter students based on search term
+  const filteredStudents = availableStudents.filter((student: any) => {
+    if (!studentSearchTerm) return true;
+    const searchLower = studentSearchTerm.toLowerCase();
+    return (
+      student.name?.toLowerCase().includes(searchLower) ||
+      student.username?.toLowerCase().includes(searchLower) ||
+      student.rut?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Get student info by ID
+  const getStudentInfo = (studentId: string) => {
+    const student = availableStudents.find((s: any) => s.id === studentId);
+    if (!student) return null;
+    const course = availableCourses.find((c: any) => c.id === student.courseId);
+    const section = availableSections.find((s: any) => s.id === student.sectionId);
+    return {
+      ...student,
+      courseName: course?.name || '',
+      sectionName: section?.name || ''
+    };
+  };
+
+  // Toggle student selection for guardian
+  const toggleStudentSelection = (studentId: string) => {
+    setForm(prev => {
+      const currentIds = prev.studentIds || [];
+      if (currentIds.includes(studentId)) {
+        return { ...prev, studentIds: currentIds.filter(id => id !== studentId) };
+      } else {
+        return { ...prev, studentIds: [...currentIds, studentId] };
+      }
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,20 +122,23 @@ export function UserFormDialog({
 
         {/* User Type Selection (only when creating) */}
         {!isEditing && (
-          <div className="flex items-center space-x-4 p-4 bg-muted rounded-lg">
-            {(['student','teacher','admin'] as Role[]).map(role => (
+          <div className="flex flex-wrap items-center gap-4 p-4 bg-muted rounded-lg">
+            {(['student','teacher','admin','guardian'] as Role[]).map(role => (
               <div key={role} className="flex items-center space-x-2">
                 <input
                   type="radio"
                   id={`role-${role}`}
                   name="userType"
                   checked={form.role === role}
-                  onChange={() => setForm(prev => ({ ...prev, role, courseId: '', sectionId: '', section: '' }))}
+                  onChange={() => setForm(prev => ({ ...prev, role, courseId: '', sectionId: '', section: '', studentIds: [] }))}
                   className="w-4 h-4"
                 />
                 <Label htmlFor={`role-${role}`} className="flex items-center cursor-pointer">
                   {getRoleIcon(role)}
-                  {role === 'student' ? (translate('userManagementStudent') || 'Estudiante') : role === 'teacher' ? (translate('userManagementTeacher') || 'Profesor') : (translate('userManagementAdministrator') || 'Administrador')}
+                  {role === 'student' ? (translate('userManagementStudent') || 'Estudiante') : 
+                   role === 'teacher' ? (translate('userManagementTeacher') || 'Profesor') : 
+                   role === 'guardian' ? (translate('userManagementGuardian') || 'Apoderado') :
+                   (translate('userManagementAdministrator') || 'Administrador')}
                 </Label>
               </div>
             ))}
@@ -299,6 +350,136 @@ export function UserFormDialog({
               </div>
               {(!form.selectedSubjects || form.selectedSubjects.length === 0) && (
                 <p className="text-red-500 text-xs mt-2">{translate('userManagementSelectAtLeastOneSubject') || 'Selecciona al menos una asignatura'}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Guardian-specific */}
+        {form.role === 'guardian' && (
+          <div className="space-y-4 p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
+            {/* Phone number */}
+            <div>
+              <Label htmlFor="phone">{translate('userManagementPhone') || 'Teléfono'}</Label>
+              <Input
+                id="phone"
+                value={form.phone || ''}
+                onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder={translate('userManagementPhonePlaceholder') || '+56 9 1234 5678'}
+              />
+            </div>
+
+            {/* Relationship */}
+            <div>
+              <Label htmlFor="relationship">{translate('userManagementRelationship') || 'Parentesco'} *</Label>
+              <Select
+                value={form.relationship || 'tutor'}
+                onValueChange={(value) => setForm(prev => ({ ...prev, relationship: value as any }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={translate('userManagementSelectRelationship') || 'Selecciona parentesco'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mother">{translate('relationshipMother') || 'Madre'}</SelectItem>
+                  <SelectItem value="father">{translate('relationshipFather') || 'Padre'}</SelectItem>
+                  <SelectItem value="tutor">{translate('relationshipTutor') || 'Tutor'}</SelectItem>
+                  <SelectItem value="other">{translate('relationshipOther') || 'Otro'}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Student selection */}
+            <div>
+              <Label>{translate('userManagementStudentsInCharge') || 'Estudiantes a cargo'} *</Label>
+              <p className="text-xs text-muted-foreground mb-3">
+                {translate('userManagementSelectStudentsForGuardian') || 'Selecciona los estudiantes que están a cargo de este apoderado'}
+              </p>
+              
+              {/* Search input */}
+              <Input
+                placeholder={translate('userManagementSearchStudents') || 'Buscar estudiantes por nombre, usuario o RUT...'}
+                value={studentSearchTerm}
+                onChange={(e) => setStudentSearchTerm(e.target.value)}
+                className="mb-3"
+              />
+
+              {/* Selected students */}
+              {(form.studentIds && form.studentIds.length > 0) && (
+                <div className="mb-3">
+                  <span className="text-xs font-medium text-muted-foreground">{translate('userManagementSelectedStudents') || 'Seleccionados'}:</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {form.studentIds.map(studentId => {
+                      const studentInfo = getStudentInfo(studentId);
+                      if (!studentInfo) return null;
+                      return (
+                        <Badge 
+                          key={studentId}
+                          variant="secondary"
+                          className="cursor-pointer bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                          onClick={() => toggleStudentSelection(studentId)}
+                        >
+                          <GraduationCap className="w-3 h-3 mr-1" />
+                          {studentInfo.name} ({studentInfo.courseName} - {studentInfo.sectionName})
+                          <span className="ml-1 text-red-500">×</span>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Available students list */}
+              <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1">
+                {filteredStudents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    {translate('userManagementNoStudentsFound') || 'No se encontraron estudiantes'}
+                  </p>
+                ) : (
+                  filteredStudents.slice(0, 50).map((student: any) => {
+                    const isSelected = form.studentIds?.includes(student.id);
+                    const course = availableCourses.find((c: any) => c.id === student.courseId);
+                    const section = availableSections.find((s: any) => s.id === student.sectionId);
+                    return (
+                      <div
+                        key={student.id}
+                        className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                          isSelected 
+                            ? 'bg-purple-100 dark:bg-purple-900' 
+                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }`}
+                        onClick={() => toggleStudentSelection(student.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="w-4 h-4"
+                          />
+                          <div>
+                            <span className="text-sm font-medium">{student.name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">@{student.username}</span>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {course?.name || '?'} - {section?.name || '?'}
+                        </Badge>
+                      </div>
+                    );
+                  })
+                )}
+                {filteredStudents.length > 50 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    {translate('userManagementAndMoreStudents') || 'Y más...'} ({filteredStudents.length - 50} {translate('userManagementMore') || 'más'})
+                  </p>
+                )}
+              </div>
+              
+              {validationErrors?.studentIds && (
+                <p className="text-red-500 text-xs mt-2">{validationErrors.studentIds}</p>
+              )}
+              {(!form.studentIds || form.studentIds.length === 0) && (
+                <p className="text-red-500 text-xs mt-2">{translate('userManagementSelectAtLeastOneStudent') || 'Selecciona al menos un estudiante'}</p>
               )}
             </div>
           </div>

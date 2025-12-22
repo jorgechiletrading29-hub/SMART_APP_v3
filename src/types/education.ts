@@ -94,9 +94,12 @@ export interface UserFormData {
   rut: string;
   password: string;
   confirmPassword: string;
-  role: 'student' | 'teacher' | 'admin';
+  role: 'student' | 'teacher' | 'admin' | 'guardian';
   courseId?: string;
   sectionId?: string;
+  phone?: string;
+  studentIds?: string[];
+  relationship?: 'mother' | 'father' | 'tutor' | 'other';
 }
 
 export interface AssignmentData {
@@ -105,6 +108,39 @@ export interface AssignmentData {
   courseId?: string;
   sectionId?: string;
   subjectIds?: string[];
+}
+
+/**
+ * Guardian (Apoderado) - Tutor de uno o más estudiantes
+ */
+export interface Guardian {
+  id: string;
+  uniqueCode: string;
+  username: string;
+  name: string;
+  email: string;
+  phone?: string;
+  rut?: string;
+  role: 'guardian';
+  isActive: boolean;
+  // Relación con estudiantes (IDs de estudiantes a cargo)
+  studentIds: string[];
+  // Parentesco con los estudiantes
+  relationship?: 'mother' | 'father' | 'tutor' | 'other';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Relación Apoderado-Estudiante
+ */
+export interface GuardianStudentRelation {
+  id: string;
+  guardianId: string;
+  studentId: string;
+  relationship: 'mother' | 'father' | 'tutor' | 'other';
+  isPrimary: boolean; // Apoderado principal
+  createdAt: Date;
 }
 
 export interface SystemConfig {
