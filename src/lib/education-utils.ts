@@ -635,6 +635,8 @@ export class LocalStorageManager {
     try {
       const value = JSON.stringify(assignments);
       this.setLargeItem(key, value);
+      // También sincronizar con el storage legacy para compatibilidad con módulos que no usan año
+      try { localStorage.setItem('smart-student-teacher-assignments', value); } catch {}
       return;
     } catch (e) {
       // Fallback 1: Formato súper compacto con diccionarios
@@ -668,6 +670,8 @@ export class LocalStorageManager {
       const value2 = JSON.stringify(compactV2);
       try {
         this.setLargeItem(key, value2);
+        // También sincronizar con storage legacy (formato original si cabe)
+        try { localStorage.setItem('smart-student-teacher-assignments', JSON.stringify(assignments)); } catch {}
         return;
       } catch (e2) {
         // Fallback 2: Formato compacto v1 (fields/rows)
@@ -685,6 +689,8 @@ export class LocalStorageManager {
         const compactV1 = { fmt: 'teacher-assignments-compact-v1', fields, rows };
         const value3 = JSON.stringify(compactV1);
         this.setLargeItem(key, value3);
+        // También sincronizar con storage legacy
+        try { localStorage.setItem('smart-student-teacher-assignments', JSON.stringify(assignments)); } catch {}
       }
     }
   }

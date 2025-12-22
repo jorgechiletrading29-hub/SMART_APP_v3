@@ -412,23 +412,62 @@ export default function DashboardHomePage() {
 
   useEffect(() => { computePendingAttendanceCount(); }, [user]);
 
-  // Utilidad: cargar comunicaciones recibidas del estudiante y contar no leídas
+  // Utilidad: cargar comunicaciones recibidas del estudiante/apoderado y contar no leídas
   const loadUnreadCommunicationsCount = () => {
     try {
-      if (!user || user.role !== 'student') { setUnreadCommunicationsCount(0); return; }
+      if (!user || (user.role !== 'student' && user.role !== 'guardian')) { setUnreadCommunicationsCount(0); return; }
       const commRaw = localStorage.getItem('smart-student-communications');
       if (!commRaw) { setUnreadCommunicationsCount(0); return; }
       const all = JSON.parse(commRaw) as any[];
       const courses = JSON.parse(localStorage.getItem('smart-student-courses') || '[]');
       const assignments = JSON.parse(localStorage.getItem('smart-student-student-assignments') || '[]');
-      const myAssignments = assignments.filter((a: any) => a && a.studentId === user.id);
-      const active = (user as any).activeCourses as string[] | undefined;
-      const studentSectionName = (user as any).sectionName;
 
       const getCourseName = (id?: string, fb?: string) => {
         if (!id) return fb || '';
         return courses.find((c: any) => c.id === id)?.name || fb || '';
       };
+
+      // Para apoderados: obtener estudiantes asignados
+      if (user.role === 'guardian') {
+        const currentYear = new Date().getFullYear();
+        const guardianRelations = JSON.parse(localStorage.getItem(`smart-student-guardian-student-relations-${currentYear}`) || '[]');
+        const assignedStudentIds = guardianRelations
+          .filter((rel: any) => rel.guardianId === user.id)
+          .map((rel: any) => rel.studentId);
+        
+        if (assignedStudentIds.length === 0) {
+          setUnreadCommunicationsCount(0);
+          return;
+        }
+
+        // Buscar comunicaciones para los estudiantes asignados al apoderado
+        const guardianCommunications = all.filter((comm: any) => {
+          // Comunicaciones dirigidas específicamente a alguno de los estudiantes asignados
+          if (comm.type === 'student' && assignedStudentIds.includes(comm.targetStudent)) {
+            return true;
+          }
+          // Comunicaciones de curso: verificar si algún estudiante asignado pertenece al curso/sección
+          if (comm.type === 'course' && comm.targetCourse && comm.targetSection) {
+            const studentAssignmentsForGuardian = assignments.filter((a: any) => 
+              a && assignedStudentIds.includes(a.studentId)
+            );
+            const matchCourseAndSection = studentAssignmentsForGuardian.some((a: any) => 
+              a.courseId === comm.targetCourse && a.sectionId === comm.targetSection
+            );
+            return matchCourseAndSection;
+          }
+          return false;
+        });
+
+        const unread = guardianCommunications.filter((c: any) => !((c.readBy || []).includes(user.id)));
+        setUnreadCommunicationsCount(unread.length);
+        return;
+      }
+
+      // Para estudiantes: lógica existente
+      const myAssignments = assignments.filter((a: any) => a && a.studentId === user.id);
+      const active = (user as any).activeCourses as string[] | undefined;
+      const studentSectionName = (user as any).sectionName;
 
       const belongsToStudent = (comm: any): boolean => {
         if (comm.type === 'student' && comm.targetStudent === user.id) return true;
@@ -462,7 +501,7 @@ export default function DashboardHomePage() {
       const unread = received.filter((c: any) => !((c.readBy || []).includes(user.id)));
       setUnreadCommunicationsCount(unread.length);
     } catch (e) {
-      console.error('[Dashboard] Error cargando comunicaciones del estudiante:', e);
+      console.error('[Dashboard] Error cargando comunicaciones del estudiante/apoderado:', e);
       setUnreadCommunicationsCount(0);
     }
   };
@@ -1747,6 +1786,15 @@ export default function DashboardHomePage() {
               className={`flex flex-col text-center shadow-sm hover:shadow-lg transition-shadow duration-300 ${getBorderColorClass(card.colorClass)}`}
             >
               <CardHeader className="items-center relative">
+                {/* Badge de comunicaciones no leídas para apoderados */}
+                {card.titleKey === 'cardCommunicationsStudentTitle' && unreadCommunicationsCount > 0 && (
+                  <span 
+                    className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center shadow-md animate-pulse"
+                    title={translate('unreadCommunicationsBadge', { count: String(unreadCommunicationsCount) }) || `${unreadCommunicationsCount} comunicaciones sin leer`}
+                  >
+                    {unreadCommunicationsCount > 99 ? '99+' : unreadCommunicationsCount}
+                  </span>
+                )}
                 <card.icon className={`w-10 h-10 mb-3 ${getIconColorClass(card.colorClass)}`} />
                 <CardTitle className="text-lg font-semibold font-headline">{translate(card.titleKey)}</CardTitle>
               </CardHeader>

@@ -341,6 +341,11 @@ export default function ComunicacionesPage() {
         if (user?.role === 'student') {
           loadStudentCommunications(finalCommunications);
         }
+        
+        // Si es apoderado, filtrar comunicaciones de sus estudiantes asignados
+        if (user?.role === 'guardian') {
+          loadGuardianCommunications(finalCommunications);
+        }
       }
 
       // Cargar cursos y secciones reales del sistema usando LocalStorageManager
@@ -357,9 +362,32 @@ export default function ComunicacionesPage() {
       if (user?.role === 'teacher') {
         console.log('🔍 DEBUG - Usuario es profesor:', user.id, user.username);
         
-        // Obtener asignaciones de profesores desde el módulo de gestión de usuarios
-        const teacherAssignments = JSON.parse(localStorage.getItem('smart-student-teacher-assignments') || '[]');
-        console.log('🔍 DEBUG - Asignaciones encontradas:', teacherAssignments);
+        // Obtener asignaciones de profesores desde múltiples fuentes
+        // 1. Buscar en el storage sin año (legacy)
+        const legacyAssignments = JSON.parse(localStorage.getItem('smart-student-teacher-assignments') || '[]');
+        
+        // 2. Buscar en el storage por año (nuevo formato)
+        const currentYear = new Date().getFullYear();
+        const yearAssignments = LocalStorageManager.getTeacherAssignmentsForYear(currentYear);
+        
+        // Combinar todas las asignaciones
+        const allAssignments = [...legacyAssignments, ...yearAssignments];
+        
+        // Eliminar duplicados por id
+        const uniqueAssignmentsMap = new Map();
+        allAssignments.forEach((a: any) => {
+          if (a && a.id) {
+            uniqueAssignmentsMap.set(a.id, a);
+          } else if (a && a.teacherId && a.sectionId) {
+            // Si no hay id, crear una clave única
+            uniqueAssignmentsMap.set(`${a.teacherId}-${a.sectionId}-${a.subjectId || ''}`, a);
+          }
+        });
+        const teacherAssignments = Array.from(uniqueAssignmentsMap.values());
+        
+        console.log('🔍 DEBUG - Asignaciones legacy:', legacyAssignments.length);
+        console.log('🔍 DEBUG - Asignaciones por año:', yearAssignments.length);
+        console.log('🔍 DEBUG - Total asignaciones combinadas:', teacherAssignments.length);
         
         // Buscar asignaciones del profesor actual
         const currentTeacherAssignments = teacherAssignments.filter((assignment: any) => 
@@ -535,6 +563,94 @@ export default function ComunicacionesPage() {
     }
   };
 
+  // Función para cargar comunicaciones específicas para apoderados
+  const loadGuardianCommunications = (allCommunications: Communication[]) => {
+    if (!user || user.role !== 'guardian') return;
+
+    try {
+      const currentYear = new Date().getFullYear();
+      // Obtener relaciones apoderado-estudiante
+      const guardianRelations = JSON.parse(localStorage.getItem(`smart-student-guardian-student-relations-${currentYear}`) || '[]');
+      const assignedStudentIds = guardianRelations
+        .filter((rel: any) => rel.guardianId === user.id)
+        .map((rel: any) => rel.studentId);
+      
+      if (assignedStudentIds.length === 0) {
+        setReceivedCommunications([]);
+        console.log(`📧 [Guardian] ${user.username} no tiene estudiantes asignados`);
+        return;
+      }
+
+      // Obtener información de estudiantes para mostrar nombres
+      const storedUsers = localStorage.getItem('smart-student-users');
+      const allUsers = storedUsers ? JSON.parse(storedUsers) : [];
+      const studentMap = new Map<string, any>();
+      allUsers
+        .filter((u: any) => u.role === 'student' && assignedStudentIds.includes(u.id))
+        .forEach((u: any) => studentMap.set(u.id, u));
+
+      // Obtener asignaciones de estudiantes
+      const studentAssignmentsRaw = localStorage.getItem('smart-student-student-assignments');
+      const studentAssignments = studentAssignmentsRaw ? JSON.parse(studentAssignmentsRaw) : [];
+
+      const guardianCommunications: (Communication & { studentInfo?: { id: string; name: string; courseName?: string; sectionName?: string } })[] = [];
+
+      allCommunications.forEach(comm => {
+        // Comunicaciones dirigidas específicamente a alguno de los estudiantes asignados
+        if (comm.type === 'student' && assignedStudentIds.includes(comm.targetStudent)) {
+          const student = studentMap.get(comm.targetStudent || '');
+          guardianCommunications.push({
+            ...comm,
+            studentInfo: student ? {
+              id: student.id,
+              name: student.displayName || student.username,
+              courseName: comm.targetCourseName,
+              sectionName: comm.targetSectionName
+            } : undefined
+          });
+          return;
+        }
+
+        // Comunicaciones de curso: verificar si algún estudiante asignado pertenece al curso/sección
+        if (comm.type === 'course' && comm.targetCourse && comm.targetSection) {
+          // Buscar qué estudiantes asignados al apoderado pertenecen a este curso/sección
+          const matchingStudents = studentAssignments.filter((a: any) => 
+            a && 
+            assignedStudentIds.includes(a.studentId) &&
+            a.courseId === comm.targetCourse && 
+            a.sectionId === comm.targetSection
+          );
+
+          matchingStudents.forEach((assignment: any) => {
+            const student = studentMap.get(assignment.studentId);
+            if (student) {
+              guardianCommunications.push({
+                ...comm,
+                id: `${comm.id}_${student.id}`, // ID único por estudiante para evitar duplicados en la UI
+                studentInfo: {
+                  id: student.id,
+                  name: student.displayName || student.username,
+                  courseName: comm.targetCourseName,
+                  sectionName: comm.targetSectionName
+                }
+              });
+            }
+          });
+        }
+      });
+
+      // Ordenar por fecha (más recientes primero)
+      guardianCommunications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      setReceivedCommunications(guardianCommunications);
+      
+      console.log(`📧 [Guardian] ${user.username} loaded ${guardianCommunications.length} communications for ${assignedStudentIds.length} students`);
+    } catch (error) {
+      console.error('Error loading guardian communications:', error);
+      setReceivedCommunications([]);
+    }
+  };
+
   // Función para manejar la visualización de comunicaciones por estudiantes
   const handleViewCommunication = (communication: Communication) => {
     setSelectedCommunication(communication);
@@ -578,6 +694,11 @@ export default function ComunicacionesPage() {
       // Actualizar las comunicaciones recibidas del estudiante
       if (user.role === 'student') {
         loadStudentCommunications(updatedCommunications);
+      }
+      
+      // Actualizar las comunicaciones recibidas del apoderado
+      if (user.role === 'guardian') {
+        loadGuardianCommunications(updatedCommunications);
       }
 
       console.log(`📖 Communication ${communicationId} marked as read by ${user.username}`);
@@ -1412,6 +1533,210 @@ export default function ComunicacionesPage() {
                       </div>
                     </div>
                   )}
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-300"
+                    onClick={() => setShowCommunicationDialog(false)}
+                  >
+                    {translate('close') || 'Cerrar'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Vista para apoderados (guardians) - solo lectura de comunicaciones de sus estudiantes
+  if (user?.role === 'guardian') {
+    return (
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        {/* Header para apoderados */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center text-foreground">
+              <Megaphone className="w-8 h-8 mr-3 text-red-500" />
+              {translate('receivedCommunications') || 'Comunicaciones Recibidas'}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {translate('guardianCommunicationsSubtitle') || 'Mensajes y anuncios enviados a sus estudiantes'}
+            </p>
+          </div>
+        </div>
+
+        {/* Comunicaciones recibidas para apoderados */}
+        <Card>
+          <CardContent className="p-6">
+            {receivedCommunications.length === 0 ? (
+              <div className="text-center py-12">
+                <Megaphone className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">
+                  {translate('noReceivedCommunications') || 'No hay comunicaciones nuevas'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {translate('guardianNoCommSubtext') || 'Aquí aparecerán los mensajes enviados a sus estudiantes'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {memoizedReceivedCommunications.map((communication: any, index) => {
+                  const isRead = communication.readBy?.includes(user.id);
+                  const senderInfo = getSenderInfo(communication.senderId);
+                  const studentInfo = communication.studentInfo;
+                  
+                  return (
+                    <div
+                      key={generateUniqueKey('guardian-received', communication.id, index, 'comm')}
+                      className={`border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer ${
+                        !isRead
+                          ? 'border-blue-200 bg-blue-50/50 dark:border-blue-500/50 dark:bg-blue-500/10'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                      }`}
+                      onClick={() => handleViewCommunication(communication)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h3 className="font-semibold text-lg">{communication.title}</h3>
+                            {/* Badge del estudiante para apoderados con múltiples estudiantes */}
+                            {studentInfo && (
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs px-2 py-0.5 bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700"
+                              >
+                                👤 {studentInfo.name}
+                                {studentInfo.courseName && studentInfo.sectionName && (
+                                  <span className="ml-1 text-purple-500">
+                                    ({studentInfo.courseName} {studentInfo.sectionName})
+                                  </span>
+                                )}
+                              </Badge>
+                            )}
+                            {isRead ? (
+                              <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700">
+                                {translate('readCommunication') || 'Leído'}
+                              </span>
+                            ) : (
+                              <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                                {translate('unreadCommunication') || 'Sin leer'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground mb-3 line-clamp-2">
+                            {communication.content}
+                          </p>
+                          <div className="flex items-center space-x-4 text-sm text-muted-foreground flex-wrap gap-2">
+                            <div className="flex items-center">
+                              <UserCheck className="w-4 h-4 mr-1" />
+                              {translate('sentBy') || 'Enviado por'}:
+                              <Badge
+                                variant="outline"
+                                className="ml-2 mr-2 text-[10px] px-2 py-0.5 rounded-full border-blue-200 text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700"
+                              >
+                                <Shield className="w-3 h-3 inline mr-1" />
+                                {translate('teacherTitle') || 'Profesor'}
+                              </Badge>
+                              {senderInfo.name}
+                            </div>
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              {formatDateTimeOneLine(communication.createdAt)}
+                            </div>
+                            {communication.type === 'course' && !studentInfo && (
+                              <div className="flex items-center">
+                                <Users className="w-4 h-4 mr-1" />
+                                {getCourseInfo(communication.targetCourse || '', communication.targetSection)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-foreground hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-300"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Dialog para ver detalles de comunicación (apoderado) */}
+        <Dialog open={showCommunicationDialog} onOpenChange={setShowCommunicationDialog}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>
+                {translate('communicationDetails') || 'Detalles de la Comunicación'}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedCommunication && (
+              <div className="space-y-4 py-4">
+                <div>
+                  <h3 className="text-xl font-bold mb-2">{selectedCommunication.title}</h3>
+                  {/* Información del estudiante para apoderados */}
+                  {(selectedCommunication as any).studentInfo && (
+                    <div className="mb-4 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-purple-600 dark:text-purple-300 font-medium">
+                          👤 {translate('studentRecipient') || 'Estudiante destinatario'}:
+                        </span>
+                        <span className="font-semibold">{(selectedCommunication as any).studentInfo.name}</span>
+                        {(selectedCommunication as any).studentInfo.courseName && (
+                          <Badge variant="outline" className="text-xs">
+                            {(selectedCommunication as any).studentInfo.courseName} {(selectedCommunication as any).studentInfo.sectionName}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="bg-gray-50 dark:bg-gray-900/40 rounded-lg p-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <strong>{translate('sentBy') || 'Enviado por'}:</strong><br />
+                        <Badge
+                          variant="outline"
+                          className="mr-2 text-[10px] px-2 py-0.5 rounded-full border-blue-200 text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700"
+                        >
+                          <Shield className="w-3 h-3 inline mr-1" />
+                          {translate('teacherTitle') || 'Profesor'}
+                        </Badge>
+                        {getSenderInfo(selectedCommunication.senderId).name}
+                      </div>
+                      <div>
+                        <strong>{translate('sentDate') || 'Fecha de envío'}:</strong><br />
+                        {formatDateTimeOneLine(selectedCommunication.createdAt)}
+                      </div>
+                      <div>
+                        <strong>{translate('readByYou') || 'Leído por ti'}:</strong><br />
+                        {selectedCommunication.readAt?.[user.id]
+                          ? formatDateTimeOneLine(selectedCommunication.readAt[user.id])
+                          : '—'}
+                      </div>
+                      <div className="md:col-span-2">
+                        <strong>{translate('targetAudience') || 'Dirigido a'}:</strong><br />
+                        {selectedCommunication.type === 'course' 
+                          ? getCourseInfo(selectedCommunication.targetCourse || '', selectedCommunication.targetSection)
+                          : translate('specificStudent') || 'Estudiante específico'
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div className="prose max-w-none">
+                    <div className="whitespace-pre-wrap text-gray-700 dark:text-gray-200">
+                      {selectedCommunication.content}
+                    </div>
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button

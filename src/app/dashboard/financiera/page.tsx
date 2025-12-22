@@ -248,10 +248,14 @@ export default function FinancieraPage() {
 
   const toggleSelectAll = () => {
     const pendingRecords = paymentRecords.filter(r => r.status === 'pending');
-    if (selectedRecordIds.size === pendingRecords.length && pendingRecords.length > 0) {
+    const allSelected = pendingRecords.length > 0 && pendingRecords.every(r => selectedRecordIds.has(r.id));
+    if (allSelected) {
+      // Deseleccionar todos
       setSelectedRecordIds(new Set());
     } else {
-      setSelectedRecordIds(new Set(pendingRecords.map(r => r.id)));
+      // Seleccionar todos los pendientes
+      const pendingIds = new Set(pendingRecords.map(r => r.id));
+      setSelectedRecordIds(pendingIds);
     }
   };
 
@@ -297,21 +301,21 @@ export default function FinancieraPage() {
         return (
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-700">
             <CheckCircle2 className="w-3 h-3 mr-1" />
-            Pagado
+            {translate('financeStatusPaid') || 'Pagado'}
           </Badge>
         );
       case 'pending':
         return (
           <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700">
             <Clock className="w-3 h-3 mr-1" />
-            Pendiente
+            {translate('financeStatusPending') || 'Pendiente'}
           </Badge>
         );
       case 'overdue':
         return (
           <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-700">
             <AlertCircle className="w-3 h-3 mr-1" />
-            Vencido
+            {translate('financeStatusOverdue') || 'Vencido'}
           </Badge>
         );
     }
@@ -323,7 +327,7 @@ export default function FinancieraPage() {
 
   const handleDownloadReceipt = async (record: PaymentRecord) => {
     if (record.status !== 'paid') {
-      alert('Solo se pueden descargar comprobantes de pagos realizados.');
+      alert(translate('financeOnlyPaidReceipts') || 'Solo se pueden descargar comprobantes de pagos realizados.');
       return;
     }
     
@@ -333,6 +337,20 @@ export default function FinancieraPage() {
       
       const student = assignedStudents.find(s => s.id === record.studentId);
       const monthLabel = MONTHS.find(m => m.value === record.month)?.label || '';
+      
+      // Generar número correlativo basado en todos los pagos realizados
+      const allPaidRecords = allPaymentRecords
+        .filter(r => r.status === 'paid')
+        .sort((a, b) => {
+          // Ordenar por fecha de pago o por año/mes si no hay fecha
+          if (a.paidDate && b.paidDate) {
+            return new Date(a.paidDate).getTime() - new Date(b.paidDate).getTime();
+          }
+          return (a.year * 100 + a.month) - (b.year * 100 + b.month);
+        });
+      
+      const receiptIndex = allPaidRecords.findIndex(r => r.id === record.id) + 1;
+      const receiptNumber = `${record.year}-${String(receiptIndex).padStart(4, '0')}`;
       
       // Crear documento PDF
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -365,8 +383,8 @@ export default function FinancieraPage() {
       doc.setTextColor(...darkColor);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Comprobante N°: ${record.id.slice(-8).toUpperCase()}`, 20, yPos);
-      doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-CL')}`, pageWidth - 20, yPos, { align: 'right' });
+      doc.text(`${translate('financeReceiptNumber') || 'Comprobante N°'}: ${receiptNumber}`, 20, yPos);
+      doc.text(`${translate('financeIssueDate') || 'Fecha de emisión'}: ${new Date().toLocaleDateString('es-CL')}`, pageWidth - 20, yPos, { align: 'right' });
       
       yPos += 15;
       
@@ -516,7 +534,7 @@ export default function FinancieraPage() {
       <div className="container mx-auto p-6 flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando información financiera...</p>
+          <p className="text-muted-foreground">{translate('financeLoading') || 'Cargando información financiera...'}</p>
         </div>
       </div>
     );
@@ -528,8 +546,8 @@ export default function FinancieraPage() {
       <div className="flex items-center gap-3 mb-6">
         <CreditCard className="w-8 h-8 text-emerald-500" />
         <div>
-          <h1 className="text-2xl font-bold">Estado de Cuenta</h1>
-          <p className="text-muted-foreground">Gestiona los pagos de mensualidad y matrícula</p>
+          <h1 className="text-2xl font-bold">{translate('financePageTitle') || 'Estado de Cuenta'}</h1>
+          <p className="text-muted-foreground">{translate('financePageDesc') || 'Gestiona los pagos de mensualidad y matrícula'}</p>
         </div>
       </div>
 
@@ -537,9 +555,9 @@ export default function FinancieraPage() {
         <Card className="border-orange-200 dark:border-orange-800">
           <CardContent className="p-6 text-center">
             <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No hay estudiantes asignados</h3>
+            <h3 className="text-lg font-semibold mb-2">{translate('financeNoStudents') || 'No hay estudiantes asignados'}</h3>
             <p className="text-muted-foreground">
-              Contacta al administrador para asignar estudiantes a tu cuenta.
+              {translate('financeNoStudentsDesc') || 'Contacta al administrador para asignar estudiantes a tu cuenta.'}
             </p>
           </CardContent>
         </Card>
@@ -550,20 +568,20 @@ export default function FinancieraPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-emerald-500" />
-                Filtros
+                {translate('financeFilters') || 'Filtros'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Selector de Estudiante */}
                 <div className="space-y-2">
-                  <Label>Estudiante</Label>
+                  <Label>{translate('financeStudent') || 'Estudiante'}</Label>
                   <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Todos los estudiantes" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all">{translate('financeAll') || 'Todos'}</SelectItem>
                       {assignedStudents.map(student => (
                         <SelectItem key={student.id} value={student.id}>
                           <div className="flex flex-col">
@@ -582,13 +600,13 @@ export default function FinancieraPage() {
 
                 {/* Selector de Año */}
                 <div className="space-y-2">
-                  <Label>Año</Label>
+                  <Label>{translate('financeYear') || 'Año'}</Label>
                   <Select value={selectedYear} onValueChange={setSelectedYear}>
                     <SelectTrigger>
                       <SelectValue placeholder="Todos los años" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all">{translate('financeAll') || 'Todos'}</SelectItem>
                       <SelectItem value="2025">2025</SelectItem>
                     </SelectContent>
                   </Select>
@@ -596,7 +614,7 @@ export default function FinancieraPage() {
 
                 {/* Selector de Concepto */}
                 <div className="space-y-2">
-                  <Label>Concepto</Label>
+                  <Label>{translate('financeConcept') || 'Concepto'}</Label>
                   <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                     <SelectTrigger>
                       <SelectValue placeholder="Todos los conceptos" />
@@ -623,7 +641,7 @@ export default function FinancieraPage() {
                   <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Pagado</p>
+                  <p className="text-sm text-muted-foreground">{translate('financeTotalPaid') || 'Total Pagado'}</p>
                   <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalPaid)}</p>
                 </div>
               </CardContent>
@@ -635,7 +653,7 @@ export default function FinancieraPage() {
                   <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Pendiente</p>
+                  <p className="text-sm text-muted-foreground">{translate('financeTotalPending') || 'Total Pendiente'}</p>
                   <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">{formatCurrency(totalPending)}</p>
                 </div>
               </CardContent>
@@ -647,7 +665,7 @@ export default function FinancieraPage() {
                   <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Anual</p>
+                  <p className="text-sm text-muted-foreground">{translate('financeTotalAnnual') || 'Total Anual'}</p>
                   <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalPaid + totalPending)}</p>
                 </div>
               </CardContent>
@@ -660,7 +678,7 @@ export default function FinancieraPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-emerald-500" />
-                  Historial de Pagos {selectedYear !== 'all' ? selectedYear : ''}
+                  {translate('financePaymentHistory') || 'Historial de Pagos'} {selectedYear !== 'all' ? selectedYear : ''}
                 </CardTitle>
                 {pendingRecordsCount > 0 && (
                   <div className="flex items-center gap-2">
@@ -671,7 +689,7 @@ export default function FinancieraPage() {
                       className="border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400"
                     >
                       <CheckSquare className="w-4 h-4 mr-2" />
-                      {selectedRecordIds.size === pendingRecordsCount ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
+                      {selectedRecordIds.size === pendingRecordsCount ? (translate('financeDeselectAll') || 'Deseleccionar Todo') : (translate('financeSelectAll') || 'Seleccionar Todo')}
                     </Button>
                     {selectedRecordIds.size > 0 && (
                       <Button
@@ -680,7 +698,7 @@ export default function FinancieraPage() {
                         className="bg-emerald-600 hover:bg-emerald-700 text-white"
                       >
                         <CreditCard className="w-4 h-4 mr-2" />
-                        Pagar Seleccionados ({selectedRecordIds.size})
+                        {translate('financePaySelected') || 'Pagar Seleccionados'} ({selectedRecordIds.size})
                       </Button>
                     )}
                   </div>
@@ -700,20 +718,20 @@ export default function FinancieraPage() {
                         />
                       </th>
                       {selectedStudentId === 'all' && (
-                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estudiante</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">{translate('financeStudent') || 'Estudiante'}</th>
                       )}
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Concepto</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Período</th>
-                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Monto</th>
-                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
-                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{translate('financeConcept') || 'Concepto'}</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">{translate('financePeriod') || 'Período'}</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">{translate('financeAmount') || 'Monto'}</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">{translate('financeStatus') || 'Estado'}</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">{translate('financeActions') || 'Acciones'}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paymentRecords.length === 0 ? (
                       <tr>
                         <td colSpan={selectedStudentId === 'all' ? 7 : 6} className="py-8 text-center text-muted-foreground">
-                          No hay pagos para mostrar con los filtros seleccionados
+                          {translate('financeNoRecords') || 'No hay pagos para mostrar con los filtros seleccionados'}
                         </td>
                       </tr>
                     ) : (
@@ -735,7 +753,7 @@ export default function FinancieraPage() {
                             </td>
                           )}
                           <td className="py-3 px-4">
-                            <span className="font-medium">{record.type === 'matricula' ? 'Matrícula' : 'Mensualidad'}</span>
+                            <span className="font-medium">{record.type === 'matricula' ? (translate('financeEnrollment') || 'Matrícula') : (translate('financeMonthly') || 'Mensualidad')}</span>
                           </td>
                           <td className="py-3 px-4 text-muted-foreground">
                             {MONTHS.find(m => m.value === record.month)?.label} {record.year}
@@ -762,7 +780,7 @@ export default function FinancieraPage() {
                                 onClick={(e) => { e.stopPropagation(); handlePayment(record); }}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
                               >
-                                Pagar
+                                {translate('financePay') || 'Pagar'}
                               </Button>
                             )}
                           </td>
