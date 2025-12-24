@@ -12,6 +12,7 @@ import { Library, Download, Book, FileText, GraduationCap, Filter, Microscope, C
 import { bookPDFs, BookPDF } from '@/lib/books-data';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
+import { LocalStorageManager } from '@/lib/education-utils';
 
 export default function LibrosPage() {
   const { translate, language } = useLanguage();
@@ -404,6 +405,7 @@ export default function LibrosPage() {
   };
 
   // 👨‍👩‍👧 FUNCIÓN PARA OBTENER CURSOS ACCESIBLES PARA APODERADO (GUARDIAN)
+  // Replica la lógica del perfil para encontrar estudiantes asignados y sus cursos
   const getGuardianAccessibleCourses = (): string[] => {
     if (!user || user.role !== 'guardian') return [];
 
@@ -412,37 +414,80 @@ export default function LibrosPage() {
       
       const currentYear = new Date().getFullYear();
       const usersData = JSON.parse(localStorage.getItem('smart-student-users') || '[]');
-      const studentAssignments = JSON.parse(localStorage.getItem('smart-student-student-assignments') || '[]');
-      const coursesData = JSON.parse(localStorage.getItem('smart-student-courses') || '[]');
-      const sections = JSON.parse(localStorage.getItem('smart-student-sections') || '[]');
       
-      // Buscar estudiantes asignados al apoderado
-      let assignedStudentIds: string[] = [];
-      
-      // Prioridad 1: fullUserData.studentIds
+      // Búsqueda case-insensitive en smart-student-users
       const fullUserData = usersData.find((u: any) => 
         u.username?.toLowerCase() === user.username?.toLowerCase()
       );
+      console.log('👨‍👩‍👧 [Libros] fullUserData:', fullUserData);
       
-      if (fullUserData?.studentIds && fullUserData.studentIds.length > 0) {
-        assignedStudentIds = fullUserData.studentIds;
-        console.log(`👨‍👩‍👧 [Libros] studentIds desde usuario:`, assignedStudentIds);
+      // Obtener todos los años disponibles para buscar en cualquiera de ellos
+      const availableYears = LocalStorageManager.listYears() || [currentYear];
+      console.log('👨‍👩‍👧 [Libros] availableYears:', availableYears);
+      
+      // Buscar guardian en cualquier año disponible (priorizando año actual)
+      let guardianFromYear: any = null;
+      let yearUsed = currentYear;
+      
+      // Primero intentar el año actual
+      const guardiansForCurrentYear = LocalStorageManager.getGuardiansForYear(currentYear) || [];
+      console.log('👨‍👩‍👧 [Libros] guardiansForCurrentYear:', guardiansForCurrentYear.length);
+      
+      guardianFromYear = guardiansForCurrentYear.find((g: any) => 
+        g.username?.toLowerCase() === user.username?.toLowerCase()
+      );
+      
+      // Si no se encuentra en el año actual, buscar en otros años
+      if (!guardianFromYear) {
+        for (const year of availableYears) {
+          if (year === currentYear) continue;
+          const guardiansForOtherYear = LocalStorageManager.getGuardiansForYear(year) || [];
+          const found = guardiansForOtherYear.find((g: any) => 
+            g.username?.toLowerCase() === user.username?.toLowerCase()
+          );
+          if (found && found.studentIds && found.studentIds.length > 0) {
+            guardianFromYear = found;
+            yearUsed = year;
+            console.log('👨‍👩‍👧 [Libros] Found guardian in year', year);
+            break;
+          }
+        }
       }
       
-      // Prioridad 2: guardian-student-relations
-      if (assignedStudentIds.length === 0) {
-        let guardianRelations = JSON.parse(localStorage.getItem(`smart-student-guardian-student-relations-${currentYear}`) || '[]');
-        if (guardianRelations.length === 0) {
-          guardianRelations = JSON.parse(localStorage.getItem('smart-student-guardian-student-relations') || '[]');
-        }
+      console.log('👨‍👩‍👧 [Libros] guardianFromYear:', guardianFromYear, 'yearUsed:', yearUsed);
+      
+      // Obtener relaciones usando LocalStorageManager
+      const relations = LocalStorageManager.getGuardianStudentRelationsForYear(yearUsed) || [];
+      console.log('👨‍👩‍👧 [Libros] relations count:', relations.length);
+      
+      // Obtener IDs de estudiantes asignados
+      let assignedStudentIds: string[] = [];
+      
+      // Prioridad 1: desde guardiansForYear (datos más recientes del admin)
+      if (guardianFromYear?.studentIds && guardianFromYear.studentIds.length > 0) {
+        assignedStudentIds = guardianFromYear.studentIds;
+        console.log('👨‍👩‍👧 [Libros] studentIds from guardiansForYear:', assignedStudentIds);
+      }
+      
+      // Prioridad 2: desde relaciones
+      if (assignedStudentIds.length === 0 && relations.length > 0) {
+        const guardianId = guardianFromYear?.id || fullUserData?.id;
+        console.log('👨‍👩‍👧 [Libros] Looking for guardianId in relations:', guardianId);
+        assignedStudentIds = relations
+          .filter((r: any) => 
+            r.guardianId === guardianId || 
+            r.guardianId === user?.username ||
+            r.guardianUsername?.toLowerCase() === user.username?.toLowerCase()
+          )
+          .map((r: any) => r.studentId);
         
-        assignedStudentIds = guardianRelations
-          .filter((rel: any) => rel.guardianId === (user as any).id || rel.guardianUsername === user.username)
-          .map((rel: any) => rel.studentId);
-        
-        if (assignedStudentIds.length > 0) {
-          console.log(`👨‍👩‍👧 [Libros] studentIds desde relations:`, assignedStudentIds);
-        }
+        console.log('👨‍👩‍👧 [Libros] studentIds from relations:', assignedStudentIds);
+      }
+      
+      // Prioridad 3: Fallback desde smart-student-users
+      if (assignedStudentIds.length === 0 && fullUserData?.studentIds && fullUserData.studentIds.length > 0) {
+        assignedStudentIds = fullUserData.studentIds;
+        console.log('👨‍👩‍👧 [Libros] studentIds from fullUserData:', assignedStudentIds);
       }
       
       if (assignedStudentIds.length === 0) {
@@ -450,84 +495,103 @@ export default function LibrosPage() {
         return [];
       }
       
+      // Obtener datos usando LocalStorageManager (mismo año donde encontramos al guardian)
+      const courses = LocalStorageManager.getCoursesForYear(yearUsed) || [];
+      const sections = LocalStorageManager.getSectionsForYear(yearUsed) || [];
+      const studentsForYear = LocalStorageManager.getStudentsForYear(yearUsed) || [];
+      const studentAssignments = LocalStorageManager.getStudentAssignmentsForYear(yearUsed) || [];
+      
+      console.log('👨‍👩‍👧 [Libros] Data loaded - courses:', courses.length, 'sections:', sections.length, 'students:', studentsForYear.length);
+      
+      // Buscar estudiantes en studentsForYear primero (fuente principal)
+      let assignedStudents = studentsForYear.filter((s: any) => 
+        assignedStudentIds.includes(s.id) || assignedStudentIds.includes(s.username)
+      );
+      
+      // Si no se encontraron, buscar en usersData (smart-student-users)
+      if (assignedStudents.length === 0) {
+        assignedStudents = usersData.filter((u: any) => 
+          (assignedStudentIds.includes(u.id) || assignedStudentIds.includes(u.username)) && 
+          (u.role === 'student' || u.type === 'student' || u.role === 'estudiante')
+        );
+      }
+      
+      console.log('👨‍👩‍👧 [Libros] assignedStudents found:', assignedStudents.length);
+      
       // Buscar los cursos de los estudiantes asignados
       const courseNames = new Set<string>();
       
-      for (const studentId of assignedStudentIds) {
-        // Buscar asignaciones del estudiante
-        const studentAssigns = studentAssignments.filter((a: any) => 
-          String(a.studentId) === String(studentId)
+      for (const student of assignedStudents) {
+        console.log('👨‍👩‍👧 [Libros] Processing student:', { id: student.id, username: student.username, sectionId: student.sectionId, courseId: student.courseId, course: student.course });
+        
+        // Método 1: Campo 'course' directo en el estudiante (formato "1ro Básico")
+        if (student.course && typeof student.course === 'string') {
+          console.log('👨‍👩‍👧 [Libros] ✅ Curso desde student.course:', student.course);
+          courseNames.add(normalizeCourseNameForBooks(student.course));
+        }
+        
+        // Método 2: Buscar por sectionId del estudiante
+        if (student.sectionId) {
+          const section = sections.find((s: any) => String(s.id) === String(student.sectionId));
+          if (section) {
+            const course = courses.find((c: any) => String(c.id) === String(section.courseId));
+            if (course?.name) {
+              console.log('👨‍👩‍👧 [Libros] ✅ Curso desde student.sectionId:', course.name);
+              courseNames.add(normalizeCourseNameForBooks(course.name));
+            }
+          }
+        }
+        
+        // Método 3: Buscar por courseId del estudiante
+        if (student.courseId) {
+          const course = courses.find((c: any) => String(c.id) === String(student.courseId));
+          if (course?.name) {
+            console.log('👨‍👩‍👧 [Libros] ✅ Curso desde student.courseId:', course.name);
+            courseNames.add(normalizeCourseNameForBooks(course.name));
+          }
+        }
+        
+        // Método 4: Buscar en studentAssignments
+        const assignment = studentAssignments.find((a: any) => 
+          String(a.studentId) === String(student.id) || a.studentId === student.username
         );
         
-        console.log(`👨‍👩‍👧 [Libros] Asignaciones para estudiante ${studentId}:`, studentAssigns);
-        
-        for (const assignment of studentAssigns) {
+        if (assignment) {
           let courseName: string | null = null;
           
           if (assignment.courseId) {
-            const course = coursesData.find((c: any) => String(c.id) === String(assignment.courseId));
+            const course = courses.find((c: any) => String(c.id) === String(assignment.courseId));
             courseName = course?.name || null;
           }
           if (!courseName && assignment.sectionId) {
             const section = sections.find((s: any) => String(s.id) === String(assignment.sectionId));
             if (section) {
-              const course = coursesData.find((c: any) => String(c.id) === String(section.courseId));
+              const course = courses.find((c: any) => String(c.id) === String(section.courseId));
               courseName = course?.name || null;
             }
           }
           
           if (courseName) {
-            // Normalizar el nombre del curso
+            console.log('👨‍👩‍👧 [Libros] ✅ Curso desde assignment:', courseName);
             courseNames.add(normalizeCourseNameForBooks(courseName));
           }
         }
         
-        // Método 2: Buscar sectionId/courseId directamente en el estudiante
-        const student = usersData.find((u: any) => 
-          (String(u.id) === String(studentId) || u.username === studentId) && 
-          (u.role === 'student' || u.role === 'estudiante')
-        );
-        
-        if (student) {
-          console.log(`👨‍👩‍👧 [Libros] Estudiante encontrado:`, { id: student.id, username: student.username, sectionId: student.sectionId, courseId: student.courseId });
-          
-          // Buscar por sectionId del estudiante
-          if (student.sectionId && courseNames.size === 0) {
-            const section = sections.find((s: any) => String(s.id) === String(student.sectionId));
-            if (section) {
-              const course = coursesData.find((c: any) => String(c.id) === String(section.courseId));
-              if (course?.name) {
-                console.log('👨‍👩‍👧 [Libros] Curso desde estudiante.sectionId:', course.name);
-                courseNames.add(normalizeCourseNameForBooks(course.name));
-              }
-            }
-          }
-          
-          // Buscar por courseId del estudiante
-          if (student.courseId && courseNames.size === 0) {
-            const course = coursesData.find((c: any) => String(c.id) === String(student.courseId));
-            if (course?.name) {
-              console.log('👨‍👩‍👧 [Libros] Curso desde estudiante.courseId:', course.name);
-              courseNames.add(normalizeCourseNameForBooks(course.name));
-            }
-          }
-          
-          // Fallback: revisar activeCourses del estudiante
-          if (student.activeCourses && Array.isArray(student.activeCourses) && courseNames.size === 0) {
-            for (const courseId of student.activeCourses) {
-              const course = coursesData.find((c: any) => String(c.id) === String(courseId) || c.name === courseId);
-              if (course?.name) {
-                courseNames.add(normalizeCourseNameForBooks(course.name));
-              } else if (typeof courseId === 'string' && (courseId.includes('Básico') || courseId.includes('Medio'))) {
-                courseNames.add(normalizeCourseNameForBooks(courseId));
-              }
+        // Método 5: activeCourses o enrolledCourses del estudiante
+        const studentCourses = student.activeCourses || student.enrolledCourses || student.activeCourseNames;
+        if (studentCourses && Array.isArray(studentCourses)) {
+          for (const courseEntry of studentCourses) {
+            const courseName = typeof courseEntry === 'string' ? courseEntry : (courseEntry?.name || '');
+            if (courseName) {
+              console.log('👨‍👩‍👧 [Libros] ✅ Curso desde activeCourses/enrolledCourses:', courseName);
+              courseNames.add(normalizeCourseNameForBooks(courseName));
             }
           }
         }
       }
       
       const result = Array.from(courseNames);
-      console.log('👨‍👩‍👧 [Libros] Cursos accesibles para apoderado (normalizados):', result);
+      console.log('👨‍👩‍👧 [Libros] ✅ Cursos accesibles para apoderado (normalizados):', result);
       return result;
       
     } catch (error) {
