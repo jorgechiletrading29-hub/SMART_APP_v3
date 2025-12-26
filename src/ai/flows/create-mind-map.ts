@@ -254,6 +254,150 @@ If any text is distorted, unreadable, or omitted, or if any text is added that w
 `,
 });
 
+import { getOpenRouterClient, hasOpenRouterApiKey, OPENROUTER_MODELS } from '@/lib/openrouter-client';
+
+// Función para generar estructura del mapa mental usando OpenRouter
+async function generateStructureWithOpenRouter(input: CreateMindMapInput): Promise<MindMapStructure | null> {
+  const client = getOpenRouterClient();
+  if (!client) {
+    console.log('[MindMap] OpenRouter client not available');
+    return null;
+  }
+
+  const isSpanish = input.language === 'es';
+  
+  const systemPrompt = isSpanish 
+    ? `Eres un experto en diseño instruccional. Genera estructuras jerárquicas para mapas mentales educativos.
+IMPORTANTE: Responde SOLO con JSON válido, sin texto adicional ni markdown.`
+    : `You are an expert in instructional design. Generate hierarchical structures for educational mind maps.
+IMPORTANT: Respond ONLY with valid JSON, no additional text or markdown.`;
+
+  const userPrompt = isSpanish
+    ? `Genera la estructura de un mapa mental sobre "${input.centralTheme}" para la asignatura "${input.bookTitle}".
+
+Responde ÚNICAMENTE con este formato JSON exacto (sin markdown, sin \`\`\`):
+{
+  "centralThemeLabel": "TÍTULO DEL TEMA EN MAYÚSCULAS",
+  "mainBranches": [
+    {
+      "label": "🔹 Rama Principal 1",
+      "children": [
+        {"label": "Subtema 1.1"},
+        {"label": "Subtema 1.2"},
+        {"label": "Subtema 1.3"}
+      ]
+    },
+    {
+      "label": "🔹 Rama Principal 2",
+      "children": [
+        {"label": "Subtema 2.1"},
+        {"label": "Subtema 2.2"}
+      ]
+    },
+    {
+      "label": "🔹 Rama Principal 3",
+      "children": [
+        {"label": "Subtema 3.1"},
+        {"label": "Subtema 3.2"}
+      ]
+    },
+    {
+      "label": "🔹 Rama Principal 4",
+      "children": [
+        {"label": "Subtema 4.1"},
+        {"label": "Subtema 4.2"}
+      ]
+    }
+  ]
+}
+
+REGLAS:
+- Genera exactamente 4 ramas principales con 2-3 subtemas cada una
+- Usa emojis apropiados (🔬🌿🔢📚💡🌍⚡🎯) en las ramas principales
+- El contenido debe ser ESPECÍFICO y EDUCATIVO sobre "${input.centralTheme}"
+- NO uses contenido genérico como "Elemento 1" o "Componente"
+- Responde SOLO el JSON, nada más`
+    : `Generate the structure of a mind map about "${input.centralTheme}" for the subject "${input.bookTitle}".
+
+Respond ONLY with this exact JSON format (no markdown, no \`\`\`):
+{
+  "centralThemeLabel": "TOPIC TITLE IN UPPERCASE",
+  "mainBranches": [
+    {
+      "label": "🔹 Main Branch 1",
+      "children": [
+        {"label": "Subtopic 1.1"},
+        {"label": "Subtopic 1.2"},
+        {"label": "Subtopic 1.3"}
+      ]
+    },
+    {
+      "label": "🔹 Main Branch 2",
+      "children": [
+        {"label": "Subtopic 2.1"},
+        {"label": "Subtopic 2.2"}
+      ]
+    },
+    {
+      "label": "🔹 Main Branch 3",
+      "children": [
+        {"label": "Subtopic 3.1"},
+        {"label": "Subtopic 3.2"}
+      ]
+    },
+    {
+      "label": "🔹 Main Branch 4",
+      "children": [
+        {"label": "Subtopic 4.1"},
+        {"label": "Subtopic 4.2"}
+      ]
+    }
+  ]
+}
+
+RULES:
+- Generate exactly 4 main branches with 2-3 subtopics each
+- Use appropriate emojis (🔬🌿🔢📚💡🌍⚡🎯) in main branches
+- Content must be SPECIFIC and EDUCATIONAL about "${input.centralTheme}"
+- DO NOT use generic content like "Element 1" or "Component"
+- Respond ONLY with JSON, nothing else`;
+
+  try {
+    console.log('[MindMap] Calling OpenRouter for structure generation...');
+    const response = await client.generateText(systemPrompt, userPrompt, {
+      model: OPENROUTER_MODELS.GPT_4O_MINI,
+      temperature: 0.7,
+      maxTokens: 2048,
+    });
+    
+    console.log('[MindMap] OpenRouter response received');
+    
+    // Limpiar la respuesta de posibles marcadores markdown
+    let cleanResponse = response.trim();
+    if (cleanResponse.startsWith('```json')) {
+      cleanResponse = cleanResponse.slice(7);
+    }
+    if (cleanResponse.startsWith('```')) {
+      cleanResponse = cleanResponse.slice(3);
+    }
+    if (cleanResponse.endsWith('```')) {
+      cleanResponse = cleanResponse.slice(0, -3);
+    }
+    cleanResponse = cleanResponse.trim();
+    
+    const parsed = JSON.parse(cleanResponse) as MindMapStructure;
+    
+    if (parsed.centralThemeLabel && parsed.mainBranches && parsed.mainBranches.length > 0) {
+      console.log('[MindMap] Structure parsed successfully from OpenRouter');
+      return parsed;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[MindMap] OpenRouter error:', error);
+    return null;
+  }
+}
 
 export async function createMindMap(input: CreateMindMapInput): Promise<CreateMindMapOutput> {
   // Detectar si es asignatura de matemáticas (verifica tanto bookTitle como centralTheme)
@@ -286,9 +430,23 @@ export async function createMindMap(input: CreateMindMapInput): Promise<CreateMi
     return { imageDataUri: dataUri };
   }
   
-  // Para otras asignaturas: Usar IA para generar contenido
+  // Primero intentar con OpenRouter (más confiable)
+  if (hasOpenRouterApiKey()) {
+    console.log('🚀 Intentando generar estructura con OpenRouter...');
+    const openRouterStructure = await generateStructureWithOpenRouter(input);
+    
+    if (openRouterStructure) {
+      console.log('✅ Estructura generada exitosamente con OpenRouter');
+      const enhancedSvg = generateEnhancedSvg(openRouterStructure, input.isHorizontal);
+      const dataUri = `data:image/svg+xml;base64,${Buffer.from(enhancedSvg).toString('base64')}`;
+      return { imageDataUri: dataUri };
+    }
+    console.log('⚠️ OpenRouter falló, intentando con Google Gemini...');
+  }
+  
+  // Para otras asignaturas: Usar IA de Google para generar contenido
   try {
-    console.log('🤖 Generando contenido con IA para asignatura no-matemática...');
+    console.log('🤖 Generando contenido con Google Gemini para asignatura no-matemática...');
     const structureResponse = await generateMindMapStructurePrompt(input);
     const aiGeneratedStructure = structureResponse.output;
 
@@ -516,6 +674,132 @@ function generateMockMindMapStructure(input: CreateMindMapInput): MindMapStructu
         {
           label: language === 'es' ? 'Interacciones' : 'Interactions',
           children: language === 'es' ? ['Cadenas Alimentarias', 'Simbiosis', 'Competencia'] : ['Food Chains', 'Symbiosis', 'Competition']
+        }
+      ]
+    },
+    'alimentación saludable': {
+      centralLabel: language === 'es' ? 'Alimentación Saludable' : 'Healthy Eating',
+      branches: [
+        {
+          label: language === 'es' ? '🥗 Grupos Alimenticios' : '🥗 Food Groups',
+          children: language === 'es' ? ['Frutas y Verduras', 'Proteínas', 'Carbohidratos', 'Lácteos'] : ['Fruits & Vegetables', 'Proteins', 'Carbohydrates', 'Dairy']
+        },
+        {
+          label: language === 'es' ? '💪 Beneficios' : '💪 Benefits',
+          children: language === 'es' ? ['Energía', 'Crecimiento', 'Sistema Inmune'] : ['Energy', 'Growth', 'Immune System']
+        },
+        {
+          label: language === 'es' ? '🍽️ Hábitos Saludables' : '🍽️ Healthy Habits',
+          children: language === 'es' ? ['Desayuno completo', 'Horarios regulares', 'Beber agua'] : ['Complete breakfast', 'Regular schedule', 'Drink water']
+        },
+        {
+          label: language === 'es' ? '⚠️ Evitar' : '⚠️ Avoid',
+          children: language === 'es' ? ['Comida chatarra', 'Exceso de azúcar', 'Grasas saturadas'] : ['Junk food', 'Excess sugar', 'Saturated fats']
+        }
+      ]
+    },
+    'alimentacion saludable': {
+      centralLabel: language === 'es' ? 'Alimentación Saludable' : 'Healthy Eating',
+      branches: [
+        {
+          label: language === 'es' ? '🥗 Grupos Alimenticios' : '🥗 Food Groups',
+          children: language === 'es' ? ['Frutas y Verduras', 'Proteínas', 'Carbohidratos', 'Lácteos'] : ['Fruits & Vegetables', 'Proteins', 'Carbohydrates', 'Dairy']
+        },
+        {
+          label: language === 'es' ? '💪 Beneficios' : '💪 Benefits',
+          children: language === 'es' ? ['Energía', 'Crecimiento', 'Sistema Inmune'] : ['Energy', 'Growth', 'Immune System']
+        },
+        {
+          label: language === 'es' ? '🍽️ Hábitos Saludables' : '🍽️ Healthy Habits',
+          children: language === 'es' ? ['Desayuno completo', 'Horarios regulares', 'Beber agua'] : ['Complete breakfast', 'Regular schedule', 'Drink water']
+        },
+        {
+          label: language === 'es' ? '⚠️ Evitar' : '⚠️ Avoid',
+          children: language === 'es' ? ['Comida chatarra', 'Exceso de azúcar', 'Grasas saturadas'] : ['Junk food', 'Excess sugar', 'Saturated fats']
+        }
+      ]
+    },
+    'sistema solar': {
+      centralLabel: language === 'es' ? 'Sistema Solar' : 'Solar System',
+      branches: [
+        {
+          label: language === 'es' ? '☀️ El Sol' : '☀️ The Sun',
+          children: language === 'es' ? ['Estrella central', 'Fuente de energía', 'Luz y calor'] : ['Central star', 'Energy source', 'Light and heat']
+        },
+        {
+          label: language === 'es' ? '🪐 Planetas' : '🪐 Planets',
+          children: language === 'es' ? ['Rocosos (4)', 'Gaseosos (4)', 'Tierra'] : ['Rocky (4)', 'Gas giants (4)', 'Earth']
+        },
+        {
+          label: language === 'es' ? '🌙 Otros Cuerpos' : '🌙 Other Bodies',
+          children: language === 'es' ? ['Lunas', 'Asteroides', 'Cometas'] : ['Moons', 'Asteroids', 'Comets']
+        },
+        {
+          label: language === 'es' ? '🚀 Exploración' : '🚀 Exploration',
+          children: language === 'es' ? ['Sondas espaciales', 'Telescopios', 'Misiones'] : ['Space probes', 'Telescopes', 'Missions']
+        }
+      ]
+    },
+    'cuerpo humano': {
+      centralLabel: language === 'es' ? 'Cuerpo Humano' : 'Human Body',
+      branches: [
+        {
+          label: language === 'es' ? '🫀 Sistemas' : '🫀 Systems',
+          children: language === 'es' ? ['Circulatorio', 'Respiratorio', 'Digestivo', 'Nervioso'] : ['Circulatory', 'Respiratory', 'Digestive', 'Nervous']
+        },
+        {
+          label: language === 'es' ? '🦴 Estructura' : '🦴 Structure',
+          children: language === 'es' ? ['Huesos', 'Músculos', 'Órganos'] : ['Bones', 'Muscles', 'Organs']
+        },
+        {
+          label: language === 'es' ? '🧠 Funciones' : '🧠 Functions',
+          children: language === 'es' ? ['Movimiento', 'Nutrición', 'Respiración'] : ['Movement', 'Nutrition', 'Breathing']
+        },
+        {
+          label: language === 'es' ? '❤️ Cuidado' : '❤️ Care',
+          children: language === 'es' ? ['Ejercicio', 'Alimentación', 'Descanso'] : ['Exercise', 'Nutrition', 'Rest']
+        }
+      ]
+    },
+    'animales': {
+      centralLabel: language === 'es' ? 'Los Animales' : 'Animals',
+      branches: [
+        {
+          label: language === 'es' ? '🐕 Vertebrados' : '🐕 Vertebrates',
+          children: language === 'es' ? ['Mamíferos', 'Aves', 'Reptiles', 'Peces'] : ['Mammals', 'Birds', 'Reptiles', 'Fish']
+        },
+        {
+          label: language === 'es' ? '🐛 Invertebrados' : '🐛 Invertebrates',
+          children: language === 'es' ? ['Insectos', 'Arácnidos', 'Moluscos'] : ['Insects', 'Arachnids', 'Mollusks']
+        },
+        {
+          label: language === 'es' ? '🏠 Hábitats' : '🏠 Habitats',
+          children: language === 'es' ? ['Terrestres', 'Acuáticos', 'Aéreos'] : ['Terrestrial', 'Aquatic', 'Aerial']
+        },
+        {
+          label: language === 'es' ? '🍖 Alimentación' : '🍖 Feeding',
+          children: language === 'es' ? ['Herbívoros', 'Carnívoros', 'Omnívoros'] : ['Herbivores', 'Carnivores', 'Omnivores']
+        }
+      ]
+    },
+    'medio ambiente': {
+      centralLabel: language === 'es' ? 'Medio Ambiente' : 'Environment',
+      branches: [
+        {
+          label: language === 'es' ? '🌍 Ecosistemas' : '🌍 Ecosystems',
+          children: language === 'es' ? ['Bosques', 'Océanos', 'Desiertos'] : ['Forests', 'Oceans', 'Deserts']
+        },
+        {
+          label: language === 'es' ? '♻️ Reciclaje' : '♻️ Recycling',
+          children: language === 'es' ? ['Papel', 'Plástico', 'Vidrio'] : ['Paper', 'Plastic', 'Glass']
+        },
+        {
+          label: language === 'es' ? '⚠️ Problemas' : '⚠️ Problems',
+          children: language === 'es' ? ['Contaminación', 'Deforestación', 'Cambio climático'] : ['Pollution', 'Deforestation', 'Climate change']
+        },
+        {
+          label: language === 'es' ? '💚 Soluciones' : '💚 Solutions',
+          children: language === 'es' ? ['Reducir', 'Reutilizar', 'Reciclar'] : ['Reduce', 'Reuse', 'Recycle']
         }
       ]
     }
@@ -806,15 +1090,17 @@ function generateMockSvg(structure: MindMapStructure, isHorizontal?: boolean): s
 function intelligentTextWrap(text: string, maxChars: number): string[] {
   if (!text || text.length <= maxChars) return [text || ''];
   
-  // Algoritmo de wrapping optimizado
+  // Algoritmo de wrapping optimizado - MEJORADO para evitar cortes feos
   const words = text.split(' ');
+  
+  // Si es una sola palabra, no cortarla si cabe razonablemente
   if (words.length === 1) {
-    // Manejo inteligente de palabras largas
-    if (text.length > maxChars * 1.5) {
-      const midPoint = Math.ceil(text.length / 2);
-      return [text.substring(0, midPoint), text.substring(midPoint)];
+    if (text.length <= maxChars * 1.3) {
+      return [text]; // Mostrar completa si no es demasiado larga
     }
-    return [text];
+    // Solo cortar si es muy larga
+    const midPoint = Math.ceil(text.length / 2);
+    return [text.substring(0, midPoint), text.substring(midPoint)];
   }
   
   const lines: string[] = [];
@@ -830,8 +1116,8 @@ function intelligentTextWrap(text: string, maxChars: number): string[] {
         lines.push(currentLine);
         currentLine = word;
       } else {
-        // Palabra muy larga - dividir inteligentemente
-        if (word.length > maxChars) {
+        // Palabra larga - permitir que se muestre completa si no es excesiva
+        if (word.length > maxChars * 1.5) {
           lines.push(word.substring(0, maxChars));
           currentLine = word.substring(maxChars);
         } else {
@@ -843,8 +1129,8 @@ function intelligentTextWrap(text: string, maxChars: number): string[] {
   
   if (currentLine) lines.push(currentLine);
   
-  // Máximo 2 líneas para mantener diseño limpio
-  return lines.slice(0, 2);
+  // Máximo 3 líneas para mejor legibilidad
+  return lines.slice(0, 3);
 }
 
 // Función de envoltura de texto ultra-simple para compatibilidad
@@ -922,9 +1208,9 @@ function wrapText(text: string, maxLength: number): string[] {
  * Genera un SVG con diseño ultra-profesional inspirado en D3.js
  */
 function generateEnhancedSvg(structure: MindMapStructure, isHorizontal?: boolean): string {
-  // DISEÑO ULTRA-PROFESIONAL - CANVAS OPTIMIZADO
-  const width = isHorizontal ? 1400 : 1000;
-  const height = isHorizontal ? 800 : 1200;
+  // DISEÑO ULTRA-PROFESIONAL - CANVAS OPTIMIZADO PARA UNA PÁGINA
+  const width = isHorizontal ? 1200 : 900;
+  const height = isHorizontal ? 700 : 1000; // Reducido para caber en una página
   
   // Paleta de colores profesional inspirada en D3.js Tableau10
   const colorScheme = [
@@ -1071,15 +1357,15 @@ function generateEnhancedSvg(structure: MindMapStructure, isHorizontal?: boolean
     });
     
   } else {
-    // DISEÑO VERTICAL PROFESIONAL - INSPIRADO EN D3.js
+    // DISEÑO VERTICAL PROFESIONAL - OPTIMIZADO PARA UNA PÁGINA
     const centerX = width / 2;
-    const startY = 120;
-    const centralR = 85; // Agrandado
+    const startY = 80; // Reducido de 120 a 80
+    const centralR = 70; // Reducido de 85 a 70 para mejor proporción
     const branches = structure.mainBranches;
     
     // PASO 1: ALGORITMO DE POSICIONAMIENTO INTELIGENTE
-    const branchY = startY + 250; // Más espacio
-    const totalBranchWidth = Math.min(width - 120, branches.length * 200); // Más ancho
+    const branchY = startY + 180; // Reducido de 250 a 180
+    const totalBranchWidth = Math.min(width - 80, branches.length * 180); // Ajustado
     const branchStartX = centerX - (totalBranchWidth / 2);
     const branchSpacing = totalBranchWidth / branches.length;
     
@@ -1090,19 +1376,19 @@ function generateEnhancedSvg(structure: MindMapStructure, isHorizontal?: boolean
       
       // Línea central → rama (desde la parte inferior del central)
       svg += `<line x1="${centerX}" y1="${startY + centralR}" 
-        x2="${branchX}" y2="${branchY - 35}" class="connection-line" 
+        x2="${branchX}" y2="${branchY - 27}" class="connection-line" 
         stroke="${colors.line}" stroke-width="3"/>`;
       
       // Líneas rama → subnodos
       if (branch.children && branch.children.length > 0) {
-        const subStartY = branchY + 140;
-        const subSpacing = 100; // Espaciado optimizado
+        const subStartY = branchY + 90; // Sincronizado con PASO 4
+        const subSpacing = 75; // Sincronizado con PASO 4
         
         branch.children.forEach((child: MindMapNode, childIdx: number) => {
           const subY = subStartY + (childIdx * subSpacing);
-          const subR = 50; // Agrandado de 40 a 50 para mejor formato de texto
+          const subR = 40; // Sincronizado con PASO 4
           
-          svg += `<line x1="${branchX}" y1="${branchY + 35}" 
+          svg += `<line x1="${branchX}" y1="${branchY + 27}" 
             x2="${branchX}" y2="${subY - subR}" class="connection-line" 
             stroke="${colors.line}" stroke-width="2"/>`;
         });
@@ -1113,54 +1399,54 @@ function generateEnhancedSvg(structure: MindMapStructure, isHorizontal?: boolean
     svg += `<circle cx="${centerX}" cy="${startY}" r="${centralR}" 
       fill="${colorScheme[0]}" stroke="none" filter="url(#professionalShadow)"/>`;
     
-    const centralLines = intelligentTextWrap(structure.centralThemeLabel, 16);
-    const centralTextY = startY - ((centralLines.length - 1) * 22 / 2);
+    const centralLines = intelligentTextWrap(structure.centralThemeLabel, 12); // Reducido de 16 a 12 para más líneas
+    const centralTextY = startY - ((centralLines.length - 1) * 16 / 2); // Reducido espaciado
     centralLines.forEach((line: string, idx: number) => {
-      svg += `<text x="${centerX}" y="${centralTextY + (idx * 22)}" class="professional-text central-text" 
-        style="font-size: 22px;">${line}</text>`;
+      svg += `<text x="${centerX}" y="${centralTextY + (idx * 16)}" class="professional-text central-text" 
+        style="font-size: 15px;">${line}</text>`; // Reducido de 22px a 15px
     });
     
     // PASO 3: RAMAS PRINCIPALES CON COLORES ÚNICOS
     branches.forEach((branch, idx) => {
       const branchX = branchStartX + (idx + 0.5) * branchSpacing;
-      const branchW = 170; // Agrandado
-      const branchH = 70;  // Agrandado
+      const branchW = 150; // Reducido de 170 a 150
+      const branchH = 55;  // Reducido de 70 a 55
       const branchColor = colorScheme[idx + 1] || colorScheme[1];
       
       // Nodo rama profesional
       svg += `<rect x="${branchX - branchW/2}" y="${branchY - branchH/2}" 
-        width="${branchW}" height="${branchH}" rx="18" 
+        width="${branchW}" height="${branchH}" rx="14" 
         fill="${branchColor}" stroke="none" filter="url(#professionalShadow)"/>`;
       
-      const branchLines = intelligentTextWrap(branch.label, 18);
-      const branchTextY = branchY - ((branchLines.length - 1) * 18 / 2);
+      const branchLines = intelligentTextWrap(branch.label, 16); // Reducido de 18 a 16
+      const branchTextY = branchY - ((branchLines.length - 1) * 15 / 2);
       branchLines.forEach((line: string, lineIdx: number) => {
-        svg += `<text x="${branchX}" y="${branchTextY + (lineIdx * 18)}" class="professional-text branch-text" 
-          style="font-size: 16px;">${line}</text>`;
+        svg += `<text x="${branchX}" y="${branchTextY + (lineIdx * 15)}" class="professional-text branch-text" 
+          style="font-size: 13px;">${line}</text>`; // Reducido de 16px a 13px
       });
       
-      // PASO 4: SUBNODOS OPTIMIZADOS
+      // PASO 4: SUBNODOS OPTIMIZADOS PARA UNA PÁGINA
       if (branch.children && branch.children.length > 0) {
-        const subStartY = branchY + 140;
-        const subSpacing = 100;
+        const subStartY = branchY + 90; // Reducido de 140 a 90
+        const subSpacing = 75; // Reducido de 110 a 75 para caber en una página
         const subColor = colorScheme[7]; // Color consistente para subnodos
         
         branch.children.forEach((child: MindMapNode, childIdx: number) => {
           const subY = subStartY + (childIdx * subSpacing);
-          const subR = 50; // Agrandado de 40 a 50 para mejor texto
+          const subR = 40; // Reducido de 55 a 40
           
           // Subnodo profesional
           svg += `<circle cx="${branchX}" cy="${subY}" r="${subR}" 
             fill="${subColor}" stroke="none" filter="url(#professionalShadow)"/>`;
           
-          const subLines = intelligentTextWrap(child.label, 12); // Más caracteres por línea
-          const lineHeight = 14;
+          const subLines = intelligentTextWrap(child.label, 12); // Reducido de 14 a 12
+          const lineHeight = 13; // Reducido de 15 a 13
           const totalTextHeight = (subLines.length - 1) * lineHeight;
           const subTextY = subY - (totalTextHeight / 2);
           subLines.forEach((line: string, lineIdx: number) => {
             const yPosition = subTextY + (lineIdx * lineHeight);
             svg += `<text x="${branchX}" y="${yPosition}" class="professional-text sub-text" 
-              text-anchor="middle" dominant-baseline="middle" style="font-size: 14px;">${line}</text>`; // Texto perfectamente centrado
+              text-anchor="middle" dominant-baseline="middle" style="font-size: 11px;">${line}</text>`;
           });
         });
       }

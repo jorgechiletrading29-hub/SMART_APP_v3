@@ -334,22 +334,53 @@ export default function ResumenPage() {
           <title>${title}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
-            body { font-family: 'Space Grotesk', sans-serif; margin: 25px; line-height: 1.8; text-align: justify; }
-            h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; }
-            h1 { text-align: center; font-size: 1.8em; margin-bottom: 1.5em; font-weight: 700; }
-            h2 { font-size: 1.4em; margin-top: 2em; margin-bottom: 1em; font-weight: 600; border-bottom: 2px solid #333; padding-bottom: 0.5em; }
-            h3 { font-size: 1.2em; margin-top: 1.5em; margin-bottom: 0.75em; font-weight: 500; }
-            p { margin-bottom: 1.2em; text-indent: 0; }
+            body { 
+              font-family: 'Space Grotesk', Arial, sans-serif; 
+              margin: 40px 50px; 
+              line-height: 1.7; 
+              text-align: justify; 
+              color: #1a1a1a;
+              font-size: 12pt;
+            }
+            h1, h2, h3 { font-family: 'Space Grotesk', Arial, sans-serif; color: #2c3e50; }
+            h1 { 
+              text-align: center; 
+              font-size: 20pt; 
+              margin-bottom: 30px; 
+              font-weight: 700; 
+              border-bottom: 3px solid #3498db;
+              padding-bottom: 15px;
+            }
+            h2 { 
+              font-size: 14pt; 
+              margin-top: 25px; 
+              margin-bottom: 12px; 
+              font-weight: 600; 
+              border-bottom: 1px solid #bdc3c7; 
+              padding-bottom: 8px; 
+            }
+            h3 { 
+              font-size: 12pt; 
+              margin-top: 18px; 
+              margin-bottom: 8px; 
+              font-weight: 500; 
+            }
+            p { margin-bottom: 12px; text-indent: 0; }
             strong { font-weight: 600; }
             em { font-style: italic; }
-            ul { list-style-type: disc; padding-left: 25px; margin-bottom: 1.5em; }
-            li { margin-bottom: 0.8em; line-height: 1.6; }
-            .mb-4 { margin-bottom: 1.2em; }
+            ul { list-style-type: disc; padding-left: 25px; margin-bottom: 15px; }
+            ol { padding-left: 25px; margin-bottom: 15px; }
+            li { margin-bottom: 6px; line-height: 1.5; }
+            .mb-4 { margin-bottom: 12px; }
+            @media print {
+              body { margin: 20px 30px; }
+              h1 { font-size: 18pt; }
+              h2 { font-size: 13pt; }
+            }
           </style>
         </head>
         <body>
           <h1>${title}</h1>
-          <h2>${translate('summaryContentTitle')}</h2>
           <div>${summaryHtmlForPdf}</div>
     `;
 

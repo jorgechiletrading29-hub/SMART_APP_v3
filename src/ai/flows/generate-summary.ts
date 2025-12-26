@@ -43,44 +43,76 @@ async function generateWithOpenRouter(input: GenerateSummaryInput): Promise<Gene
   const isSpanish = input.language === 'es';
   
   const systemPrompt = isSpanish 
-    ? `Eres un experto educador y creador de contenido pedagógico especializado en el currículo escolar chileno. Tu tarea es crear resúmenes educativos completos y de alta calidad en español.
+    ? `Eres un experto educador y creador de contenido pedagógico especializado en el currículo escolar chileno. Tu tarea es crear resúmenes educativos MUY EXTENSOS, COMPLETOS y de alta calidad en español.
 
 IMPORTANTE:
-- Genera contenido educativo REAL y ESPECÍFICO sobre el tema
+- Genera contenido educativo REAL, ESPECÍFICO y MUY DETALLADO sobre el tema
+- El resumen debe ser EXTENSO (mínimo 2000-3000 palabras)
 - NO uses frases genéricas como "es un tema importante" o "conjunto de conocimientos"
-- Incluye definiciones claras, ejemplos concretos y datos específicos
+- Incluye definiciones claras, ejemplos concretos, datos específicos y explicaciones profundas
+- Desarrolla CADA sección con múltiples párrafos detallados
 - Usa formato Markdown con ## para títulos y ### para subtítulos
-- Usa **negrita** para términos importantes`
-    : `You are an expert educator and pedagogical content creator specialized in the Chilean school curriculum. Your task is to create complete, high-quality educational summaries in English.
+- Usa **negrita** para términos importantes
+- Incluye ejemplos del mundo real y aplicaciones prácticas`
+    : `You are an expert educator and pedagogical content creator specialized in the Chilean school curriculum. Your task is to create VERY EXTENSIVE, COMPLETE and high-quality educational summaries in English.
 
 IMPORTANT:
-- Generate REAL and SPECIFIC educational content about the topic
+- Generate REAL, SPECIFIC and VERY DETAILED educational content about the topic
+- The summary must be EXTENSIVE (minimum 2000-3000 words)
 - DO NOT use generic phrases like "this is an important topic" or "set of knowledge"
-- Include clear definitions, concrete examples and specific data
+- Include clear definitions, concrete examples, specific data and deep explanations
+- Develop EACH section with multiple detailed paragraphs
 - Use Markdown format with ## for titles and ### for subtitles
-- Use **bold** for important terms`;
+- Use **bold** for important terms
+- Include real-world examples and practical applications`;
 
   let userPrompt = isSpanish
-    ? `Genera un resumen educativo completo sobre "${input.topic}" para la asignatura de ${input.bookTitle}${input.course ? ` (nivel: ${input.course})` : ''}.
+    ? `Genera un resumen educativo MUY EXTENSO Y DETALLADO sobre "${input.topic}" para la asignatura de ${input.bookTitle}${input.course ? ` (nivel: ${input.course})` : ''}.
 
-El resumen DEBE incluir:
-1. **Introducción**: Qué es ${input.topic} y por qué es importante
-2. **Conceptos Fundamentales**: Definiciones claras y precisas
-3. **Desarrollo del Tema**: Explicación detallada con ejemplos
-4. **Características/Componentes**: Elementos principales del tema
-5. **Ejemplos Prácticos**: Casos concretos y aplicaciones
-6. **Importancia**: Relevancia del tema en la vida real
-7. **Conclusión**: Síntesis de los puntos principales`
-    : `Generate a complete educational summary about "${input.topic}" for the subject ${input.bookTitle}${input.course ? ` (level: ${input.course})` : ''}.
+⚠️ REQUISITO: El resumen debe ser EXTENSO, con mínimo 2000-3000 palabras. Desarrolla cada sección con MÚLTIPLES PÁRRAFOS detallados.
 
-The summary MUST include:
-1. **Introduction**: What is ${input.topic} and why is it important
-2. **Fundamental Concepts**: Clear and precise definitions
-3. **Topic Development**: Detailed explanation with examples
-4. **Characteristics/Components**: Main elements of the topic
-5. **Practical Examples**: Concrete cases and applications
-6. **Importance**: Relevance of the topic in real life
-7. **Conclusion**: Synthesis of main points`;
+El resumen DEBE incluir las siguientes secciones (cada una con varios párrafos):
+
+1. **Introducción** (mínimo 2 párrafos): Qué es ${input.topic}, contexto histórico y por qué es importante estudiarlo
+
+2. **Conceptos Fundamentales** (mínimo 3 párrafos): Definiciones claras, precisas y detalladas de todos los términos clave
+
+3. **Desarrollo del Tema** (mínimo 4-5 párrafos): Explicación profunda y detallada con múltiples ejemplos y casos
+
+4. **Características y Componentes** (mínimo 3 párrafos): Elementos principales, clasificaciones y subdivisiones del tema
+
+5. **Procesos y Mecanismos** (mínimo 2-3 párrafos): Cómo funciona, etapas, fases o pasos involucrados
+
+6. **Ejemplos Prácticos y Aplicaciones** (mínimo 3 párrafos): Casos concretos del mundo real, aplicaciones en la vida cotidiana
+
+7. **Importancia y Relevancia** (mínimo 2 párrafos): Por qué es relevante, impacto en la sociedad, ciencia o vida diaria
+
+8. **Datos Curiosos e Información Adicional** (mínimo 1-2 párrafos): Hechos interesantes, descubrimientos recientes
+
+9. **Conclusión** (mínimo 2 párrafos): Síntesis completa de todos los puntos principales`
+    : `Generate a VERY EXTENSIVE AND DETAILED educational summary about "${input.topic}" for the subject ${input.bookTitle}${input.course ? ` (level: ${input.course})` : ''}.
+
+⚠️ REQUIREMENT: The summary must be EXTENSIVE, with a minimum of 2000-3000 words. Develop each section with MULTIPLE detailed paragraphs.
+
+The summary MUST include the following sections (each with several paragraphs):
+
+1. **Introduction** (minimum 2 paragraphs): What is ${input.topic}, historical context and why it's important to study
+
+2. **Fundamental Concepts** (minimum 3 paragraphs): Clear, precise and detailed definitions of all key terms
+
+3. **Topic Development** (minimum 4-5 paragraphs): Deep and detailed explanation with multiple examples and cases
+
+4. **Characteristics and Components** (minimum 3 paragraphs): Main elements, classifications and subdivisions of the topic
+
+5. **Processes and Mechanisms** (minimum 2-3 paragraphs): How it works, stages, phases or steps involved
+
+6. **Practical Examples and Applications** (minimum 3 paragraphs): Concrete real-world cases, applications in daily life
+
+7. **Importance and Relevance** (minimum 2 paragraphs): Why it's relevant, impact on society, science or daily life
+
+8. **Curious Facts and Additional Information** (minimum 1-2 paragraphs): Interesting facts, recent discoveries
+
+9. **Conclusion** (minimum 2 paragraphs): Complete synthesis of all main points`;
 
   // Si hay contenido PDF, agregarlo como contexto
   if (input.pdfContent && input.pdfContent.length > 100) {
@@ -99,7 +131,7 @@ The summary MUST include:
   const response = await client.generateText(systemPrompt, userPrompt, {
     model: OPENROUTER_MODELS.GPT_4O_MINI,
     temperature: 0.7,
-    maxTokens: 4096,
+    maxTokens: 8192,
   });
   console.log('[generate-summary] OpenRouter response received');
 

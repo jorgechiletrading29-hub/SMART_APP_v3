@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Image from 'next/image'; 
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/language-context';
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Network, Sparkles, Download, Newspaper as SummaryIcon, FileQuestion, ClipboardList } from 'lucide-react'; 
+import { Network, Sparkles, Download, Newspaper as SummaryIcon, FileQuestion, ClipboardList, BookOpen, Loader2, RefreshCw } from 'lucide-react'; 
 import { BookCourseSelector } from '@/components/common/book-course-selector';
 import { createMindMapAction } from '@/actions/mind-map-actions';
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,8 @@ import { useAIProgress } from "@/hooks/use-ai-progress";
 import { cn } from '@/lib/utils';
 import { contentDB } from '@/lib/sql-content';
 import { useAuth } from '@/contexts/auth-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { analyzeSubjectTopics } from '@/ai/flows/analyze-subject-topics';
 
 export default function MapaMentalPage() {
   const { translate, language: currentUiLanguage } = useLanguage();
@@ -31,6 +33,93 @@ export default function MapaMentalPage() {
   const [isHorizontal, setIsHorizontal] = useState(false);
   const [mindMapResult, setMindMapResult] = useState<string | null>(null);
   const [currentCentralThemeForDisplay, setCurrentCentralThemeForDisplay] = useState('');
+  
+  // Estados para análisis automático de temas (igual que en resumen)
+  const [subjectTopics, setSubjectTopics] = useState<string[]>([]);
+  const [selectedSubjectTopic, setSelectedSubjectTopic] = useState<string>('');
+  const [isAnalyzingSubject, setIsAnalyzingSubject] = useState(false);
+  const [subjectBookTitle, setSubjectBookTitle] = useState<string>('');
+  
+  // Ref para evitar llamadas duplicadas
+  const hasAnalyzedRef = useRef<string>('');
+
+  // Detectar el tipo de asignatura para mostrar icono apropiado
+  const subjectIcon = useMemo(() => {
+    const s = `${selectedBook || ''} ${selectedSubject || ''}`.toLowerCase();
+    if (/matem|math|algebra|geometr/i.test(s)) return '🔢';
+    if (/lenguaje|comunicacion|language|literatura/i.test(s)) return '📚';
+    if (/ciencia|natural|science|biolog/i.test(s)) return '🔬';
+    if (/historia|geography|social|civica/i.test(s)) return '🌍';
+    return '📖';
+  }, [selectedBook, selectedSubject]);
+
+  // Limpiar el mapa cuando cambia el curso o la asignatura
+  useEffect(() => {
+    setMindMapResult(null);
+    setCurrentCentralThemeForDisplay('');
+    setCentralTheme('');
+  }, [selectedCourse, selectedSubject]);
+
+  // Analizar automáticamente los temas cuando se selecciona cualquier asignatura
+  useEffect(() => {
+    const analyzeKey = `${selectedCourse}_${selectedSubject}`;
+    
+    if (selectedCourse && selectedSubject && hasAnalyzedRef.current !== analyzeKey) {
+      hasAnalyzedRef.current = analyzeKey;
+      setIsAnalyzingSubject(true);
+      setSubjectTopics([]);
+      setSelectedSubjectTopic('');
+      setSubjectBookTitle('');
+      
+      console.log('[MapaMental] Starting subject analysis for:', selectedCourse, selectedSubject);
+      
+      analyzeSubjectTopics({
+        courseName: selectedCourse,
+        subjectName: selectedSubject,
+        language: currentUiLanguage,
+      }).then((res) => {
+        console.log('[MapaMental] Subject analysis result:', res);
+        if (res.topics && res.topics.length > 0) {
+          setSubjectTopics(res.topics);
+          setSubjectBookTitle(res.bookTitle || '');
+          toast({
+            title: translate('quizPdfAnalyzeDone') || 'Análisis completado',
+            description: `${translate('quizPdfTopicsFound') || 'Temas detectados'}: ${res.topics.length}`,
+            variant: 'default',
+          });
+        }
+      }).catch((e) => {
+        console.error('[MapaMental] Error analizando asignatura:', e);
+      }).finally(() => {
+        setIsAnalyzingSubject(false);
+      });
+    } else if (!selectedSubject) {
+      // Limpiar cuando no hay asignatura
+      setSubjectTopics([]);
+      setSelectedSubjectTopic('');
+      setSubjectBookTitle('');
+    }
+  }, [selectedCourse, selectedSubject, currentUiLanguage, toast, translate]);
+
+  // Cuando se selecciona un tema de la asignatura, actualizar el campo de tema central
+  const handleSubjectTopicSelect = useCallback((value: string) => {
+    setSelectedSubjectTopic(value);
+    if (value) setCentralTheme(value);
+  }, []);
+
+  // Función para resetear todos los filtros a su estado inicial
+  const resetFilters = useCallback(() => {
+    setSelectedCourse('');
+    setSelectedBook('');
+    setSelectedSubject('');
+    setCentralTheme('');
+    setSelectedSubjectTopic('');
+    setSubjectTopics([]);
+    setSubjectBookTitle('');
+    setIsHorizontal(false);
+    hasAnalyzedRef.current = '';
+    setMindMapResult(null);
+  }, []);
 
 
   const handleGenerateMap = async () => {
@@ -189,32 +278,107 @@ export default function MapaMentalPage() {
             selectedCourse={selectedCourse}
             selectedBook={selectedBook}
             selectedSubject={selectedSubject}
-            onCourseChange={setSelectedCourse}
-            onBookChange={setSelectedBook}
-            onSubjectChange={setSelectedSubject}
+            onCourseChange={(course) => {
+              // Cuando cambia el curso, resetear también la asignatura y tema
+              setSelectedCourse(course);
+              setSelectedSubject('');
+              setSelectedBook('');
+              setCentralTheme('');
+              setSelectedSubjectTopic('');
+              setSubjectTopics([]);
+              setSubjectBookTitle('');
+              hasAnalyzedRef.current = '';
+              setMindMapResult(null);
+            }}
+            onBookChange={(book) => {
+              setSelectedBook(book);
+            }}
+            onSubjectChange={(subject) => {
+              // Cuando cambia la asignatura, resetear el tema
+              setSelectedSubject(subject);
+              setCentralTheme('');
+              setSelectedSubjectTopic('');
+              setMindMapResult(null);
+            }}
             showSubjectSelector={true}
             showBookSelector={false}
           />
-          <Textarea
-            rows={2}
-            value={centralTheme}
-            onChange={(e) => setCentralTheme(e.target.value)}
-            placeholder={translate('mapCentralThemePlaceholder')}
-            className="text-base md:text-sm"
-          />
+
+          {/* Sección automática de temas de cualquier asignatura desde la biblioteca */}
+          {selectedSubject && (
+            <div className="space-y-3 p-4 border border-yellow-500/30 rounded-lg bg-yellow-500/5">
+              <div className="space-y-1">
+                <Label className="text-left block font-semibold text-yellow-600 dark:text-yellow-400">
+                  <BookOpen className="w-4 h-4 inline mr-2" />
+                  {subjectIcon} {translate('mapSubjectTopicsTitle') || `Temas de ${selectedSubject}`}
+                </Label>
+                {subjectBookTitle && (
+                  <p className="text-left text-xs text-muted-foreground">
+                    📚 {subjectBookTitle}
+                  </p>
+                )}
+              </div>
+
+              {isAnalyzingSubject ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {translate('mapAnalyzingSubject') || 'Analizando temas de la asignatura...'}
+                </div>
+              ) : subjectTopics.length > 0 ? (
+                <div className="space-y-2">
+                  <Label className="text-left block text-sm">
+                    {translate('mapSelectTopic') || 'Selecciona un tema para crear el mapa mental:'}
+                  </Label>
+                  <Select value={selectedSubjectTopic} onValueChange={handleSubjectTopicSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={translate('mapChooseTopic') || 'Elige un tema…'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectTopics.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-left text-xs text-muted-foreground">
+                    💡 {translate('mapTopicHint') || 'El mapa mental mostrará los conceptos principales y sus relaciones.'}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-left text-xs text-muted-foreground">
+                  {translate('mapNoTopics') || 'Selecciona un curso y asignatura para ver los temas disponibles.'}
+                </p>
+              )}
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <Label htmlFor="central-theme-input" className="text-left block">{translate('mapCentralThemePlaceholder')}</Label>
+            <Textarea
+              id="central-theme-input"
+              rows={2}
+              value={centralTheme}
+              onChange={(e) => setCentralTheme(e.target.value)}
+              placeholder={!selectedCourse ? (translate('mapSelectCourseFirst') || 'Primero selecciona un curso...') : !selectedSubject ? (translate('mapSelectSubjectFirst') || 'Primero selecciona una asignatura...') : translate('mapCentralThemePlaceholder')}
+              className="text-base md:text-sm"
+              disabled={!selectedCourse || !selectedSubject}
+            />
+          </div>
           <div className="flex items-center space-x-2 justify-start"> 
             <Checkbox
               id="horizontal-orientation"
               checked={isHorizontal}
               onCheckedChange={(checked) => setIsHorizontal(Boolean(checked))}
+              disabled={!selectedCourse || !selectedSubject}
             />
-            <Label htmlFor="horizontal-orientation" className="text-sm font-medium">
+            <Label htmlFor="horizontal-orientation" className={cn("text-sm font-medium", (!selectedCourse || !selectedSubject) && "text-muted-foreground")}>
               {translate('mapHorizontalOrientation')}
             </Label>
           </div>
           <Button
             onClick={handleGenerateMap}
-            disabled={isLoading}
+            disabled={isLoading || !selectedCourse || !selectedSubject || !centralTheme.trim()}
             className={cn(
               "w-full font-semibold py-3 text-base md:text-sm home-card-button-yellow",
               "hover:brightness-110 hover:shadow-lg transition-all duration-200"
@@ -246,6 +410,17 @@ export default function MapaMentalPage() {
                 alt={translate('mindMapResultTitle')} 
                 className="w-full h-auto rounded-md border object-contain"
               />
+            </div>
+            
+            {/* Botón para crear nuevo mapa mental */}
+            <div className="mt-6 mb-4">
+              <Button
+                onClick={resetFilters}
+                variant="outline"
+                className="w-full font-semibold py-2 px-6 rounded-lg transition-colors border-yellow-500 text-yellow-600 hover:bg-yellow-500/10 text-xs sm:text-sm"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" /> {translate('mapNewMap') || 'Generar Nuevo Mapa Mental'}
+              </Button>
             </div>
             
             <div className="mt-8 pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
