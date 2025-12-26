@@ -41,6 +41,305 @@ export function generateTopicContent(subject: string, topic: string, course: str
 }
 
 function generateCienciasNaturalesContent(topicNormalized: string, topic: string, course: string): string | null {
+  // Sistemas del cuerpo humano
+  if (topicNormalized.includes('sistemas del cuerpo') || topicNormalized.includes('cuerpo humano') || (topicNormalized.includes('sistemas') && topicNormalized.includes('humano'))) {
+    return `
+SISTEMAS DEL CUERPO HUMANO - Contenido del Libro de Ciencias Naturales ${course}
+
+CAPÍTULO: LOS SISTEMAS DEL CUERPO HUMANO
+
+1. INTRODUCCIÓN
+
+El cuerpo humano es una máquina perfecta formada por diferentes sistemas que trabajan juntos para mantenernos vivos y saludables. Cada sistema tiene una función específica y todos se relacionan entre sí.
+
+2. SISTEMA DIGESTIVO
+
+FUNCIÓN: Transformar los alimentos en nutrientes que el cuerpo puede usar.
+
+ÓRGANOS PRINCIPALES:
+- BOCA: Donde comienza la digestión. Los dientes trituran la comida y la saliva la humedece.
+- ESÓFAGO: Tubo que conecta la boca con el estómago.
+- ESTÓMAGO: Bolsa muscular donde se mezclan los alimentos con jugos gástricos.
+- INTESTINO DELGADO: Tubo largo donde se absorben los nutrientes.
+- INTESTINO GRUESO: Donde se absorbe el agua y se forman las heces.
+
+PROCESO:
+1. Masticamos la comida en la boca
+2. Tragamos y pasa por el esófago
+3. El estómago la procesa con ácidos
+4. Los nutrientes se absorben en el intestino
+5. Los desechos salen del cuerpo
+
+3. SISTEMA RESPIRATORIO
+
+FUNCIÓN: Llevar oxígeno al cuerpo y eliminar dióxido de carbono.
+
+ÓRGANOS PRINCIPALES:
+- NARIZ: Entrada del aire, lo filtra y calienta.
+- TRÁQUEA: Tubo que lleva el aire a los pulmones.
+- PULMONES: Órganos esponjosos donde ocurre el intercambio de gases.
+- DIAFRAGMA: Músculo que ayuda a respirar.
+
+PROCESO:
+1. Inspiración: El aire entra por la nariz
+2. Viaja por la tráquea hasta los pulmones
+3. En los alvéolos, el oxígeno pasa a la sangre
+4. La sangre entrega CO₂ a los pulmones
+5. Espiración: El aire con CO₂ sale del cuerpo
+
+4. SISTEMA CIRCULATORIO
+
+FUNCIÓN: Transportar sangre con oxígeno y nutrientes a todo el cuerpo.
+
+ÓRGANOS PRINCIPALES:
+- CORAZÓN: Bomba muscular que impulsa la sangre. Late unas 100,000 veces al día.
+- ARTERIAS: Vasos que llevan sangre oxigenada desde el corazón.
+- VENAS: Vasos que traen sangre con CO₂ de vuelta al corazón.
+- CAPILARES: Vasos muy finos donde ocurre el intercambio con las células.
+
+COMPONENTES DE LA SANGRE:
+- Glóbulos rojos: transportan oxígeno
+- Glóbulos blancos: defienden contra enfermedades
+- Plaquetas: ayudan a cicatrizar heridas
+- Plasma: líquido que transporta todo
+
+5. SISTEMA MUSCULAR
+
+FUNCIÓN: Permitir el movimiento del cuerpo.
+
+TIPOS DE MÚSCULOS:
+- VOLUNTARIOS: Los controlamos (brazos, piernas). Ejemplo: bíceps.
+- INVOLUNTARIOS: No los controlamos (estómago, intestinos).
+- CARDÍACO: El corazón, late automáticamente.
+
+DATOS IMPORTANTES:
+- Tenemos más de 600 músculos
+- Los músculos trabajan en parejas (uno se contrae, otro se relaja)
+- Los músculos se unen a los huesos por tendones
+
+6. SISTEMA ÓSEO (ESQUELETO)
+
+FUNCIÓN: Sostener el cuerpo, proteger órganos y permitir el movimiento.
+
+PARTES DEL ESQUELETO:
+- CRÁNEO: Protege el cerebro.
+- COLUMNA VERTEBRAL: Sostiene el cuerpo, protege la médula espinal.
+- COSTILLAS: Protegen corazón y pulmones.
+- PELVIS: Sostiene los órganos del abdomen.
+- EXTREMIDADES: Brazos y piernas.
+
+DATOS IMPORTANTES:
+- Un adulto tiene 206 huesos
+- Los huesos están vivos y crecen
+- Las articulaciones permiten el movimiento (codo, rodilla)
+- El calcio y vitamina D mantienen los huesos fuertes
+
+7. SISTEMA NERVIOSO
+
+FUNCIÓN: Controlar todo el cuerpo, recibir información y enviar órdenes.
+
+ÓRGANOS PRINCIPALES:
+- CEREBRO: Centro de control. Piensa, recuerda, siente.
+- MÉDULA ESPINAL: Conecta el cerebro con el resto del cuerpo.
+- NERVIOS: Cables que llevan mensajes por todo el cuerpo.
+
+FUNCIONES:
+- Controla los movimientos voluntarios
+- Controla funciones automáticas (respirar, latir)
+- Procesa información de los sentidos
+- Permite pensar, aprender y recordar
+
+8. SISTEMA EXCRETOR
+
+FUNCIÓN: Eliminar los desechos del cuerpo.
+
+ÓRGANOS PRINCIPALES:
+- RIÑONES: Filtran la sangre y producen orina.
+- URÉTERES: Tubos que llevan la orina a la vejiga.
+- VEJIGA: Almacena la orina.
+- URETRA: Por donde sale la orina.
+- PIEL: Elimina desechos a través del sudor.
+
+9. CÓMO TRABAJAN JUNTOS LOS SISTEMAS
+
+Todos los sistemas se necesitan mutuamente:
+- El digestivo da nutrientes que la sangre transporta
+- El respiratorio da oxígeno que la sangre lleva a las células
+- El nervioso controla a todos los demás
+- El muscular y óseo permiten movernos
+- El excretor limpia los desechos
+
+10. CUIDADOS DEL CUERPO
+
+Para mantener sanos todos nuestros sistemas:
+- Alimentación equilibrada
+- Beber suficiente agua
+- Hacer ejercicio regularmente
+- Dormir 8-10 horas
+- Mantener buena higiene
+- Evitar sustancias dañinas
+
+11. ACTIVIDADES DE APRENDIZAJE
+
+ACTIVIDAD 1: Dibuja y rotula los órganos de cada sistema
+ACTIVIDAD 2: Investiga qué pasa cuando un sistema no funciona bien
+ACTIVIDAD 3: Relaciona cada sistema con su función principal
+`;
+  }
+
+  // Los seres vivos y su entorno
+  if (topicNormalized.includes('seres vivos') || topicNormalized.includes('entorno') || topicNormalized.includes('ecosistema')) {
+    return `
+LOS SERES VIVOS Y SU ENTORNO - Contenido del Libro de Ciencias Naturales ${course}
+
+CAPÍTULO: LOS SERES VIVOS Y SU AMBIENTE
+
+1. ¿QUÉ SON LOS SERES VIVOS?
+
+Los seres vivos son todos aquellos organismos que tienen vida. Se caracterizan por realizar funciones vitales que los diferencian de los objetos sin vida.
+
+CARACTERÍSTICAS DE LOS SERES VIVOS:
+
+NACEN
+- Todos los seres vivos provienen de otros seres vivos
+- Pueden nacer de huevos, semillas o del vientre de su madre
+- Ejemplos: un pollito nace de un huevo, una planta nace de una semilla
+
+CRECEN
+- Los seres vivos aumentan de tamaño con el tiempo
+- Necesitan alimento para crecer
+- Un cachorro crece hasta convertirse en perro adulto
+
+SE ALIMENTAN
+- Necesitan nutrientes para obtener energía
+- Los animales comen plantas u otros animales
+- Las plantas fabrican su propio alimento usando la luz del sol
+
+RESPIRAN
+- Toman oxígeno del aire o del agua
+- Los animales respiran por pulmones, branquias o piel
+- Las plantas también respiran a través de sus hojas
+
+SE REPRODUCEN
+- Pueden crear nuevos seres vivos de su misma especie
+- Algunos ponen huevos, otros tienen crías vivas
+- Las plantas producen semillas o se reproducen por esquejes
+
+MUEREN
+- Todos los seres vivos tienen un ciclo de vida
+- Nacen, crecen, se reproducen y mueren
+
+2. CLASIFICACIÓN DE LOS SERES VIVOS
+
+ANIMALES
+- Se desplazan de un lugar a otro
+- Se alimentan de otros seres vivos
+- Pueden ser vertebrados (con columna) o invertebrados (sin columna)
+- Ejemplos: perro, mariposa, pez, águila
+
+PLANTAS
+- No se desplazan, están fijas al suelo
+- Fabrican su propio alimento (fotosíntesis)
+- Tienen raíz, tallo y hojas
+- Ejemplos: árbol, flor, pasto, helecho
+
+HONGOS
+- No son plantas ni animales
+- Se alimentan de materia orgánica en descomposición
+- Ejemplos: champiñón, moho del pan
+
+MICROORGANISMOS
+- Son seres vivos muy pequeños, invisibles a simple vista
+- Solo se pueden ver con microscopio
+- Ejemplos: bacterias, algunos hongos microscópicos
+
+3. EL ENTORNO O AMBIENTE
+
+El entorno es todo lo que rodea a un ser vivo. Incluye elementos vivos y no vivos.
+
+ELEMENTOS VIVOS (BIÓTICOS):
+- Otros animales
+- Plantas
+- Hongos
+- Microorganismos
+
+ELEMENTOS NO VIVOS (ABIÓTICOS):
+- Agua
+- Aire
+- Suelo
+- Luz solar
+- Temperatura
+
+4. HÁBITAT
+
+El hábitat es el lugar donde vive un ser vivo y encuentra todo lo que necesita para sobrevivir: alimento, agua, refugio y espacio.
+
+TIPOS DE HÁBITAT:
+
+TERRESTRE
+- Bosques: árboles, ardillas, pájaros
+- Desiertos: cactus, serpientes, escorpiones
+- Praderas: pastos, vacas, conejos
+
+ACUÁTICO
+- Agua dulce: ríos, lagos (peces de río, ranas)
+- Agua salada: mares, océanos (peces, ballenas, pulpos)
+
+AÉREO
+- El aire donde vuelan las aves e insectos
+- Aunque todos necesitan tierra o agua para descansar
+
+5. ADAPTACIONES DE LOS SERES VIVOS
+
+Los seres vivos tienen características especiales que les permiten sobrevivir en su ambiente.
+
+EJEMPLOS DE ADAPTACIONES:
+
+- El camello tiene jorobas para almacenar grasa y sobrevivir sin agua
+- El oso polar tiene pelaje blanco para camuflarse en la nieve
+- El cactus almacena agua en su tallo para sobrevivir en el desierto
+- Los peces tienen branquias para respirar bajo el agua
+- Las aves tienen plumas y alas para volar
+
+6. RELACIONES ENTRE SERES VIVOS
+
+CADENA ALIMENTARIA
+- Muestra quién se come a quién
+- Productores: plantas (hacen su alimento)
+- Consumidores: animales (comen plantas u otros animales)
+- Descomponedores: hongos y bacterias (descomponen restos)
+
+Ejemplo de cadena alimentaria:
+Pasto → Conejo → Zorro → Bacterias
+
+7. CUIDADO DEL MEDIO AMBIENTE
+
+Los seres humanos debemos cuidar el ambiente para proteger a todos los seres vivos.
+
+ACCIONES PARA CUIDAR EL AMBIENTE:
+- No contaminar el agua ni el aire
+- No botar basura en la naturaleza
+- Reciclar papel, plástico y vidrio
+- Cuidar a los animales y plantas
+- Ahorrar agua y energía
+- Plantar árboles
+
+8. ACTIVIDADES DE APRENDIZAJE
+
+OBSERVACIÓN:
+- Identifica 5 seres vivos en tu entorno
+- Clasifícalos en animales, plantas u otros
+
+INVESTIGACIÓN:
+- Elige un animal y describe su hábitat
+- ¿Qué adaptaciones tiene para sobrevivir?
+
+REFLEXIÓN:
+- ¿Por qué es importante cuidar a los seres vivos?
+- ¿Qué pasaría si desaparecieran las plantas?
+`;
+  }
+
   // Sistema Respiratorio
   if (topicNormalized.includes('sistema respiratorio') || topicNormalized.includes('respiratorio') || topicNormalized.includes('respiracion')) {
     return `
@@ -516,6 +815,610 @@ ELIMINACIÓN
 `;
   }
   
+  // El Ciclo del Agua
+  if (topicNormalized.includes('ciclo del agua') || topicNormalized.includes('ciclo hidrologico') || topicNormalized.includes('ciclo hidrológico') || topicNormalized.includes('agua') && topicNormalized.includes('ciclo')) {
+    return `
+EL CICLO DEL AGUA - Contenido del Libro de Ciencias Naturales ${course}
+
+CAPÍTULO: EL CICLO DEL AGUA (CICLO HIDROLÓGICO)
+
+1. INTRODUCCIÓN
+El ciclo del agua, también llamado ciclo hidrológico, es el proceso continuo de circulación del agua en la Tierra. El agua cambia de estado (líquido, sólido, gaseoso) y se mueve entre la atmósfera, la superficie terrestre y los seres vivos.
+
+2. IMPORTANCIA DEL AGUA
+
+El agua es esencial para la vida:
+- Constituye aproximadamente el 70% del cuerpo humano
+- Es necesaria para todos los procesos vitales
+- Es el hábitat de muchos seres vivos
+- Regula la temperatura del planeta
+- Es un recurso natural fundamental
+
+DISTRIBUCIÓN DEL AGUA EN LA TIERRA:
+- 97.5% es agua salada (océanos y mares)
+- 2.5% es agua dulce
+- De esa agua dulce: 69% está en glaciares, 30% en aguas subterráneas, 1% es accesible
+
+3. ESTADOS DEL AGUA
+
+ESTADO LÍQUIDO
+- Forma: Toma la forma del recipiente
+- Ejemplos: Ríos, lagos, mares, lluvia
+- Temperatura: Entre 0°C y 100°C a nivel del mar
+
+ESTADO SÓLIDO (HIELO)
+- Forma: Tiene forma propia
+- Ejemplos: Glaciares, nieve, granizo, escarcha
+- Temperatura: Bajo 0°C
+
+ESTADO GASEOSO (VAPOR)
+- Forma: No tiene forma definida, se expande
+- Ejemplos: Vapor de agua, nubes, neblina
+- El vapor de agua es invisible
+
+4. ETAPAS DEL CICLO DEL AGUA
+
+4.1 EVAPORACIÓN
+- El Sol calienta el agua de océanos, ríos y lagos
+- El agua líquida se transforma en vapor de agua
+- El vapor de agua sube a la atmósfera
+- También ocurre evaporación desde el suelo húmedo
+- La mayor evaporación ocurre en los océanos
+
+4.2 TRANSPIRACIÓN
+- Las plantas liberan vapor de agua por sus hojas
+- Este proceso se llama transpiración o evapotranspiración
+- Es parte importante del ciclo en zonas con vegetación
+- Un árbol grande puede liberar cientos de litros de agua al día
+
+4.3 CONDENSACIÓN
+- El vapor de agua sube y se enfría en la atmósfera
+- Al enfriarse, el vapor se convierte en pequeñas gotas de agua
+- Estas gotas forman las nubes y la neblina
+- La condensación ocurre alrededor de partículas (polvo, polen)
+- También se ve condensación en superficies frías (rocío)
+
+4.4 PRECIPITACIÓN
+- Cuando las gotas de agua en las nubes se hacen grandes y pesadas, caen
+- Tipos de precipitación:
+  * Lluvia: Gotas de agua líquida
+  * Nieve: Cristales de hielo (cuando hace frío)
+  * Granizo: Bolas de hielo
+  * Llovizna: Gotas muy pequeñas
+
+4.5 ESCORRENTÍA
+- El agua de lluvia que corre por la superficie terrestre
+- Fluye hacia arroyos, ríos y finalmente al mar
+- Parte del agua se infiltra en el suelo
+
+4.6 INFILTRACIÓN
+- El agua penetra en el suelo
+- Se acumula en acuíferos (depósitos subterráneos)
+- Las plantas absorben agua con sus raíces
+- El agua subterránea puede tardar años en volver a la superficie
+
+4.7 ACUMULACIÓN
+- El agua se almacena en diferentes lugares:
+  * Océanos y mares
+  * Lagos y lagunas
+  * Ríos
+  * Glaciares y casquetes polares
+  * Agua subterránea
+
+5. CAMBIOS DE ESTADO EN EL CICLO
+
+EVAPORACIÓN: Líquido → Gas (necesita calor)
+CONDENSACIÓN: Gas → Líquido (libera calor)
+SOLIDIFICACIÓN: Líquido → Sólido (libera calor)
+FUSIÓN: Sólido → Líquido (necesita calor)
+SUBLIMACIÓN: Sólido → Gas (directamente)
+
+6. EL SOL: MOTOR DEL CICLO DEL AGUA
+
+El Sol proporciona la energía que impulsa todo el ciclo:
+- Calienta el agua para que se evapore
+- Crea las corrientes de aire que mueven las nubes
+- Sin el Sol, no habría ciclo del agua
+
+7. IMPORTANCIA DEL CICLO DEL AGUA
+
+- Distribuye el agua dulce por todo el planeta
+- Purifica el agua (la evaporación deja atrás las sales y contaminantes)
+- Regula el clima y la temperatura
+- Permite la vida de plantas y animales
+- Renueva constantemente los recursos hídricos
+
+8. CUIDADO DEL AGUA
+
+El agua dulce es un recurso limitado. Debemos cuidarla:
+
+EN EL HOGAR:
+- Cerrar el grifo mientras nos cepillamos los dientes
+- Tomar duchas cortas en lugar de baños
+- Reparar fugas de agua
+- Usar lavadora y lavavajillas con carga completa
+- Reutilizar agua cuando sea posible
+
+EN LA COMUNIDAD:
+- No contaminar ríos ni lagos
+- Proteger las fuentes de agua
+- Cuidar los bosques (ayudan a mantener el ciclo)
+- No desperdiciar agua en jardines
+
+9. EXPERIMENTO: Crear un mini ciclo del agua
+
+MATERIALES:
+- Un recipiente transparente grande
+- Agua
+- Plástico transparente
+- Una piedra pequeña
+- Sol o lámpara
+
+PROCEDIMIENTO:
+1. Poner agua en el fondo del recipiente
+2. Cubrir con el plástico
+3. Colocar la piedra en el centro del plástico (para que haga una pequeña depresión)
+4. Poner al sol
+5. Observar cómo el agua se evapora, condensa en el plástico y "llueve" hacia el centro
+
+EXPLICACIÓN:
+Este experimento muestra en pequeña escala cómo funciona el ciclo del agua en la naturaleza.
+
+10. ACTIVIDADES
+
+ACTIVIDAD 1: Identificación de etapas
+Observa el paisaje y señala dónde ocurre cada etapa del ciclo.
+
+ACTIVIDAD 2: Dibujo del ciclo
+Dibuja el ciclo del agua con flechas indicando el movimiento del agua.
+
+ACTIVIDAD 3: Registro del tiempo
+Durante una semana, registra si llueve, está nublado o soleado. Relaciona con el ciclo del agua.
+`;
+  }
+  
+  // Microorganismos
+  if (topicNormalized.includes('microorganism') || topicNormalized.includes('bacteria') || topicNormalized.includes('virus') || topicNormalized.includes('hongo') || topicNormalized.includes('microbio')) {
+    return `
+MICROORGANISMOS - Contenido del Libro de Ciencias Naturales ${course}
+
+CAPÍTULO: LOS MICROORGANISMOS
+
+1. DEFINICIÓN DE MICROORGANISMOS
+Los microorganismos son seres vivos de tamaño microscópico que no pueden observarse a simple vista. También se les llama microbios. Para verlos necesitamos instrumentos de aumento como el microscopio.
+
+2. TIPOS DE MICROORGANISMOS
+
+2.1 BACTERIAS
+- Son organismos unicelulares procariotas
+- No tienen núcleo definido
+- Tienen diversas formas: cocos (esféricas), bacilos (alargadas), espirilos (espiral)
+- Algunas son beneficiosas y otras causan enfermedades
+- Se reproducen por fisión binaria (división en dos)
+
+Bacterias beneficiosas:
+- Lactobacillus: Producen yogur y queso
+- Escherichia coli intestinal: Ayudan en la digestión
+- Rhizobium: Fijan nitrógeno en las plantas
+
+Bacterias patógenas:
+- Salmonella: Causa intoxicaciones alimentarias
+- Streptococcus: Causa infecciones de garganta
+- Mycobacterium tuberculosis: Causa tuberculosis
+
+2.2 VIRUS
+- No son considerados seres vivos por muchos científicos
+- Son mucho más pequeños que las bacterias
+- Necesitan infectar células para reproducirse
+- Están formados por material genético (ADN o ARN) y una cubierta proteica
+
+Enfermedades causadas por virus:
+- Gripe e influenza
+- Resfriado común
+- Varicela
+- Sarampión
+- COVID-19
+
+2.3 HONGOS MICROSCÓPICOS
+- Son eucariotas (tienen núcleo)
+- Algunos son unicelulares (levaduras) y otros multicelulares (mohos)
+- Se alimentan descomponiendo materia orgánica
+
+Hongos beneficiosos:
+- Levadura (Saccharomyces): Para hacer pan y cerveza
+- Penicillium: Produce antibiótico penicilina
+
+Hongos perjudiciales:
+- Hongos que causan pie de atleta
+- Hongos que producen moho en alimentos
+
+2.4 PROTOZOARIOS
+- Son eucariotas unicelulares
+- Viven en ambientes húmedos o acuáticos
+- Algunos son parásitos
+
+Ejemplos:
+- Ameba: Se mueve por pseudópodos
+- Paramecio: Se mueve por cilios
+- Plasmodium: Causa la malaria
+
+3. DÓNDE VIVEN LOS MICROORGANISMOS
+
+Los microorganismos están en todas partes:
+- En el aire que respiramos
+- En el agua
+- En el suelo
+- En nuestro cuerpo (piel, intestinos, boca)
+- En los alimentos
+- En superficies y objetos
+
+4. IMPORTANCIA DE LOS MICROORGANISMOS
+
+4.1 Beneficios para los humanos:
+- Producción de alimentos (pan, yogur, queso, vinagre)
+- Producción de medicamentos (antibióticos, vacunas)
+- Descomposición de materia orgánica (reciclaje de nutrientes)
+- Flora intestinal para la digestión
+- Producción de oxígeno (cianobacterias)
+
+4.2 Microorganismos perjudiciales:
+- Causan enfermedades infecciosas
+- Descomponen y dañan alimentos
+- Pueden contaminar agua
+
+5. DEFENSA CONTRA MICROORGANISMOS PATÓGENOS
+
+5.1 Barreras naturales del cuerpo:
+- La piel (primera línea de defensa)
+- Mucosas de nariz y garganta
+- Lágrimas y saliva con enzimas
+- Ácido del estómago
+- Sistema inmunológico
+
+5.2 Hábitos de higiene:
+- Lavarse las manos frecuentemente con agua y jabón
+- Cubrir boca y nariz al toser o estornudar
+- Mantener limpios los alimentos
+- Cocinar bien los alimentos
+- Beber agua potable
+- Vacunarse
+
+6. EL MICROSCOPIO
+
+El microscopio es el instrumento que permite ver microorganismos:
+
+PARTES DEL MICROSCOPIO:
+- Ocular: Lente por donde se mira
+- Objetivos: Lentes que aumentan la imagen
+- Platina: Donde se coloca la muestra
+- Fuente de luz: Ilumina la muestra
+- Tornillos de enfoque: Macro y micrométrico
+
+7. EXPERIMENTO: Observación de microorganismos
+
+Materiales:
+- Microscopio
+- Portaobjetos y cubreobjetos
+- Agua de charco o infusión de heno
+- Gotero
+
+Procedimiento:
+1. Colocar una gota de agua en el portaobjetos
+2. Cubrir con el cubreobjetos
+3. Observar con objetivo de menor a mayor aumento
+4. Dibujar lo observado
+`;
+  }
+  
+  // Sistema nervioso
+  if (topicNormalized.includes('sistema nervioso') || topicNormalized.includes('nervioso') || topicNormalized.includes('cerebro') || topicNormalized.includes('neurona')) {
+    return `
+SISTEMA NERVIOSO - Contenido del Libro de Ciencias Naturales ${course}
+
+CAPÍTULO: EL SISTEMA NERVIOSO
+
+1. FUNCIÓN DEL SISTEMA NERVIOSO
+El sistema nervioso es el centro de control del cuerpo. Recibe información del ambiente y del interior del cuerpo, la procesa y coordina las respuestas apropiadas. Controla todas nuestras funciones voluntarias e involuntarias.
+
+2. ORGANIZACIÓN DEL SISTEMA NERVIOSO
+
+2.1 SISTEMA NERVIOSO CENTRAL (SNC)
+
+ENCÉFALO
+- Es el centro de control principal del cuerpo
+- Está protegido por el cráneo y las meninges
+- Pesa aproximadamente 1.4 kg en adultos
+- Consta de tres partes principales:
+
+CEREBRO
+- Es la parte más grande del encéfalo (80%)
+- Dividido en dos hemisferios (izquierdo y derecho)
+- Controla el pensamiento, memoria, lenguaje, emociones
+- La corteza cerebral tiene pliegues (circunvoluciones)
+- Diferentes áreas controlan diferentes funciones:
+  * Lóbulo frontal: Razonamiento, movimiento voluntario
+  * Lóbulo parietal: Sensaciones táctiles
+  * Lóbulo temporal: Audición, memoria
+  * Lóbulo occipital: Visión
+
+CEREBELO
+- Ubicado debajo del cerebro, en la parte posterior
+- Coordina el equilibrio y los movimientos
+- Permite realizar movimientos precisos
+- Controla la postura
+
+TRONCO ENCEFÁLICO
+- Conecta el cerebro con la médula espinal
+- Controla funciones vitales automáticas:
+  * Respiración
+  * Ritmo cardíaco
+  * Presión arterial
+  * Deglución
+
+MÉDULA ESPINAL
+- Cordón nervioso dentro de la columna vertebral
+- Mide aproximadamente 45 cm de largo
+- Transmite información entre el cerebro y el cuerpo
+- Controla los actos reflejos
+
+2.2 SISTEMA NERVIOSO PERIFÉRICO (SNP)
+- Formado por nervios que salen del SNC
+- Conecta el SNC con todas las partes del cuerpo
+
+Nervios craneales: 12 pares que salen del encéfalo
+Nervios espinales: 31 pares que salen de la médula espinal
+
+3. LA NEURONA - CÉLULA DEL SISTEMA NERVIOSO
+
+Las neuronas son células especializadas en transmitir impulsos nerviosos.
+
+PARTES DE LA NEURONA:
+- Cuerpo celular (soma): Contiene el núcleo
+- Dendritas: Reciben información de otras neuronas
+- Axón: Transmite información a otras células
+- Terminales axónicos: Liberan neurotransmisores
+- Vaina de mielina: Aísla y acelera la transmisión
+
+TIPOS DE NEURONAS:
+- Sensoriales: Llevan información de los sentidos al SNC
+- Motoras: Llevan órdenes del SNC a músculos y glándulas
+- Interneuronas: Conectan neuronas entre sí
+
+4. SINAPSIS - COMUNICACIÓN ENTRE NEURONAS
+
+La sinapsis es la unión funcional entre dos neuronas.
+
+PROCESO:
+1. El impulso llega al terminal axónico
+2. Se liberan neurotransmisores al espacio sináptico
+3. Los neurotransmisores se unen a receptores de la siguiente neurona
+4. Se genera un nuevo impulso nervioso
+
+5. ACTOS VOLUNTARIOS Y REFLEJOS
+
+ACTOS VOLUNTARIOS
+- Son controlados conscientemente
+- El cerebro participa en la decisión
+- Ejemplo: Escribir, hablar, caminar
+
+ACTOS REFLEJOS
+- Son respuestas automáticas e involuntarias
+- No pasan por el cerebro (solo médula espinal)
+- Son muy rápidos
+- Ejemplo: Retirar la mano del fuego, reflejo rotuliano
+
+ARCO REFLEJO:
+1. Receptor detecta el estímulo
+2. Neurona sensorial transmite la información
+3. Interneurona en la médula procesa
+4. Neurona motora envía la respuesta
+5. Efector (músculo) ejecuta la respuesta
+
+6. LOS SENTIDOS
+
+Los órganos de los sentidos captan información del ambiente:
+
+VISTA (Ojos): Detecta luz y colores
+AUDICIÓN (Oídos): Detecta sonidos
+OLFATO (Nariz): Detecta olores
+GUSTO (Lengua): Detecta sabores
+TACTO (Piel): Detecta presión, temperatura, dolor
+
+7. CUIDADOS DEL SISTEMA NERVIOSO
+
+- Dormir suficientes horas (8-10 horas en niños)
+- Alimentarse bien (ácidos grasos omega-3, vitaminas B)
+- Hacer ejercicio regularmente
+- Evitar golpes en la cabeza (usar casco)
+- No consumir drogas ni alcohol
+- Manejar el estrés
+- Ejercitar la mente (leer, resolver problemas)
+`;
+  }
+  
+  // Sistema óseo y muscular
+  if (topicNormalized.includes('sistema oseo') || topicNormalized.includes('sistema óseo') || topicNormalized.includes('hueso') || topicNormalized.includes('esqueleto') || topicNormalized.includes('muscular') || topicNormalized.includes('musculo') || topicNormalized.includes('músculo') || topicNormalized.includes('locomotor')) {
+    return `
+SISTEMA ÓSEO Y MUSCULAR - Contenido del Libro de Ciencias Naturales ${course}
+
+CAPÍTULO: EL SISTEMA LOCOMOTOR - HUESOS Y MÚSCULOS
+
+1. INTRODUCCIÓN
+El sistema locomotor está formado por el sistema óseo (esqueleto) y el sistema muscular. Juntos permiten el movimiento del cuerpo y le dan forma y soporte.
+
+2. EL SISTEMA ÓSEO (ESQUELETO)
+
+2.1 FUNCIONES DEL ESQUELETO
+- Sostén: Da forma y soporte al cuerpo
+- Protección: Protege órganos vitales (cráneo protege el cerebro, costillas protegen corazón y pulmones)
+- Movimiento: Sirve de punto de apoyo para los músculos
+- Producción de células sanguíneas: En la médula ósea roja
+- Almacenamiento de minerales: Calcio y fósforo
+
+2.2 COMPOSICIÓN DE LOS HUESOS
+- Tejido óseo compacto: Denso y resistente (exterior)
+- Tejido óseo esponjoso: Con espacios (interior)
+- Médula ósea: Roja (produce células sanguíneas) y amarilla (grasa)
+- Periostio: Membrana que recubre el hueso
+
+2.3 TIPOS DE HUESOS
+
+HUESOS LARGOS
+- Más largos que anchos
+- Ejemplo: Fémur, húmero, tibia, peroné, radio, cúbito
+- Tienen diáfisis (cuerpo) y epífisis (extremos)
+
+HUESOS CORTOS
+- Tienen forma cúbica
+- Ejemplo: Huesos de la muñeca (carpos), huesos del tobillo (tarsos)
+
+HUESOS PLANOS
+- Delgados y aplanados
+- Ejemplo: Cráneo, omóplato, esternón, costillas
+
+HUESOS IRREGULARES
+- Formas variadas
+- Ejemplo: Vértebras, huesos de la cara
+
+2.4 PRINCIPALES HUESOS DEL CUERPO
+
+CABEZA:
+- Cráneo: Protege el cerebro (frontal, parietales, occipital, temporales)
+- Huesos de la cara: Maxilares, mandíbula, nasales, pómulos
+
+TRONCO:
+- Columna vertebral: 33 vértebras (7 cervicales, 12 torácicas, 5 lumbares, sacro, cóccix)
+- Costillas: 12 pares (7 verdaderas, 3 falsas, 2 flotantes)
+- Esternón: Hueso plano en el centro del pecho
+- Pelvis: Formada por huesos coxales, sacro y cóccix
+
+EXTREMIDADES SUPERIORES:
+- Clavícula y omóplato (cintura escapular)
+- Húmero (brazo)
+- Radio y cúbito (antebrazo)
+- Carpos (muñeca), metacarpos (mano), falanges (dedos)
+
+EXTREMIDADES INFERIORES:
+- Fémur (muslo) - el hueso más largo del cuerpo
+- Rótula (rodilla)
+- Tibia y peroné (pierna)
+- Tarsos (tobillo), metatarsos (pie), falanges (dedos)
+
+2.5 ARTICULACIONES
+Son las uniones entre huesos.
+
+TIPOS DE ARTICULACIONES:
+- Fijas (sinartrosis): No permiten movimiento. Ejemplo: Suturas del cráneo
+- Semimóviles (anfiartrosis): Movimiento limitado. Ejemplo: Vértebras
+- Móviles (diartrosis): Permiten amplio movimiento. Ejemplo: Rodilla, codo, hombro
+
+COMPONENTES DE ARTICULACIONES MÓVILES:
+- Cartílago articular: Amortigua y reduce fricción
+- Líquido sinovial: Lubrica la articulación
+- Ligamentos: Unen hueso con hueso
+- Cápsula articular: Envuelve la articulación
+
+3. EL SISTEMA MUSCULAR
+
+3.1 FUNCIONES DE LOS MÚSCULOS
+- Movimiento del cuerpo
+- Mantenimiento de la postura
+- Producción de calor corporal
+- Protección de órganos
+- Movimiento de sustancias dentro del cuerpo
+
+3.2 TIPOS DE TEJIDO MUSCULAR
+
+MÚSCULO ESQUELÉTICO (ESTRIADO VOLUNTARIO)
+- Unido a los huesos por tendones
+- Control voluntario (lo movemos cuando queremos)
+- Fibras largas con estrías
+- Ejemplo: Bíceps, tríceps, cuádriceps
+
+MÚSCULO CARDÍACO (ESTRIADO INVOLUNTARIO)
+- Solo en el corazón
+- Control involuntario (late automáticamente)
+- Nunca se fatiga
+- Contracción rítmica
+
+MÚSCULO LISO (INVOLUNTARIO)
+- En paredes de órganos internos
+- Control involuntario
+- Sin estrías
+- Ejemplo: Estómago, intestinos, vasos sanguíneos
+
+3.3 PRINCIPALES MÚSCULOS DEL CUERPO
+
+CABEZA Y CUELLO:
+- Frontal: Levanta las cejas
+- Orbicular de los ojos: Cierra los párpados
+- Orbicular de los labios: Cierra la boca
+- Masetero: Masticación
+- Esternocleidomastoideo: Gira la cabeza
+
+TRONCO:
+- Pectorales: Mueven los brazos
+- Abdominales: Flexionan el tronco
+- Dorsales: Mueven los brazos hacia atrás
+- Intercostales: Respiración
+- Diafragma: Principal músculo respiratorio
+
+EXTREMIDADES SUPERIORES:
+- Deltoides: Levanta el brazo
+- Bíceps: Flexiona el antebrazo
+- Tríceps: Extiende el antebrazo
+
+EXTREMIDADES INFERIORES:
+- Glúteos: Extienden el muslo
+- Cuádriceps: Extiende la pierna
+- Bíceps femoral: Flexiona la pierna
+- Gemelos: Extienden el pie
+
+3.4 CÓMO FUNCIONAN LOS MÚSCULOS
+
+Los músculos trabajan en pares antagónicos:
+- Cuando uno se contrae (flexor), el otro se relaja (extensor)
+- Ejemplo: Bíceps y tríceps para mover el antebrazo
+
+CONTRACCIÓN MUSCULAR:
+1. El cerebro envía señal nerviosa
+2. La neurona motora transmite el impulso
+3. Se libera calcio en las fibras musculares
+4. Las proteínas actina y miosina se deslizan
+5. El músculo se acorta (contrae)
+
+4. CUIDADOS DEL SISTEMA LOCOMOTOR
+
+PARA LOS HUESOS:
+- Consumir alimentos ricos en calcio (leche, queso, yogur)
+- Consumir vitamina D (sol, pescado)
+- Hacer ejercicio regular
+- Evitar lesiones y golpes
+- Mantener buena postura
+
+PARA LOS MÚSCULOS:
+- Calentar antes del ejercicio
+- Estirar después del ejercicio
+- Alimentación con proteínas
+- Descansar adecuadamente
+- Evitar el sedentarismo
+- Mantener buena postura
+
+5. ENFERMEDADES Y LESIONES
+
+HUESOS:
+- Fractura: Rotura del hueso
+- Osteoporosis: Debilitamiento de los huesos
+- Escoliosis: Desviación de la columna
+
+MÚSCULOS Y ARTICULACIONES:
+- Esguince: Lesión de ligamentos
+- Desgarro: Rotura de fibras musculares
+- Tendinitis: Inflamación de tendones
+- Artritis: Inflamación de articulaciones
+`;
+  }
+
   return null;
 }
 
@@ -1651,10 +2554,320 @@ YAGANES (Yámanas)
 `;
   }
   
+  // El Ciclo del Agua (también puede aparecer en Historia/Geografía)
+  if (topicNormalized.includes('ciclo del agua') || topicNormalized.includes('ciclo hidrologico') || topicNormalized.includes('agua') && topicNormalized.includes('ciclo')) {
+    return `
+EL CICLO DEL AGUA - Contenido del Libro de Historia, Geografía y Ciencias Sociales ${course}
+
+CAPÍTULO: EL AGUA EN NUESTRO PLANETA
+
+1. INTRODUCCIÓN AL CICLO DEL AGUA
+
+El ciclo del agua o ciclo hidrológico es el proceso natural mediante el cual el agua circula continuamente por nuestro planeta. Este ciclo es fundamental para la vida en la Tierra y para entender la geografía y el clima de diferentes regiones.
+
+2. ¿QUÉ ES EL AGUA?
+
+El agua es un recurso natural vital para todos los seres vivos. Sin agua no podría existir la vida en nuestro planeta.
+
+CARACTERÍSTICAS DEL AGUA:
+- Es incolora (no tiene color)
+- Es inodora (no tiene olor)
+- Es insípida (no tiene sabor)
+- Puede encontrarse en tres estados: líquido, sólido (hielo) y gaseoso (vapor)
+
+3. DISTRIBUCIÓN DEL AGUA EN LA TIERRA
+
+AGUA SALADA (97.5%):
+- Océanos: Pacífico, Atlántico, Índico, Ártico, Antártico
+- Mares: Mediterráneo, Caribe, del Norte, etc.
+
+AGUA DULCE (2.5%):
+- Glaciares y casquetes polares (69%)
+- Aguas subterráneas (30%)
+- Ríos, lagos y humedad del suelo (1%)
+
+4. LAS ETAPAS DEL CICLO DEL AGUA
+
+EVAPORACIÓN:
+- El Sol calienta el agua de océanos, ríos y lagos
+- El agua se convierte en vapor y sube a la atmósfera
+- Es como cuando hierve agua en una olla y sale vapor
+
+CONDENSACIÓN:
+- El vapor de agua sube y se enfría
+- Se forman pequeñas gotitas que crean las nubes
+- Es como cuando el espejo del baño se empaña
+
+PRECIPITACIÓN:
+- Las gotas de las nubes se hacen muy pesadas
+- Caen en forma de lluvia, nieve o granizo
+- El tipo de precipitación depende de la temperatura
+
+ESCORRENTÍA E INFILTRACIÓN:
+- El agua de lluvia corre por la superficie (escorrentía)
+- Parte del agua se filtra en la tierra (infiltración)
+- El agua llega a ríos, lagos y finalmente al mar
+
+5. EL SOL Y EL CICLO DEL AGUA
+
+El Sol es el motor que hace funcionar todo el ciclo:
+- Proporciona el calor necesario para la evaporación
+- Sin el Sol, el agua no se evaporaría
+- El ciclo se repite una y otra vez sin parar
+
+6. IMPORTANCIA DEL CICLO DEL AGUA
+
+PARA LA NATURALEZA:
+- Distribuye el agua por todo el planeta
+- Permite que llueva en diferentes lugares
+- Mantiene los ríos, lagos y acuíferos con agua
+- Hace posible la vida de plantas y animales
+
+PARA LAS PERSONAS:
+- Nos proporciona agua para beber
+- Permite regar los cultivos
+- Genera energía hidroeléctrica
+- Es necesaria para la higiene y limpieza
+
+7. LOS CUERPOS DE AGUA
+
+OCÉANOS Y MARES:
+- Grandes extensiones de agua salada
+- Cubren el 71% de la superficie terrestre
+- Son el principal reservorio de agua
+
+RÍOS:
+- Corrientes de agua dulce
+- Fluyen desde las montañas hacia el mar
+- Ejemplos en Chile: Loa, Mapocho, Biobío, Baker
+
+LAGOS Y LAGUNAS:
+- Cuerpos de agua dulce
+- Pueden ser de origen natural o artificial
+- Ejemplos en Chile: Lago Llanquihue, Lago General Carrera
+
+GLACIARES:
+- Grandes masas de hielo
+- Se forman en zonas muy frías
+- Son reservas de agua dulce
+- En Chile hay muchos glaciares en la zona sur y en la cordillera
+
+8. EL AGUA Y EL CLIMA
+
+El ciclo del agua influye en el clima:
+- Las zonas cerca del mar tienen más humedad
+- Las montañas pueden bloquear las nubes
+- El agua del mar modera las temperaturas
+
+9. CUIDADO DEL AGUA
+
+El agua dulce es un recurso limitado y debemos cuidarla:
+
+EN TU CASA:
+- Cierra la llave mientras te cepillas los dientes
+- Toma duchas cortas
+- Avisa si hay una llave que gotea
+- No juegues con el agua innecesariamente
+
+EN TU COMUNIDAD:
+- No tires basura a los ríos o lagos
+- Cuida las plantas porque ayudan al ciclo del agua
+- Participa en campañas de cuidado del agua
+
+10. ACTIVIDADES DE APRENDIZAJE
+
+ACTIVIDAD 1: Dibuja el ciclo del agua
+Haz un dibujo que muestre las etapas del ciclo: evaporación, condensación, precipitación y escorrentía.
+
+ACTIVIDAD 2: Investiga
+¿Cuál es el río más importante de tu región? ¿De dónde viene su agua?
+
+ACTIVIDAD 3: Experimento casero
+Con ayuda de un adulto, calienta agua en una olla y observa cómo se forma vapor. Pon una tapa fría sobre el vapor y verás cómo se forman gotitas (condensación).
+
+ACTIVIDAD 4: Reflexión
+¿Por qué es importante cuidar el agua? ¿Qué acciones puedes hacer tú para no desperdiciarla?
+`;
+  }
+  
   return null;
 }
 
 function generateLenguajeContent(topicNormalized: string, topic: string, course: string): string | null {
+  // Sujeto y Predicado
+  if (topicNormalized.includes('sujeto') && topicNormalized.includes('predicado') || 
+      topicNormalized.includes('sujeto y predicado') ||
+      topicNormalized.includes('predicado y sujeto')) {
+    return `
+SUJETO Y PREDICADO - Contenido del Libro de Lenguaje y Comunicación ${course}
+
+CAPÍTULO: LA ORACIÓN - SUJETO Y PREDICADO
+
+1. INTRODUCCIÓN
+La oración es un conjunto de palabras que tiene sentido completo. Toda oración se divide en dos partes fundamentales: el sujeto y el predicado.
+
+2. ¿QUÉ ES LA ORACIÓN?
+
+DEFINICIÓN:
+Una oración es un grupo de palabras ordenadas que expresan una idea completa. Siempre comienza con mayúscula y termina con un punto.
+
+CARACTERÍSTICAS DE LA ORACIÓN:
+- Tiene sentido completo por sí sola
+- Contiene un verbo conjugado
+- Se divide en sujeto y predicado
+- Expresa una idea, pregunta, orden o emoción
+
+3. EL SUJETO
+
+DEFINICIÓN:
+El sujeto es la parte de la oración que indica quién realiza la acción o de quién se habla. Responde a las preguntas: ¿Quién? o ¿Qué?
+
+CARACTERÍSTICAS DEL SUJETO:
+- Indica quién o qué realiza la acción
+- Su núcleo es un sustantivo o pronombre
+- Puede estar al inicio, en medio o al final de la oración
+- Concuerda en número (singular/plural) con el verbo
+
+NÚCLEO DEL SUJETO:
+- El núcleo es la palabra más importante del sujeto
+- Generalmente es un sustantivo o pronombre
+- El verbo debe concordar con el núcleo del sujeto
+
+EJEMPLOS DE SUJETOS:
+- "María canta muy bien" → Sujeto: María
+- "El perro negro corre rápido" → Sujeto: El perro negro (núcleo: perro)
+- "Mis amigos juegan fútbol" → Sujeto: Mis amigos (núcleo: amigos)
+- "Ella estudia mucho" → Sujeto: Ella
+- "Los estudiantes del tercero básico participaron" → Sujeto: Los estudiantes del tercero básico (núcleo: estudiantes)
+
+TIPOS DE SUJETO:
+
+SUJETO EXPRESO:
+- Aparece escrito en la oración
+- Ejemplo: "Juan come manzanas" → Sujeto expreso: Juan
+
+SUJETO TÁCITO (u omitido):
+- No aparece escrito, pero se sobreentiende
+- Se deduce por la terminación del verbo
+- Ejemplo: "Comemos pizza" → Sujeto tácito: Nosotros
+
+4. EL PREDICADO
+
+DEFINICIÓN:
+El predicado es la parte de la oración que indica lo que hace el sujeto o lo que se dice de él. Responde a las preguntas: ¿Qué hace? ¿Qué le pasa? ¿Cómo es?
+
+CARACTERÍSTICAS DEL PREDICADO:
+- Contiene siempre un verbo conjugado
+- Indica la acción, estado o característica del sujeto
+- El verbo es el núcleo del predicado
+- Puede tener complementos que amplían la información
+
+NÚCLEO DEL PREDICADO:
+- El núcleo del predicado SIEMPRE es el verbo
+- El verbo expresa la acción o estado
+- Debe concordar en persona y número con el sujeto
+
+EJEMPLOS DE PREDICADOS:
+- "María canta muy bien" → Predicado: canta muy bien (núcleo: canta)
+- "El perro negro corre rápido" → Predicado: corre rápido (núcleo: corre)
+- "Mis amigos juegan fútbol" → Predicado: juegan fútbol (núcleo: juegan)
+- "La casa es grande y bonita" → Predicado: es grande y bonita (núcleo: es)
+
+5. CÓMO IDENTIFICAR EL SUJETO Y EL PREDICADO
+
+MÉTODO 1: Identificar el verbo primero
+1. Busca el verbo de la oración
+2. Pregunta ¿Quién + verbo? para encontrar el sujeto
+3. El resto de la oración es el predicado
+
+EJEMPLO PRÁCTICO:
+Oración: "Los niños del barrio juegan en el parque"
+
+Paso 1: Identificar el verbo → "juegan"
+Paso 2: Preguntar ¿Quién juega? → "Los niños del barrio" (SUJETO)
+Paso 3: El resto es el predicado → "juegan en el parque" (PREDICADO)
+
+MÉTODO 2: Buscar de quién se habla
+1. Identifica de quién o de qué se está hablando → Ese es el sujeto
+2. Identifica qué se dice sobre esa persona o cosa → Ese es el predicado
+
+6. CONCORDANCIA SUJETO-VERBO
+
+El sujeto y el verbo deben concordar en:
+
+NÚMERO (singular o plural):
+- Sujeto singular = verbo singular: "El niño juega"
+- Sujeto plural = verbo plural: "Los niños juegan"
+
+PERSONA (1ª, 2ª o 3ª persona):
+- Yo estudio (1ª persona singular)
+- Tú estudias (2ª persona singular)
+- Él/Ella estudia (3ª persona singular)
+- Nosotros estudiamos (1ª persona plural)
+- Ustedes estudian (2ª persona plural)
+- Ellos/Ellas estudian (3ª persona plural)
+
+7. EJEMPLOS ANALIZADOS
+
+ORACIÓN 1: "La profesora explica la lección con claridad"
+- Sujeto: La profesora (núcleo: profesora)
+- Predicado: explica la lección con claridad (núcleo: explica)
+
+ORACIÓN 2: "Mis hermanos y yo visitamos a los abuelos"
+- Sujeto: Mis hermanos y yo (núcleo: hermanos, yo)
+- Predicado: visitamos a los abuelos (núcleo: visitamos)
+
+ORACIÓN 3: "El sol brillante ilumina el campo"
+- Sujeto: El sol brillante (núcleo: sol)
+- Predicado: ilumina el campo (núcleo: ilumina)
+
+ORACIÓN 4: "Comieron toda la comida"
+- Sujeto: Tácito (Ellos/Ellas)
+- Predicado: Comieron toda la comida (núcleo: comieron)
+
+8. TIPOS DE ORACIONES SEGÚN SU ESTRUCTURA
+
+ORACIÓN SIMPLE:
+- Tiene un solo sujeto y un solo predicado
+- Ejemplo: "El gato duerme en el sofá"
+
+ORACIÓN COMPUESTA:
+- Tiene más de un sujeto o más de un predicado
+- Ejemplo: "María canta y Pedro baila"
+
+9. ACTIVIDADES DE PRÁCTICA
+
+ACTIVIDAD 1: Identificar sujeto y predicado
+Subraya el sujeto con azul y el predicado con rojo:
+a) Los pájaros cantan en el árbol.
+b) Mi mamá prepara el almuerzo.
+c) El libro nuevo está sobre la mesa.
+d) Corremos en el patio.
+
+ACTIVIDAD 2: Encontrar el núcleo
+Identifica el núcleo del sujeto y del predicado:
+a) La casa grande tiene un jardín hermoso.
+b) Los estudiantes aplicados estudian todos los días.
+c) Mi mejor amiga vive cerca de la escuela.
+
+ACTIVIDAD 3: Completar oraciones
+Agrega el sujeto o predicado que falta:
+a) _____________ juegan en el parque. (agregar sujeto)
+b) El cartero _____________ . (agregar predicado)
+c) _____________ brillan en el cielo. (agregar sujeto)
+
+10. RESUMEN
+
+RECUERDA:
+- La oración se divide en SUJETO y PREDICADO
+- El SUJETO indica quién realiza la acción (núcleo: sustantivo)
+- El PREDICADO indica qué hace el sujeto (núcleo: verbo)
+- Para encontrar el sujeto, pregunta: ¿Quién + verbo?
+- El sujeto y el verbo deben concordar en número y persona
+- El sujeto puede ser expreso o tácito
+`;
+  }
+  
   // Sustantivos
   if (topicNormalized.includes('sustantivo') || topicNormalized.includes('sustantivos')) {
     return `
@@ -1942,103 +3155,11 @@ TEXTOS INSTRUCTIVOS
   return null;
 }
 
-function generateGenericContent(topic: string, subject: string, course: string): string {
-  return `
-CONTENIDO EDUCATIVO: ${topic.toUpperCase()}
-Libro: ${subject} - ${course}
-
-UNIDAD DE APRENDIZAJE
-
-1. INTRODUCCIÓN AL TEMA
-${topic} es un contenido fundamental del currículo de ${subject} para ${course}. Su estudio permite desarrollar competencias específicas establecidas en los objetivos de aprendizaje.
-
-2. OBJETIVOS DE APRENDIZAJE
-Al finalizar esta unidad, los estudiantes serán capaces de:
-- Comprender los conceptos básicos relacionados con ${topic}
-- Identificar los elementos principales del tema
-- Aplicar los conocimientos en situaciones prácticas
-- Relacionar el tema con otros contenidos de ${subject}
-- Desarrollar habilidades de pensamiento crítico
-
-3. CONCEPTOS FUNDAMENTALES
-
-3.1 Definición
-${topic} se define como un conjunto de conocimientos y habilidades que permiten comprender aspectos importantes de ${subject}.
-
-3.2 Características principales
-- El tema presenta componentes esenciales que deben ser identificados
-- Existe una estructura organizada de conceptos
-- Se relaciona con otros temas del currículo
-- Tiene aplicaciones en la vida cotidiana
-
-3.3 Elementos clave
-- Componente teórico: fundamentos conceptuales
-- Componente práctico: aplicaciones y ejemplos
-- Componente de evaluación: criterios de logro
-
-4. DESARROLLO DEL CONTENIDO
-
-4.1 Marco teórico
-El estudio de ${topic} requiere una comprensión progresiva de sus componentes. Los estudiantes deben ser capaces de identificar, analizar y aplicar estos conocimientos.
-
-4.2 Aspectos importantes
-- Primera dimensión: conceptos básicos y definiciones
-- Segunda dimensión: relaciones y conexiones
-- Tercera dimensión: aplicaciones prácticas
-
-4.3 Ejemplos y casos
-Los ejemplos permiten ilustrar los conceptos de manera concreta, facilitando la comprensión y la transferencia del aprendizaje.
-
-5. METODOLOGÍA DE ESTUDIO
-
-5.1 Pasos para el aprendizaje
-1. Lectura comprensiva del material
-2. Identificación de ideas principales
-3. Elaboración de resúmenes y esquemas
-4. Aplicación en ejercicios prácticos
-5. Autoevaluación del aprendizaje
-
-5.2 Recursos de apoyo
-- Textos escolares y material complementario
-- Recursos digitales y multimedia
-- Actividades grupales y colaborativas
-
-6. ACTIVIDADES SUGERIDAS
-
-ACTIVIDAD 1: Exploración inicial
-- Investigar sobre ${topic}
-- Compartir conocimientos previos
-
-ACTIVIDAD 2: Análisis de casos
-- Estudiar ejemplos concretos
-- Identificar patrones y características
-
-ACTIVIDAD 3: Aplicación práctica
-- Resolver problemas relacionados
-- Crear productos o presentaciones
-
-7. EVALUACIÓN DEL APRENDIZAJE
-
-Criterios de evaluación:
-- Comprensión de conceptos fundamentales
-- Capacidad de análisis y síntesis
-- Aplicación práctica de conocimientos
-- Trabajo colaborativo y participación
-
-8. CONEXIONES CON OTROS CONTENIDOS
-
-${topic} se relaciona con otros temas de ${subject} y con otras asignaturas del currículo, permitiendo una comprensión integrada del conocimiento.
-
-9. IMPORTANCIA DEL TEMA
-
-El dominio de ${topic} permite a los estudiantes:
-- Avanzar en su comprensión de ${subject}
-- Desarrollar habilidades de pensamiento crítico
-- Aplicar conocimientos en situaciones reales
-- Prepararse para contenidos más avanzados
-
-10. SÍNTESIS
-
-En resumen, ${topic} representa un contenido esencial que contribuye al desarrollo integral de los estudiantes de ${course} en el área de ${subject}.
-`;
+// IMPORTANTE: Esta función ahora retorna null para que la IA genere contenido real
+// En lugar de generar contenido genérico de plantilla que no aporta valor educativo
+function generateGenericContent(topic: string, subject: string, course: string): string | null {
+  // Retornar null para forzar que la IA genere contenido educativo real
+  // basado en sus conocimientos sobre el tema específico
+  console.log(`[pdf-content-generator] No hay contenido específico para "${topic}" en ${subject} (${course}). La IA generará el contenido.`);
+  return null;
 }

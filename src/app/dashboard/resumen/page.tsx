@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/language-context';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Newspaper, Download, Network, FileQuestion, ClipboardList, BookOpen, Loader2 } from 'lucide-react';
+import { Newspaper, Download, Network, FileQuestion, ClipboardList, BookOpen, Loader2, RefreshCw } from 'lucide-react';
 import { BookCourseSelector } from '@/components/common/book-course-selector';
 import { useToast } from "@/hooks/use-toast";
 import { useAIProgress } from "@/hooks/use-ai-progress";
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { contentDB } from '@/lib/sql-content';
 import { useAuth } from '@/contexts/auth-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { analyzeMathPdfTopics } from '@/ai/flows/analyze-math-pdf-topics';
+import { analyzeSubjectTopics } from '@/ai/flows/analyze-subject-topics';
 
 // Types for API response
 interface GenerateSummaryResponse {
@@ -99,72 +99,97 @@ export default function ResumenPage() {
   const [keyPointsRequested, setKeyPointsRequested] = useState(false);
   const [currentTopicForDisplay, setCurrentTopicForDisplay] = useState('');
   
-  // Estados para análisis de PDF de matemáticas
-  const [mathTopics, setMathTopics] = useState<string[]>([]);
-  const [selectedMathTopic, setSelectedMathTopic] = useState('');
-  const [isAnalyzingPdf, setIsAnalyzingPdf] = useState(false);
-  const [isMathSelection, setIsMathSelection] = useState(false);
+  // Estados para análisis automático de temas de cualquier asignatura
+  const [subjectTopics, setSubjectTopics] = useState<string[]>([]);
+  const [selectedSubjectTopic, setSelectedSubjectTopic] = useState<string>('');
+  const [isAnalyzingSubject, setIsAnalyzingSubject] = useState(false);
+  const [subjectBookTitle, setSubjectBookTitle] = useState<string>('');
+  
+  // Ref para evitar llamadas duplicadas
+  const hasAnalyzedRef = useRef<string>('');
 
-  // Detectar si es matemáticas y analizar el PDF automáticamente
+  // Detectar el tipo de asignatura para mostrar icono apropiado
+  const subjectIcon = useMemo(() => {
+    const s = `${selectedBook || ''} ${selectedSubject || ''}`.toLowerCase();
+    if (/matem|math|algebra|geometr/i.test(s)) return '🔢';
+    if (/lenguaje|comunicacion|language|literatura/i.test(s)) return '📚';
+    if (/ciencia|natural|science|biolog/i.test(s)) return '🔬';
+    if (/historia|geography|social|civica/i.test(s)) return '🌍';
+    return '📖';
+  }, [selectedBook, selectedSubject]);
+
+  // Limpiar el resumen cuando cambia el curso o la asignatura
   useEffect(() => {
-    const checkMathSubject = async () => {
-      const subjectLower = selectedSubject.toLowerCase();
-      const isMath = subjectLower.includes('matemat') || 
-                     subjectLower.includes('math') || 
-                     subjectLower.includes('álgebra') || 
-                     subjectLower.includes('algebra') ||
-                     subjectLower.includes('geometr') ||
-                     subjectLower.includes('cálculo') ||
-                     subjectLower.includes('calculo') ||
-                     subjectLower.includes('trigonometr') ||
-                     subjectLower.includes('aritmética') ||
-                     subjectLower.includes('aritmetica');
-      
-      setIsMathSelection(isMath);
-      
-      if (isMath && selectedCourse) {
-        setIsAnalyzingPdf(true);
-        setMathTopics([]);
-        setSelectedMathTopic('');
-        
-        try {
-          // Analizar el PDF de matemáticas de la biblioteca
-          const result = await analyzeMathPdfTopics({
-            courseLevel: selectedCourse,
-            language: currentUiLanguage
-          });
-          
-          if (result.topics && result.topics.length > 0) {
-            setMathTopics(result.topics);
-            toast({
-              title: translate('mathTopicsDetected') || '📚 Temas detectados',
-              description: `${result.topics.length} ${translate('mathTopicsFound') || 'temas de matemáticas encontrados en el PDF'}`,
-              variant: 'default'
-            });
-          }
-        } catch (error) {
-          console.error('Error analyzing math PDF:', error);
-        } finally {
-          setIsAnalyzingPdf(false);
-        }
-      } else {
-        setMathTopics([]);
-        setSelectedMathTopic('');
-      }
-    };
-    
-    checkMathSubject();
-  }, [selectedSubject, selectedCourse, currentUiLanguage]);
+    // Limpiar el resumen anterior cuando cambia el curso o asignatura
+    setSummaryResult(null);
+    setCurrentTopicForDisplay('');
+    setTopic('');
+  }, [selectedCourse, selectedSubject]);
 
-  // Cuando se selecciona un tema de matemáticas, actualizar el campo de tema
-  const handleMathTopicSelect = (topicValue: string) => {
-    setSelectedMathTopic(topicValue);
-    if (topicValue) {
-      setTopic(topicValue);
+  // Analizar automáticamente los temas cuando se selecciona cualquier asignatura
+  useEffect(() => {
+    const analyzeKey = `${selectedCourse}_${selectedSubject}`;
+    
+    if (selectedCourse && selectedSubject && hasAnalyzedRef.current !== analyzeKey) {
+      hasAnalyzedRef.current = analyzeKey;
+      setIsAnalyzingSubject(true);
+      setSubjectTopics([]);
+      setSelectedSubjectTopic('');
+      setSubjectBookTitle('');
+      
+      console.log('[Resumen] Starting subject analysis for:', selectedCourse, selectedSubject);
+      
+      analyzeSubjectTopics({
+        courseName: selectedCourse,
+        subjectName: selectedSubject,
+        language: currentUiLanguage,
+      }).then((res) => {
+        console.log('[Resumen] Subject analysis result:', res);
+        if (res.topics && res.topics.length > 0) {
+          setSubjectTopics(res.topics);
+          setSubjectBookTitle(res.bookTitle || '');
+          toast({
+            title: translate('quizPdfAnalyzeDone') || 'Análisis completado',
+            description: `${translate('quizPdfTopicsFound') || 'Temas detectados'}: ${res.topics.length}`,
+            variant: 'default',
+          });
+        }
+      }).catch((e) => {
+        console.error('[Resumen] Error analizando asignatura:', e);
+      }).finally(() => {
+        setIsAnalyzingSubject(false);
+      });
+    } else if (!selectedSubject) {
+      // Limpiar cuando no hay asignatura
+      setSubjectTopics([]);
+      setSelectedSubjectTopic('');
+      setSubjectBookTitle('');
     }
-  };
+  }, [selectedCourse, selectedSubject, currentUiLanguage, toast, translate]);
+
+  // Cuando se selecciona un tema de la asignatura, actualizar el campo de tema
+  const handleSubjectTopicSelect = useCallback((value: string) => {
+    setSelectedSubjectTopic(value);
+    if (value) setTopic(value);
+  }, []);
+
+  // Función para resetear todos los filtros a su estado inicial
+  const resetFilters = useCallback(() => {
+    setSelectedCourse('');
+    setSelectedBook('');
+    setSelectedSubject('');
+    setTopic('');
+    setSelectedSubjectTopic('');
+    setSubjectTopics([]);
+    setSubjectBookTitle('');
+    setIncludeKeyPoints(false);
+    hasAnalyzedRef.current = '';
+  }, []);
 
   const handleGenerateSummary = async () => {
+    // IMPORTANTE: Limpiar el resumen anterior antes de generar uno nuevo
+    setSummaryResult(null);
+    
     if (!selectedSubject) {
       toast({ 
         title: translate('errorGenerating'), 
@@ -382,50 +407,74 @@ export default function ResumenPage() {
             selectedSubject={selectedSubject}
             showSubjectSelector={true}
             showBookSelector={false}
-            onCourseChange={setSelectedCourse}
+            onCourseChange={(course) => {
+              // Cuando cambia el curso, resetear también la asignatura y tema
+              setSelectedCourse(course);
+              setSelectedSubject('');
+              setSelectedBook('');
+              setTopic('');
+              setSelectedSubjectTopic('');
+              setSubjectTopics([]);
+              setSubjectBookTitle('');
+              hasAnalyzedRef.current = '';
+              setSummaryResult(null);
+            }}
             onBookChange={(book) => {
               setSelectedBook(book);
             }}
-            onSubjectChange={setSelectedSubject}
+            onSubjectChange={(subject) => {
+              // Cuando cambia la asignatura, resetear el tema
+              setSelectedSubject(subject);
+              setTopic('');
+              setSelectedSubjectTopic('');
+              setSummaryResult(null);
+            }}
           />
-          
-          {/* Análisis automático de PDF para Matemáticas */}
-          {isMathSelection && (
-            <div className="space-y-3 p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg border border-blue-500/20">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-400">
-                <BookOpen className="w-4 h-4" />
-                <span>{translate('summaryMathPdfAnalysis')}</span>
+
+          {/* Sección automática de temas de cualquier asignatura desde la biblioteca */}
+          {selectedSubject && (
+            <div className="space-y-3 p-4 border border-blue-500/30 rounded-lg bg-blue-500/5">
+              <div className="space-y-1">
+                <Label className="text-left block font-semibold text-blue-600 dark:text-blue-400">
+                  <BookOpen className="w-4 h-4 inline mr-2" />
+                  {subjectIcon} {translate('summarySubjectTopicsTitle') || `Temas de ${selectedSubject}`}
+                </Label>
+                {subjectBookTitle && (
+                  <p className="text-left text-xs text-muted-foreground">
+                    📚 {subjectBookTitle}
+                  </p>
+                )}
               </div>
-              
-              {isAnalyzingPdf ? (
+
+              {isAnalyzingSubject ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{translate('summaryAnalyzingMathPdf')}</span>
+                  {translate('summaryAnalyzingSubject') || 'Analizando temas de la asignatura...'}
                 </div>
-              ) : mathTopics.length > 0 ? (
+              ) : subjectTopics.length > 0 ? (
                 <div className="space-y-2">
                   <Label className="text-left block text-sm">
-                    {translate('summarySelectMathTopic')}
+                    {translate('summarySelectTopic') || 'Selecciona un tema para generar el resumen:'}
                   </Label>
-                  <Select value={selectedMathTopic} onValueChange={handleMathTopicSelect}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={translate('summaryChooseMathTopic')} />
+                  <Select value={selectedSubjectTopic} onValueChange={handleSubjectTopicSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={translate('summaryChooseTopic') || 'Elige un tema…'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {mathTopics.map((mathTopic, index) => (
-                        <SelectItem key={index} value={mathTopic}>
-                          📐 {mathTopic}
+                      {subjectTopics.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {translate('summaryMathTopicHint')}
+                  <p className="text-left text-xs text-muted-foreground">
+                    💡 {translate('summaryTopicHint') || 'El resumen incluirá definiciones, ejemplos y ejercicios.'}
                   </p>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  {translate('summaryNoMathTopicsFound')}
+                <p className="text-left text-xs text-muted-foreground">
+                  {translate('summaryNoTopics') || 'Selecciona un curso y asignatura para ver los temas disponibles.'}
                 </p>
               )}
             </div>
@@ -438,8 +487,9 @@ export default function ResumenPage() {
               rows={3}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder={translate('summaryTopicPlaceholder')}
+              placeholder={!selectedCourse ? (translate('summarySelectCourseFirst') || 'Primero selecciona un curso...') : !selectedSubject ? (translate('summarySelectSubjectFirst') || 'Primero selecciona una asignatura...') : translate('summaryTopicPlaceholder')}
               className="text-base md:text-sm"
+              disabled={!selectedCourse || !selectedSubject}
             />
           </div>
           
@@ -448,14 +498,15 @@ export default function ResumenPage() {
               id="include-key-points"
               checked={includeKeyPoints}
               onCheckedChange={(checked) => setIncludeKeyPoints(Boolean(checked))}
+              disabled={!selectedCourse || !selectedSubject}
             />
-            <Label htmlFor="include-key-points" className="text-sm font-medium">
+            <Label htmlFor="include-key-points" className={cn("text-sm font-medium", (!selectedCourse || !selectedSubject) && "text-muted-foreground")}>
               {translate('summaryIncludeKeyPointsShort')}
             </Label>
           </div>
           <Button
             onClick={handleGenerateSummary}
-            disabled={isLoading}
+            disabled={isLoading || !selectedCourse || !selectedSubject || !topic.trim()}
             className={cn(
               "w-full font-semibold py-3 text-base md:text-sm home-card-button-blue",
               "hover:brightness-110 hover:shadow-lg hover:scale-105 transition-all duration-200"
@@ -499,7 +550,18 @@ export default function ResumenPage() {
                 )}
               </div>
             )}
-             <div className="mt-8 pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+             {/* Botón para crear nuevo resumen */}
+              <div className="mt-6 mb-4">
+                <Button
+                  onClick={resetFilters}
+                  variant="outline"
+                  className="w-full font-semibold py-2 px-6 rounded-lg transition-colors border-primary text-primary hover:bg-primary/10 text-xs sm:text-sm"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" /> {translate('summaryNewSummary') || 'Generar Nuevo Resumen'}
+                </Button>
+              </div>
+              
+             <div className="mt-4 pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <Button
                 onClick={handleDownloadPdf}
                 className="font-semibold py-2 px-6 rounded-lg transition-colors home-card-button-blue text-xs sm:text-sm"

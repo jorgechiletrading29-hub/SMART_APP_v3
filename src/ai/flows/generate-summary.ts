@@ -12,6 +12,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getOpenRouterClient, hasOpenRouterApiKey, OPENROUTER_MODELS } from '@/lib/openrouter-client';
 
 const GenerateSummaryInputSchema = z.object({
   bookTitle: z.string().describe('The title of the book to summarize from.'),
@@ -32,238 +33,532 @@ const GenerateSummaryOutputSchema = z.object({
 
 export type GenerateSummaryOutput = z.infer<typeof GenerateSummaryOutputSchema>;
 
-export async function generateSummary(input: GenerateSummaryInput): Promise<GenerateSummaryOutput> {
-  try {
-    // Check if API key is available
-    if (!process.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY === 'your_google_api_key_here') {
-      // Return comprehensive mock data for development
-      const mockSummary = generateMockSummary(input);
-      return mockSummary;
-    }
-    
-    return await generateSummaryFlow(input);
-  } catch (error) {
-    console.error('Error generating summary:', error);
-    // Return comprehensive fallback data instead of throwing
-    const fallbackSummary = generateMockSummary(input);
-    return fallbackSummary;
+// Función para generar resumen usando OpenRouter
+async function generateWithOpenRouter(input: GenerateSummaryInput): Promise<GenerateSummaryOutput> {
+  const client = getOpenRouterClient();
+  if (!client) {
+    throw new Error('OpenRouter client not available');
   }
+
+  const isSpanish = input.language === 'es';
+  
+  const systemPrompt = isSpanish 
+    ? `Eres un experto educador y creador de contenido pedagógico especializado en el currículo escolar chileno. Tu tarea es crear resúmenes educativos completos y de alta calidad en español.
+
+IMPORTANTE:
+- Genera contenido educativo REAL y ESPECÍFICO sobre el tema
+- NO uses frases genéricas como "es un tema importante" o "conjunto de conocimientos"
+- Incluye definiciones claras, ejemplos concretos y datos específicos
+- Usa formato Markdown con ## para títulos y ### para subtítulos
+- Usa **negrita** para términos importantes`
+    : `You are an expert educator and pedagogical content creator specialized in the Chilean school curriculum. Your task is to create complete, high-quality educational summaries in English.
+
+IMPORTANT:
+- Generate REAL and SPECIFIC educational content about the topic
+- DO NOT use generic phrases like "this is an important topic" or "set of knowledge"
+- Include clear definitions, concrete examples and specific data
+- Use Markdown format with ## for titles and ### for subtitles
+- Use **bold** for important terms`;
+
+  let userPrompt = isSpanish
+    ? `Genera un resumen educativo completo sobre "${input.topic}" para la asignatura de ${input.bookTitle}${input.course ? ` (nivel: ${input.course})` : ''}.
+
+El resumen DEBE incluir:
+1. **Introducción**: Qué es ${input.topic} y por qué es importante
+2. **Conceptos Fundamentales**: Definiciones claras y precisas
+3. **Desarrollo del Tema**: Explicación detallada con ejemplos
+4. **Características/Componentes**: Elementos principales del tema
+5. **Ejemplos Prácticos**: Casos concretos y aplicaciones
+6. **Importancia**: Relevancia del tema en la vida real
+7. **Conclusión**: Síntesis de los puntos principales`
+    : `Generate a complete educational summary about "${input.topic}" for the subject ${input.bookTitle}${input.course ? ` (level: ${input.course})` : ''}.
+
+The summary MUST include:
+1. **Introduction**: What is ${input.topic} and why is it important
+2. **Fundamental Concepts**: Clear and precise definitions
+3. **Topic Development**: Detailed explanation with examples
+4. **Characteristics/Components**: Main elements of the topic
+5. **Practical Examples**: Concrete cases and applications
+6. **Importance**: Relevance of the topic in real life
+7. **Conclusion**: Synthesis of main points`;
+
+  // Si hay contenido PDF, agregarlo como contexto
+  if (input.pdfContent && input.pdfContent.length > 100) {
+    userPrompt += isSpanish
+      ? `\n\n=== CONTENIDO DEL LIBRO DE TEXTO ===\nBasa tu resumen en esta información:\n\n${input.pdfContent}\n=== FIN DEL CONTENIDO ===`
+      : `\n\n=== TEXTBOOK CONTENT ===\nBase your summary on this information:\n\n${input.pdfContent}\n=== END OF CONTENT ===`;
+  }
+
+  if (input.includeKeyPoints) {
+    userPrompt += isSpanish
+      ? `\n\nAdemás, al final incluye una sección "## Puntos Clave" con exactamente 10 puntos importantes del tema, cada uno en una línea separada comenzando con "- ".`
+      : `\n\nAlso, at the end include a "## Key Points" section with exactly 10 important points about the topic, each on a separate line starting with "- ".`;
+  }
+
+  console.log('[generate-summary] Calling OpenRouter API...');
+  const response = await client.generateText(systemPrompt, userPrompt, {
+    model: OPENROUTER_MODELS.GPT_4O_MINI,
+    temperature: 0.7,
+    maxTokens: 4096,
+  });
+  console.log('[generate-summary] OpenRouter response received');
+
+  // Extraer puntos clave si fueron solicitados
+  let keyPoints: string[] | undefined;
+  if (input.includeKeyPoints) {
+    const keyPointsMatch = response.match(/##\s*(?:Puntos Clave|Key Points)\s*\n([\s\S]*?)(?=\n##|$)/i);
+    if (keyPointsMatch) {
+      keyPoints = keyPointsMatch[1]
+        .split('\n')
+        .filter(line => line.trim().startsWith('-'))
+        .map(line => line.replace(/^-\s*/, '').trim())
+        .filter(point => point.length > 0)
+        .slice(0, 10);
+    }
+  }
+
+  return {
+    summary: response,
+    keyPoints,
+    progress: isSpanish 
+      ? `Resumen generado exitosamente usando OpenRouter para "${input.topic}".`
+      : `Summary successfully generated using OpenRouter for "${input.topic}".`,
+  };
+}
+
+export async function generateSummary(input: GenerateSummaryInput): Promise<GenerateSummaryOutput> {
+  // Primero intentar con OpenRouter (prioridad principal)
+  const hasOpenRouter = hasOpenRouterApiKey();
+  console.log('[generate-summary] OpenRouter API available:', hasOpenRouter ? 'Yes' : 'No');
+  
+  if (hasOpenRouter) {
+    try {
+      console.log('[generate-summary] Trying OpenRouter first...');
+      const result = await generateWithOpenRouter(input);
+      console.log('[generate-summary] OpenRouter successful!');
+      return result;
+    } catch (error: any) {
+      console.error('[generate-summary] OpenRouter error:', error?.message || error);
+      // Continuar con Google Gemini como fallback
+    }
+  }
+
+  // Fallback a Google Gemini
+  const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
+  const hasValidApiKey = apiKey && apiKey !== 'your_google_api_key_here' && apiKey.length > 10;
+  
+  console.log('[generate-summary] Google API key available:', hasValidApiKey ? 'Yes' : 'No');
+  console.log('[generate-summary] Input topic:', input.topic);
+  console.log('[generate-summary] Input subject:', input.bookTitle);
+  console.log('[generate-summary] Has PDF content:', input.pdfContent ? `${input.pdfContent.length} chars` : 'No');
+  
+  // Intentar usar Google Gemini si hay API key
+  if (hasValidApiKey) {
+    try {
+      console.log('[generate-summary] Calling Google Gemini AI flow...');
+      const result = await generateSummaryFlow(input);
+      console.log('[generate-summary] Google AI flow successful');
+      return result;
+    } catch (error: any) {
+      console.error('[generate-summary] Error in Google AI flow:', error);
+      
+      // Detectar error de cuota excedida
+      if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
+        console.log('[generate-summary] Quota exceeded, using fallback...');
+        return generateQuotaExceededFallback(input);
+      }
+      
+      // Si falla la IA por otra razón, usar el fallback
+    }
+  }
+  
+  // Fallback: usar contenido del PDF si está disponible
+  console.log('[generate-summary] Using fallback with PDF content...');
+  return generateMockSummary(input);
+}
+
+function generateQuotaExceededFallback(input: GenerateSummaryInput): GenerateSummaryOutput {
+  const isSpanish = input.language === 'es';
+  
+  // Si hay contenido PDF, usarlo
+  if (input.pdfContent && input.pdfContent.length > 100) {
+    const realSummary = generateRealSummaryFromContent(input.topic, input.bookTitle, input.pdfContent, isSpanish, input.course);
+    const realKeyPoints = input.includeKeyPoints 
+      ? extractRealKeyPoints(input.pdfContent, input.topic, isSpanish)
+      : undefined;
+    
+    return {
+      summary: realSummary,
+      keyPoints: realKeyPoints,
+      progress: isSpanish ? 
+        'Resumen generado desde el contenido del libro (IA temporalmente no disponible por límite de cuota).' :
+        'Summary generated from book content (AI temporarily unavailable due to quota limit).'
+    };
+  }
+  
+  // Mensaje específico de cuota excedida
+  const quotaMessage = isSpanish 
+    ? `# ⚠️ Límite de API Alcanzado
+
+## El servicio de IA ha alcanzado su límite de uso
+
+La API de Google Gemini ha excedido su cuota gratuita. Esto es temporal.
+
+### Soluciones:
+
+1. **Esperar**: La cuota se resetea automáticamente (generalmente cada día)
+2. **Usar temas con contenido predefinido**: Algunos temas como "Sistema respiratorio", "La célula", "Fracciones" tienen contenido incorporado
+3. **Contactar al administrador**: Para actualizar el plan de la API
+
+### Temas disponibles sin conexión a IA:
+
+**Ciencias Naturales:**
+- Sistema respiratorio
+- La célula
+- Sistema digestivo
+- El ciclo del agua
+- Microorganismos
+- Sistema nervioso
+- Sistema óseo y muscular
+
+**Matemáticas:**
+- Fracciones
+- Números enteros
+- Ecuaciones
+- Geometría básica
+
+**Lenguaje:**
+- Sujeto y predicado
+- Tipos de textos
+- Comprensión lectora
+
+---
+
+*Por favor, intenta con uno de estos temas o espera a que se resetee la cuota de la API.*`
+    : `# ⚠️ API Limit Reached
+
+## The AI service has reached its usage limit
+
+The Google Gemini API has exceeded its free quota. This is temporary.
+
+### Solutions:
+
+1. **Wait**: The quota resets automatically (usually daily)
+2. **Use topics with predefined content**: Some topics like "Respiratory system", "The cell", "Fractions" have built-in content
+3. **Contact administrator**: To upgrade the API plan
+
+---
+
+*Please try one of the predefined topics or wait for the API quota to reset.*`;
+
+  return {
+    summary: quotaMessage,
+    keyPoints: undefined,
+    progress: isSpanish ? 
+      'Límite de cuota de API alcanzado. Intenta más tarde.' :
+      'API quota limit reached. Please try again later.'
+  };
 }
 
 function generateMockSummary(input: GenerateSummaryInput): GenerateSummaryOutput {
   const isSpanish = input.language === 'es';
   
-  // If we have PDF content, use it to generate a more accurate summary
-  const mockSummary = input.pdfContent 
-    ? generateContentBasedSummary(input.topic, input.bookTitle, input.pdfContent, isSpanish, input.course)
-    : (isSpanish ? generateSpanishMockSummary(input.topic, input.bookTitle) : generateEnglishMockSummary(input.topic, input.bookTitle));
+  // If we have PDF content, generate a real summary from it
+  if (input.pdfContent && input.pdfContent.length > 100) {
+    const realSummary = generateRealSummaryFromContent(input.topic, input.bookTitle, input.pdfContent, isSpanish, input.course);
+    const realKeyPoints = input.includeKeyPoints 
+      ? extractRealKeyPoints(input.pdfContent, input.topic, isSpanish)
+      : undefined;
+    
+    return {
+      summary: realSummary,
+      keyPoints: realKeyPoints,
+      progress: isSpanish ? 
+        'Resumen generado basado en el contenido educativo del tema.' :
+        'Summary generated based on educational topic content.'
+    };
+  }
+  
+  // Si no hay contenido PDF, generar un mensaje indicando que la IA debe generar el contenido
+  // En lugar de un resumen genérico que no aporta valor
+  const noContentMessage = isSpanish 
+    ? `# Error: No se pudo generar el resumen
 
-  const mockKeyPoints = input.includeKeyPoints ? 
-    (input.pdfContent 
-      ? generateContentBasedKeyPoints(input.pdfContent, input.topic, isSpanish)
-      : (isSpanish ? generateSpanishKeyPoints(input.topic) : generateEnglishKeyPoints(input.topic))) : 
-    undefined;
+## El sistema no pudo acceder a la IA
+
+Para generar un resumen educativo sobre "${input.topic}", el sistema necesita conectarse con el servicio de IA.
+
+### Posibles causas:
+- La API key de Google/Gemini no está configurada
+- El servicio de IA no está disponible temporalmente
+
+### Solución:
+Por favor, contacta al administrador del sistema para verificar la configuración de la API de Gemini.
+
+---
+
+*Este mensaje aparece porque no hay contenido específico del libro para este tema y no se pudo conectar con la IA.*`
+    : `# Error: Could not generate summary
+
+## The system could not access the AI
+
+To generate an educational summary about "${input.topic}", the system needs to connect to the AI service.
+
+### Possible causes:
+- The Google/Gemini API key is not configured
+- The AI service is temporarily unavailable
+
+### Solution:
+Please contact the system administrator to verify the Gemini API configuration.
+
+---
+
+*This message appears because there is no specific book content for this topic and the AI connection failed.*`;
 
   return {
-    summary: mockSummary,
-    keyPoints: mockKeyPoints,
+    summary: noContentMessage,
+    keyPoints: undefined,
     progress: isSpanish ? 
-      'Resumen generado basado en el contenido del libro.' :
-      'Summary generated based on book content.'
+      'Error: No se pudo conectar con el servicio de IA.' :
+      'Error: Could not connect to the AI service.'
   };
 }
 
-// Generate a summary based on actual PDF content
-function generateContentBasedSummary(topic: string, bookTitle: string, pdfContent: string, isSpanish: boolean, course?: string): string {
-  const courseInfo = course ? ` para ${course}` : '';
+// Generate a REAL summary by processing the actual PDF content
+function generateRealSummaryFromContent(topic: string, bookTitle: string, pdfContent: string, isSpanish: boolean, course?: string): string {
+  const courseInfo = course ? (isSpanish ? ` para ${course}` : ` for ${course}`) : '';
   
+  // Parse and structure the PDF content
+  const sections = parsePdfContentIntoSections(pdfContent);
+  
+  // Build a real educational summary
   if (isSpanish) {
-    return `# RESUMEN - ${topic.toUpperCase()}
-
-## Información del Material
-**Asignatura:** ${bookTitle}${courseInfo}
-**Tema:** ${topic}
-
----
-
-## Introducción
-
-Este resumen está basado en el contenido del libro de texto "${bookTitle}" y aborda de manera detallada el tema "${topic}". A continuación se presenta un análisis estructurado del material educativo, fundamentado en los contenidos curriculares oficiales.
-
----
-
-## Contenido del Libro
-
-${pdfContent}
-
----
-
-## Análisis y Desarrollo
-
-### Conceptos Fundamentales
-
-El tema "${topic}" es un contenido esencial del currículo de ${bookTitle}${courseInfo}. Los conceptos presentados en el libro de texto proporcionan una base sólida para la comprensión de esta materia.
-
-### Importancia Educativa
-
-El estudio de ${topic} permite a los estudiantes:
-
-- **Desarrollar conocimientos específicos** relacionados con el área de ${bookTitle}
-- **Comprender relaciones conceptuales** entre los diferentes elementos del tema
-- **Aplicar lo aprendido** en situaciones prácticas y de la vida cotidiana
-- **Prepararse para contenidos más avanzados** en niveles posteriores
-
-### Conexiones Curriculares
-
-Este tema se relaciona con otros contenidos del currículo, permitiendo una comprensión integrada. Los estudiantes pueden establecer conexiones con:
-
-- Contenidos previos que sirven como base
-- Temas paralelos en otras asignaturas
-- Aplicaciones en la vida cotidiana
-
----
-
-## Síntesis del Aprendizaje
-
-El contenido presentado sobre "${topic}" representa un componente fundamental del currículo de ${bookTitle}. La comprensión profunda de estos conceptos es esencial para el desarrollo académico de los estudiantes.
-
-### Recomendaciones de Estudio
-
-1. **Lectura activa:** Subrayar ideas principales y tomar notas
-2. **Práctica constante:** Realizar ejercicios y actividades propuestas
-3. **Conexión con la realidad:** Buscar ejemplos en la vida cotidiana
-4. **Revisión periódica:** Repasar el material regularmente
-5. **Consulta de dudas:** No dejar preguntas sin resolver
-
----
-
-*Este resumen fue generado a partir del contenido oficial del libro de texto de ${bookTitle}${courseInfo}.*`;
+    let summary = `# RESUMEN: ${topic.toUpperCase()}\n\n`;
+    summary += `## Información General\n`;
+    summary += `**Asignatura:** ${bookTitle}${courseInfo}\n`;
+    summary += `**Tema:** ${topic}\n\n`;
+    summary += `---\n\n`;
+    
+    // Introduction based on content
+    summary += `## Introducción\n\n`;
+    if (sections.introduction) {
+      summary += sections.introduction + '\n\n';
+    } else {
+      summary += `${topic} es un tema fundamental en el estudio de ${bookTitle}. A continuación se presenta el contenido educativo completo basado en el currículo oficial.\n\n`;
+    }
+    
+    // Main content - process each section
+    summary += `## Contenido Educativo\n\n`;
+    
+    for (const section of sections.mainSections) {
+      if (section.title) {
+        summary += `### ${section.title}\n\n`;
+      }
+      summary += section.content + '\n\n';
+    }
+    
+    // If there are definitions, add them
+    if (sections.definitions.length > 0) {
+      summary += `## Conceptos Clave\n\n`;
+      for (const def of sections.definitions) {
+        summary += `**${def.term}:** ${def.definition}\n\n`;
+      }
+    }
+    
+    // If there are examples, add them
+    if (sections.examples.length > 0) {
+      summary += `## Ejemplos y Aplicaciones\n\n`;
+      for (const example of sections.examples) {
+        summary += `- ${example}\n`;
+      }
+      summary += '\n';
+    }
+    
+    // Conclusion
+    summary += `## Conclusión\n\n`;
+    summary += `El estudio de ${topic} es esencial para comprender los fundamentos de ${bookTitle}. `;
+    summary += `Los conceptos presentados proporcionan una base sólida para el aprendizaje continuo en esta área del conocimiento.\n\n`;
+    
+    summary += `---\n\n`;
+    summary += `*Resumen generado a partir del contenido oficial del libro de ${bookTitle}${courseInfo}.*`;
+    
+    return summary;
   } else {
-    return `# SUMMARY - ${topic.toUpperCase()}
-
-## Material Information
-**Subject:** ${bookTitle}${course ? ` for ${course}` : ''}
-**Topic:** ${topic}
-
----
-
-## Introduction
-
-This summary is based on the content from the textbook "${bookTitle}" and covers the topic "${topic}" in detail. Below is a structured analysis of the educational material, grounded in the official curriculum content.
-
----
-
-## Book Content
-
-${pdfContent}
-
----
-
-## Analysis and Development
-
-### Fundamental Concepts
-
-The topic "${topic}" is an essential content of the ${bookTitle} curriculum${course ? ` for ${course}` : ''}. The concepts presented in the textbook provide a solid foundation for understanding this subject.
-
-### Educational Importance
-
-The study of ${topic} allows students to:
-
-- **Develop specific knowledge** related to the ${bookTitle} area
-- **Understand conceptual relationships** between different elements of the topic
-- **Apply learning** in practical and everyday situations
-- **Prepare for more advanced content** in later levels
-
-### Curricular Connections
-
-This topic relates to other curriculum content, allowing for integrated understanding. Students can establish connections with:
-
-- Previous content that serves as a foundation
-- Parallel topics in other subjects
-- Applications in everyday life
-
----
-
-## Learning Synthesis
-
-The content presented about "${topic}" represents a fundamental component of the ${bookTitle} curriculum. A deep understanding of these concepts is essential for students' academic development.
-
-### Study Recommendations
-
-1. **Active reading:** Highlight main ideas and take notes
-2. **Constant practice:** Complete proposed exercises and activities
-3. **Connect with reality:** Look for examples in everyday life
-4. **Periodic review:** Review material regularly
-5. **Ask questions:** Don't leave doubts unresolved
-
----
-
-*This summary was generated from the official textbook content of ${bookTitle}${course ? ` for ${course}` : ''}.*`;
+    let summary = `# SUMMARY: ${topic.toUpperCase()}\n\n`;
+    summary += `## General Information\n`;
+    summary += `**Subject:** ${bookTitle}${courseInfo}\n`;
+    summary += `**Topic:** ${topic}\n\n`;
+    summary += `---\n\n`;
+    
+    summary += `## Introduction\n\n`;
+    if (sections.introduction) {
+      summary += sections.introduction + '\n\n';
+    } else {
+      summary += `${topic} is a fundamental topic in the study of ${bookTitle}. Below is the complete educational content based on the official curriculum.\n\n`;
+    }
+    
+    summary += `## Educational Content\n\n`;
+    
+    for (const section of sections.mainSections) {
+      if (section.title) {
+        summary += `### ${section.title}\n\n`;
+      }
+      summary += section.content + '\n\n';
+    }
+    
+    if (sections.definitions.length > 0) {
+      summary += `## Key Concepts\n\n`;
+      for (const def of sections.definitions) {
+        summary += `**${def.term}:** ${def.definition}\n\n`;
+      }
+    }
+    
+    if (sections.examples.length > 0) {
+      summary += `## Examples and Applications\n\n`;
+      for (const example of sections.examples) {
+        summary += `- ${example}\n`;
+      }
+      summary += '\n';
+    }
+    
+    summary += `## Conclusion\n\n`;
+    summary += `The study of ${topic} is essential for understanding the fundamentals of ${bookTitle}. `;
+    summary += `The concepts presented provide a solid foundation for continued learning in this area of knowledge.\n\n`;
+    
+    summary += `---\n\n`;
+    summary += `*Summary generated from the official ${bookTitle} textbook content${courseInfo}.*`;
+    
+    return summary;
   }
 }
 
-// Generate key points based on actual PDF content
-function generateContentBasedKeyPoints(pdfContent: string, topic: string, isSpanish: boolean): string[] {
-  // Extract key sections from the content
-  const lines = pdfContent.split('\n').filter(line => line.trim().length > 0);
+// Parse PDF content into structured sections
+function parsePdfContentIntoSections(pdfContent: string): {
+  introduction: string;
+  mainSections: Array<{ title: string; content: string }>;
+  definitions: Array<{ term: string; definition: string }>;
+  examples: string[];
+} {
+  const lines = pdfContent.split('\n');
+  const result = {
+    introduction: '',
+    mainSections: [] as Array<{ title: string; content: string }>,
+    definitions: [] as Array<{ term: string; definition: string }>,
+    examples: [] as string[]
+  };
+  
+  let currentSection = { title: '', content: '' };
+  let isFirstParagraph = true;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    // Check if it's a section header (numbered or all caps)
+    const isHeader = /^(\d+\.?\s+)?[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+$/.test(line) ||
+                     /^#{1,3}\s+/.test(line) ||
+                     /^CAPÍTULO|^UNIDAD|^PARTE|^SECCIÓN/i.test(line);
+    
+    if (isHeader) {
+      // Save current section if it has content
+      if (currentSection.content.trim()) {
+        result.mainSections.push({ ...currentSection });
+      }
+      currentSection = { title: line.replace(/^#+\s*/, '').replace(/^\d+\.\s*/, ''), content: '' };
+      isFirstParagraph = false;
+      continue;
+    }
+    
+    // Check for definitions (term: definition or term - definition)
+    const defMatch = line.match(/^([A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s]+)[:–-]\s*(.+)/);
+    if (defMatch && defMatch[2].length > 20) {
+      result.definitions.push({ term: defMatch[1].trim(), definition: defMatch[2].trim() });
+    }
+    
+    // Check for examples (starts with - or • or "Ejemplo:")
+    if (/^[-•]\s+/.test(line) || /^Ejemplo:/i.test(line)) {
+      const example = line.replace(/^[-•]\s*/, '').replace(/^Ejemplo:\s*/i, '');
+      if (example.length > 15) {
+        result.examples.push(example);
+      }
+    }
+    
+    // Add to introduction if it's the first meaningful paragraph
+    if (isFirstParagraph && line.length > 50 && !result.introduction) {
+      result.introduction = line;
+      isFirstParagraph = false;
+      continue;
+    }
+    
+    // Add to current section content
+    if (currentSection.title || result.mainSections.length === 0) {
+      currentSection.content += line + '\n';
+    }
+  }
+  
+  // Don't forget the last section
+  if (currentSection.content.trim()) {
+    result.mainSections.push(currentSection);
+  }
+  
+  // If no sections were found, create one from the whole content
+  if (result.mainSections.length === 0) {
+    result.mainSections.push({ title: '', content: pdfContent });
+  }
+  
+  return result;
+}
+
+// Extract real key points from the PDF content
+function extractRealKeyPoints(pdfContent: string, topic: string, isSpanish: boolean): string[] {
   const keyPoints: string[] = [];
+  const lines = pdfContent.split('\n').filter(l => l.trim().length > 0);
   
-  // Look for important patterns in the content
+  // Extract definitions and important concepts
   for (const line of lines) {
-    const trimmedLine = line.trim();
+    const trimmed = line.trim();
     
-    // Skip very short lines or headers
-    if (trimmedLine.length < 20) continue;
+    // Skip short lines
+    if (trimmed.length < 30 || trimmed.length > 300) continue;
     
-    // Look for definition-like lines
-    if (trimmedLine.includes(':') && !trimmedLine.startsWith('-') && keyPoints.length < 10) {
-      const point = trimmedLine.replace(/^\d+\.\s*/, '').replace(/^[A-Z]+\s*/, '');
-      if (point.length > 30 && point.length < 300) {
-        keyPoints.push(`**${isSpanish ? 'Concepto clave' : 'Key concept'}:** ${point}`);
+    // Look for definition patterns
+    if (trimmed.includes(':') && !trimmed.startsWith('-') && keyPoints.length < 10) {
+      const colonIndex = trimmed.indexOf(':');
+      if (colonIndex > 3 && colonIndex < trimmed.length - 20) {
+        const term = trimmed.substring(0, colonIndex).trim();
+        const definition = trimmed.substring(colonIndex + 1).trim();
+        if (term.length < 50 && definition.length > 15) {
+          keyPoints.push(`**${term}:** ${definition}`);
+        }
       }
     }
     
-    // Look for bullet points with important content
-    if ((trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) && keyPoints.length < 10) {
-      const point = trimmedLine.replace(/^[-•]\s*/, '');
-      if (point.length > 20 && point.length < 200) {
-        keyPoints.push(`**${isSpanish ? 'Punto importante' : 'Important point'}:** ${point}`);
+    // Look for bullet points with educational content
+    if (/^[-•]/.test(trimmed) && keyPoints.length < 10) {
+      const content = trimmed.replace(/^[-•]\s*/, '');
+      if (content.length > 25) {
+        keyPoints.push(`${content}`);
+      }
+    }
+    
+    // Look for numbered items
+    if (/^\d+\.\s+[A-Za-z]/.test(trimmed) && keyPoints.length < 10) {
+      const content = trimmed.replace(/^\d+\.\s*/, '');
+      if (content.length > 25 && content.length < 250) {
+        keyPoints.push(`${content}`);
       }
     }
   }
   
-  // If we couldn't extract enough points, generate generic ones based on the topic
-  if (keyPoints.length < 5) {
-    if (isSpanish) {
-      keyPoints.push(
-        `**Definición fundamental:** ${topic} es un concepto esencial en el currículo educativo que requiere comprensión profunda.`,
-        `**Aplicación práctica:** Los conocimientos sobre ${topic} pueden aplicarse en situaciones de la vida cotidiana.`,
-        `**Conexión curricular:** ${topic} se relaciona con otros contenidos de la asignatura.`,
-        `**Desarrollo de habilidades:** El estudio de ${topic} desarrolla el pensamiento crítico y analítico.`,
-        `**Preparación continua:** Dominar ${topic} es fundamental para avanzar en contenidos más complejos.`
-      );
-    } else {
-      keyPoints.push(
-        `**Fundamental definition:** ${topic} is an essential concept in the educational curriculum requiring deep understanding.`,
-        `**Practical application:** Knowledge about ${topic} can be applied in everyday situations.`,
-        `**Curricular connection:** ${topic} relates to other subject content.`,
-        `**Skill development:** Studying ${topic} develops critical and analytical thinking.`,
-        `**Continuous preparation:** Mastering ${topic} is fundamental for advancing to more complex content.`
-      );
-    }
+  // Ensure we have at least 5 points
+  const prefix = isSpanish ? 'Punto clave sobre' : 'Key point about';
+  while (keyPoints.length < 5) {
+    keyPoints.push(`**${prefix} ${topic}:** ${isSpanish ? 'Concepto fundamental relacionado con el tema de estudio.' : 'Fundamental concept related to the study topic.'}`);
   }
   
-  // Ensure we have exactly 10 points
-  while (keyPoints.length < 10) {
-    const num = keyPoints.length + 1;
-    if (isSpanish) {
-      keyPoints.push(`**Punto ${num}:** Aspecto relevante del tema ${topic} que contribuye a la comprensión integral del contenido.`);
-    } else {
-      keyPoints.push(`**Point ${num}:** Relevant aspect of the topic ${topic} that contributes to comprehensive content understanding.`);
-    }
-  }
-  
-  return keyPoints.slice(0, 10);
+  // Return up to 10 unique points
+  const uniquePoints = [...new Set(keyPoints)];
+  return uniquePoints.slice(0, 10);
 }
 
 function generateSpanishMockSummary(topic: string, bookTitle: string): string {
@@ -552,63 +847,84 @@ const generateSummaryPrompt = ai.definePrompt({
   output: {
     schema: GenerateSummaryOutputSchema,
   },
-  prompt: `You are an AI assistant specialized in creating detailed educational summaries from Chilean curriculum textbooks. Your summaries MUST be based on the actual content provided from the textbook.
+  prompt: `Eres un experto educador y creador de contenido pedagógico especializado en el currículo escolar chileno. Tu tarea es crear resúmenes educativos completos y de alta calidad.
 
-Topic to Summarize: {{{topic}}}
-Book/Subject: {{{bookTitle}}}
-{{#if course}}Course Level: {{{course}}}{{/if}}
-Output Language: {{{language}}}
+INFORMACIÓN DEL RESUMEN A GENERAR:
+- Tema: {{{topic}}}
+- Asignatura: {{{bookTitle}}}
+{{#if course}}- Nivel: {{{course}}}{{/if}}
+- Idioma de salida: {{{language}}}
 
 {{#if pdfContent}}
-=== IMPORTANT: TEXTBOOK CONTENT TO USE AS PRIMARY SOURCE ===
-The following is the ACTUAL content from the textbook. Your summary MUST be based on this content:
+=== CONTENIDO DEL LIBRO DE TEXTO ===
+El siguiente es contenido REAL del libro de texto. Basa tu resumen en esta información:
 
 {{{pdfContent}}}
 
-=== END OF TEXTBOOK CONTENT ===
+=== FIN DEL CONTENIDO ===
+
+INSTRUCCIONES CUANDO HAY CONTENIDO DEL LIBRO:
+- Usa la información específica, definiciones y conceptos del contenido proporcionado
+- Incluye los datos, cifras y explicaciones del material fuente
+- Estructura el resumen siguiendo las secciones del libro
+- Incluye ejemplos específicos mencionados en el texto
+{{else}}
+NO HAY CONTENIDO ESPECÍFICO DEL LIBRO DISPONIBLE.
+
+INSTRUCCIONES CRÍTICAS CUANDO NO HAY CONTENIDO DEL LIBRO:
+⚠️ DEBES generar contenido educativo REAL Y ESPECÍFICO basado en tus conocimientos sobre "{{{topic}}}".
+
+Para "{{{topic}}}", DEBES explicar:
+- ¿Qué es exactamente {{{topic}}}? (definición real, no genérica)
+- ¿Cuáles son sus componentes o etapas específicas?
+- ¿Cómo funciona o cómo se aplica?
+- Ejemplos concretos y reales del tema
+- Datos y hechos específicos
+
+PROHIBIDO:
+❌ Frases genéricas como "es un tema importante para el desarrollo"
+❌ "permite comprender aspectos importantes de la asignatura"
+❌ "conjunto de conocimientos y habilidades"
+❌ Cualquier contenido que podría aplicarse a CUALQUIER tema
+
+OBLIGATORIO:
+✓ Contenido que SOLO aplica a "{{{topic}}}"
+✓ Definiciones y explicaciones precisas
+✓ Ejemplos específicos del tema
+✓ Información educativa verificable
 {{/if}}
 
-Instructions:
-1. Generate a comprehensive and detailed summary of the topic "{{{topic}}}" based PRIMARILY on the textbook content provided above.
-   
-   {{#if pdfContent}}
-   CRITICAL: Your summary MUST:
-   - Use the specific information, definitions, and concepts from the textbook content above
-   - Reference the actual facts, figures, and explanations provided in the source material
-   - Structure the summary around the key sections and concepts from the book
-   - Include specific examples and details mentioned in the textbook
-   - DO NOT make up information that is not in the provided content
-   - If the content mentions specific organs, processes, dates, formulas, or concepts, include them accurately
-   {{else}}
-   Since no specific textbook content was provided, create an educational summary based on typical Chilean curriculum standards for the subject "{{{bookTitle}}}" and topic "{{{topic}}}".
-   {{/if}}
-   
-   The summary MUST be written in the language specified by the 'language' input field:
-   - If 'language' is 'es': Write entirely in Spanish
-   - If 'language' is 'en': Write entirely in English
-   
-   Create a substantial, educational summary that could realistically reach up to 10,000 words. Focus on:
-   - Clear explanations of key concepts FROM THE PROVIDED CONTENT
-   - Educational examples and applications FROM THE TEXTBOOK
-   - Structured learning progression following the book's organization
-   - Age-appropriate content for the curriculum level
-   
-   Format using Markdown:
-   - Use ## for main section headings
-   - Use ### for subsections  
-   - Use **bold** for important terms
-   - Use double line breaks for paragraphs
-   - Include bullet points where appropriate
+FORMATO DEL RESUMEN:
+El idioma de salida es: {{{language}}}
+- Si el idioma es "es": Escribe TODO el resumen en ESPAÑOL.
+- Si el idioma es "en": Write the ENTIRE summary in ENGLISH.
+
+Crea un resumen educativo sustancial y detallado. El resumen DEBE incluir:
+
+## Estructura requerida:
+1. **Introducción**: Qué es {{{topic}}} y por qué es importante
+2. **Conceptos Fundamentales**: Definiciones claras y precisas
+3. **Desarrollo del Tema**: Explicación detallada con ejemplos
+4. **Características/Componentes**: Elementos principales del tema
+5. **Ejemplos Prácticos**: Casos concretos y aplicaciones
+6. **Importancia**: Relevancia del tema en la vida real
+7. **Conclusión**: Síntesis de los puntos principales
+
+## Formato Markdown:
+- Usa ## para títulos principales
+- Usa ### para subtítulos
+- Usa **negrita** para términos importantes
+- Usa listas con viñetas para enumerar elementos
+- Incluye espaciado adecuado entre secciones
 
 {{#if includeKeyPoints}}
-2. After the summary, extract exactly 10 key learning points that represent the most important takeaways FROM THE PROVIDED TEXTBOOK CONTENT.
-   These key points MUST be in the same language as the summary ({{{language}}}).
-   Make them educational and specific - they should reflect actual content from the book, not generic statements.
+## Puntos Clave:
+Después del resumen, proporciona exactamente 10 puntos clave que representen los conceptos más importantes del tema.
+Estos puntos deben ser ESPECÍFICOS y EDUCATIVOS, no frases genéricas.
+Cada punto debe enseñar algo concreto sobre {{{topic}}}.
 {{/if}}
 
-3. Focus on Chilean educational curriculum standards and make the content pedagogically sound for students studying {{{bookTitle}}}.
-
-Return the output in the specified JSON format with the summary in the "summary" field, key points (if requested) in the "keyPoints" array, and a progress message in the "progress" field.
+IMPORTANTE: El resumen debe ser EDUCATIVO y ESPECÍFICO. Si el tema es "El ciclo del agua", explica las etapas (evaporación, condensación, precipitación, etc.). Si es "Sujeto y predicado", explica qué son, cómo identificarlos, y da ejemplos de oraciones.
 `,
 });
 

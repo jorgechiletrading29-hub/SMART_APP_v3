@@ -32,6 +32,16 @@ async function extractPDFContent(bookTitle: string, topic: string, course?: stri
     
     if (book) {
       const content = generateTopicContent(book.subject, topic, book.course);
+      
+      // IMPORTANTE: Verificar si el contenido es genérico
+      // Si es genérico (empieza con "CONTENIDO EDUCATIVO:" y contiene frases genéricas),
+      // NO lo usamos, para que la IA genere el contenido basado en sus conocimientos
+      if (content && content.includes('CONTENIDO EDUCATIVO:') && 
+          content.includes('se define como un conjunto de conocimientos y habilidades')) {
+        console.log('[generate-summary] Detected generic content, will let AI generate from its knowledge');
+        return null;
+      }
+      
       return content;
     }
     
