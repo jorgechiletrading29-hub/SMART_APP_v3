@@ -4,6 +4,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { bookPDFs } from '@/lib/books-data';
+import { getTopicsWithDescriptions, TopicDescription } from '@/lib/topic-descriptions';
 
 const AnalyzeSubjectTopicsInputSchema = z.object({
   courseName: z.string().describe('Course name (e.g., "1ro Básico", "2do Medio").'),
@@ -16,9 +17,12 @@ export type AnalyzeSubjectTopicsInput = z.infer<typeof AnalyzeSubjectTopicsInput
 const AnalyzeSubjectTopicsOutputSchema = z.object({
   topics: z.array(z.string()).max(40).describe('Distinct topics detected for the subject.'),
   bookTitle: z.string().optional().describe('Title of the book analyzed.'),
+  topicDescriptions: z.record(z.any()).optional().describe('Descriptions for each topic.'),
 });
 
-export type AnalyzeSubjectTopicsOutput = z.infer<typeof AnalyzeSubjectTopicsOutputSchema>;
+export type AnalyzeSubjectTopicsOutput = z.infer<typeof AnalyzeSubjectTopicsOutputSchema> & {
+  topicDescriptions?: Record<string, TopicDescription>;
+};
 
 // Cache para evitar re-procesar
 const topicsCache = new Map<string, { topics: string[]; timestamp: number; bookTitle?: string }>();
@@ -780,7 +784,13 @@ export async function analyzeSubjectTopics(input: AnalyzeSubjectTopicsInput): Pr
     const cached = topicsCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       console.log('[analyze-subject] Using cached topics');
-      return { topics: cached.topics, bookTitle: cached.bookTitle };
+      // Intentar obtener descripciones si existen
+      const descriptionsData = getTopicsWithDescriptions(input.courseName, input.subjectName);
+      return { 
+        topics: cached.topics, 
+        bookTitle: cached.bookTitle,
+        topicDescriptions: descriptionsData?.descriptions
+      };
     }
 
     const subjectType = detectSubjectType(input.subjectName);
@@ -794,7 +804,20 @@ export async function analyzeSubjectTopics(input: AnalyzeSubjectTopicsInput): Pr
       normalize(b.subject).includes(normalize(input.subjectName).split(' ')[0])
     );
 
-    // Primero intentar obtener temas específicos por curso
+    // PRIMERO: Intentar obtener temas con descripciones detalladas (nuevos datos educativos)
+    const descriptionsData = getTopicsWithDescriptions(input.courseName, input.subjectName);
+    if (descriptionsData && descriptionsData.topics.length > 0) {
+      console.log('[analyze-subject] Using detailed topic descriptions for:', input.courseName, input.subjectName);
+      const result = {
+        topics: descriptionsData.topics,
+        bookTitle: book?.title || `${input.subjectName} - ${input.courseName}`,
+        topicDescriptions: descriptionsData.descriptions
+      };
+      topicsCache.set(cacheKey, { topics: result.topics, bookTitle: result.bookTitle, timestamp: Date.now() });
+      return result;
+    }
+
+    // Luego intentar obtener temas específicos por curso (sin descripciones)
     const specificTopics = getSpecificTopics(input.courseName, input.subjectName, input.language);
     if (specificTopics && specificTopics.length > 0) {
       const result = {

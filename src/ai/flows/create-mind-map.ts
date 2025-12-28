@@ -11,11 +11,14 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getContentGenerationContext, generateAIPromptInstructions } from '@/lib/topic-descriptions';
 
 // Input for the entire flow
 const CreateMindMapInputSchema = z.object({
   centralTheme: z.string().describe('The central theme of the mind map.'),
+  themeDescription: z.string().optional().describe('A description of the theme that provides orientation and context.'),
   bookTitle: z.string().describe('The title of the book to provide context for the mind map content.'),
+  courseName: z.string().optional().describe('The course/grade level for age-appropriate content.'),
   language: z.enum(['es', 'en']).describe('The language for the node labels (e.g., "es" for Spanish, "en" for English).'),
   isHorizontal: z.boolean().optional().describe('Whether the mind map should be rendered horizontally. Defaults to vertical.')
 });
@@ -266,14 +269,29 @@ async function generateStructureWithOpenRouter(input: CreateMindMapInput): Promi
 
   const isSpanish = input.language === 'es';
   
+  // Obtener contexto de generación basado en el curso
+  const courseContext = input.courseName ? getContentGenerationContext(input.courseName) : null;
+  const adaptationInstructions = courseContext ? generateAIPromptInstructions(courseContext, input.language) : '';
+  
+  // Construir orientación del tema si existe
+  const themeGuidance = input.themeDescription 
+    ? (isSpanish 
+        ? `\nOrientación del tema: ${input.themeDescription}`
+        : `\nTopic guidance: ${input.themeDescription}`)
+    : '';
+  
   const systemPrompt = isSpanish 
-    ? `Eres un experto en diseño instruccional. Genera estructuras jerárquicas para mapas mentales educativos.
-IMPORTANTE: Responde SOLO con JSON válido, sin texto adicional ni markdown.`
-    : `You are an expert in instructional design. Generate hierarchical structures for educational mind maps.
-IMPORTANT: Respond ONLY with valid JSON, no additional text or markdown.`;
+    ? `Eres un experto en diseño instruccional. Genera estructuras jerárquicas para mapas mentales educativos ADAPTADOS AL NIVEL DEL ESTUDIANTE.
+IMPORTANTE: Responde SOLO con JSON válido, sin texto adicional ni markdown.
+${adaptationInstructions}`
+    : `You are an expert in instructional design. Generate hierarchical structures for educational mind maps ADAPTED TO THE STUDENT'S LEVEL.
+IMPORTANT: Respond ONLY with valid JSON, no additional text or markdown.
+${adaptationInstructions}`;
 
   const userPrompt = isSpanish
-    ? `Genera la estructura de un mapa mental sobre "${input.centralTheme}" para la asignatura "${input.bookTitle}".
+    ? `Genera la estructura de un mapa mental sobre "${input.centralTheme}" para la asignatura "${input.bookTitle}"${input.courseName ? ` (${input.courseName})` : ''}.${themeGuidance}
+
+${courseContext ? `⚠️ IMPORTANTE: El estudiante tiene aproximadamente ${courseContext.approximateAge} años. Adapta el vocabulario y complejidad al nivel del estudiante.` : ''}
 
 Responde ÚNICAMENTE con este formato JSON exacto (sin markdown, sin \`\`\`):
 {
@@ -315,9 +333,12 @@ REGLAS:
 - Genera exactamente 4 ramas principales con 2-3 subtemas cada una
 - Usa emojis apropiados (🔬🌿🔢📚💡🌍⚡🎯) en las ramas principales
 - El contenido debe ser ESPECÍFICO y EDUCATIVO sobre "${input.centralTheme}"
+- ADAPTA el vocabulario y complejidad al nivel del estudiante
 - NO uses contenido genérico como "Elemento 1" o "Componente"
 - Responde SOLO el JSON, nada más`
-    : `Generate the structure of a mind map about "${input.centralTheme}" for the subject "${input.bookTitle}".
+    : `Generate the structure of a mind map about "${input.centralTheme}" for the subject "${input.bookTitle}"${input.courseName ? ` (${input.courseName})` : ''}.${themeGuidance}
+
+${courseContext ? `⚠️ IMPORTANT: The student is approximately ${courseContext.approximateAge} years old. Adapt vocabulary and complexity to the student's level.` : ''}
 
 Respond ONLY with this exact JSON format (no markdown, no \`\`\`):
 {
@@ -359,6 +380,7 @@ RULES:
 - Generate exactly 4 main branches with 2-3 subtopics each
 - Use appropriate emojis (🔬🌿🔢📚💡🌍⚡🎯) in main branches
 - Content must be SPECIFIC and EDUCATIONAL about "${input.centralTheme}"
+- ADAPT vocabulary and complexity to the student's level
 - DO NOT use generic content like "Element 1" or "Component"
 - Respond ONLY with JSON, nothing else`;
 

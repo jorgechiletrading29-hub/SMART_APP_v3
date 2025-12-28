@@ -15,6 +15,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { bookPDFs } from '@/lib/books-data';
 import { getOpenRouterClient, hasOpenRouterApiKey, OPENROUTER_MODELS } from '@/lib/openrouter-client';
+import { getContentGenerationContext, generateAIPromptInstructions } from '@/lib/topic-descriptions';
 
 // Cache para contenido de PDFs (evita descargas repetidas)
 const pdfContentCache = new Map<string, { pages: string[]; timestamp: number }>();
@@ -4441,8 +4442,9 @@ async function collectContextForInput(input: GenerateQuizInput): Promise<{ conte
 
 const GenerateQuizInputSchema = z.object({
   topic: z.string().describe('The topic for the quiz.'),
+  topicDescription: z.string().optional().describe('A description of the topic that provides orientation and context for the quiz.'),
   bookTitle: z.string().describe('The title of the book.'),
-  courseName: z.string().describe('The name of the course (used for context if needed).'),
+  courseName: z.string().describe('The name of the course (used for context and age-appropriate content).'),
   language: z.enum(['es', 'en']).describe('The language for the quiz content (e.g., "es" for Spanish, "en" for English).'),
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
@@ -4500,6 +4502,17 @@ export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQu
         : (isSpanish ? 'CUESTIONARIO' : 'QUIZ');
       const topicUpper = input.topic.toUpperCase();
       
+      // Obtener contexto de generación basado en el curso
+      const courseContext = input.courseName ? getContentGenerationContext(input.courseName) : null;
+      const adaptationInstructions = courseContext ? generateAIPromptInstructions(courseContext, input.language) : '';
+      
+      // Construir contexto del tema si hay descripción
+      const topicGuidance = input.topicDescription 
+        ? (isSpanish 
+            ? `\n📋 ORIENTACIÓN DEL TEMA:\n${input.topicDescription}\nUsa esta descripción para enfocar las preguntas.`
+            : `\n📋 TOPIC GUIDANCE:\n${input.topicDescription}\nUse this description to focus the questions.`)
+        : '';
+      
       // =====================================================================
       // PRIORIDAD 1: OpenRouter (más confiable y económico)
       // =====================================================================
@@ -4510,11 +4523,17 @@ export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQu
         if (openRouterClient) {
           try {
             const systemPrompt = isSpanish 
-              ? `Eres un experto educador y diseñador curricular. Genera cuestionarios educativos de alta calidad.`
-              : `You are an expert educator and curriculum designer. Generate high-quality educational quizzes.`;
+              ? `Eres un experto educador y diseñador curricular. Genera cuestionarios educativos de alta calidad ADAPTADOS AL NIVEL DEL ESTUDIANTE.
+              
+${adaptationInstructions}`
+              : `You are an expert educator and curriculum designer. Generate high-quality educational quizzes ADAPTED TO THE STUDENT'S LEVEL.
+              
+${adaptationInstructions}`;
             
             const userPrompt = isMath ? (isSpanish 
-              ? `Genera un cuestionario de 15 PROBLEMAS DE MATEMÁTICAS sobre "${input.topic}" para ${input.courseName}.
+              ? `Genera un cuestionario de 15 PROBLEMAS DE MATEMÁTICAS sobre "${input.topic}" para ${input.courseName}.${topicGuidance}
+
+${courseContext ? `⚠️ IMPORTANTE: El estudiante tiene aproximadamente ${courseContext.approximateAge} años. Adapta la dificultad de los problemas a su nivel.` : ''}
 
 Cada problema debe tener:
 1. Un enunciado claro (questionText) con emojis como 🔢, ➕, ➖, ✖️, ➗
@@ -4532,7 +4551,9 @@ Responde en JSON con formato:
 }
 
 Responde SOLO con JSON válido.`
-              : `Generate a quiz with 15 MATH PROBLEMS about "${input.topic}" for ${input.courseName}.
+              : `Generate a quiz with 15 MATH PROBLEMS about "${input.topic}" for ${input.courseName}.${topicGuidance}
+
+${courseContext ? `⚠️ IMPORTANT: The student is approximately ${courseContext.approximateAge} years old. Adapt the difficulty of the problems to their level.` : ''}
 
 Each problem must have:
 1. A clear statement (questionText) with emojis like 🔢, ➕, ➖, ✖️, ➗
@@ -4548,11 +4569,14 @@ Respond in JSON format:
 
 Respond ONLY with valid JSON.`)
             : (isSpanish 
-              ? `Genera un cuestionario educativo de 15 preguntas abiertas sobre "${input.topic}" del libro "${input.bookTitle}" para ${input.courseName}.
+              ? `Genera un cuestionario educativo de 15 preguntas abiertas sobre "${input.topic}" del libro "${input.bookTitle}" para ${input.courseName}.${topicGuidance}
+
+${courseContext ? `⚠️ IMPORTANTE: El estudiante tiene aproximadamente ${courseContext.approximateAge} años. Adapta las preguntas y respuestas a su nivel cognitivo.` : ''}
 
 Cada pregunta debe:
 1. Ser clara y específica sobre el tema
-2. Tener una respuesta esperada detallada y educativa
+2. Estar adaptada al nivel del estudiante
+3. Tener una respuesta esperada detallada y educativa
 
 Responde en JSON con formato:
 {
@@ -4563,11 +4587,14 @@ Responde en JSON con formato:
 }
 
 Responde SOLO con JSON válido.`
-              : `Generate an educational quiz with 15 open-ended questions about "${input.topic}" from the book "${input.bookTitle}" for ${input.courseName}.
+              : `Generate an educational quiz with 15 open-ended questions about "${input.topic}" from the book "${input.bookTitle}" for ${input.courseName}.${topicGuidance}
+
+${courseContext ? `⚠️ IMPORTANT: The student is approximately ${courseContext.approximateAge} years old. Adapt questions and answers to their cognitive level.` : ''}
 
 Each question must:
 1. Be clear and specific about the topic
-2. Have a detailed and educational expected answer
+2. Be adapted to the student's level
+3. Have a detailed and educational expected answer
 
 Respond in JSON format:
 {

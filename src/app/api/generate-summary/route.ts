@@ -73,10 +73,11 @@ export async function POST(request: NextRequest) {
     const input: GenerateSummaryInput = {
       bookTitle: body.bookTitle,
       topic: body.topic,
+      topicDescription: body.topicDescription, // Pass the topic description for orientation
       includeKeyPoints: body.includeKeyPoints,
       language: body.language,
       pdfContent: pdfContent || undefined, // Pass the extracted PDF content
-      course: body.course,
+      course: body.course, // Pass the course for age-appropriate content
     };
 
     // Generate the summary with the PDF content as context

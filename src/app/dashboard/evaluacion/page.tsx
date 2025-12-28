@@ -12,6 +12,7 @@ import { ClipboardList, PlayCircle, ChevronLeft, ChevronRight, PartyPopper, Awar
 import { BookCourseSelector } from '@/components/common/book-course-selector';
 import { generateEvaluationContent, type EvaluationQuestion } from '@/ai/flows/generate-evaluation-content';
 import { analyzeSubjectTopics } from '@/ai/flows/analyze-subject-topics';
+import { TopicDescription } from '@/lib/topic-descriptions';
 import { submitEvaluationAction, generateEvaluationAction } from '@/actions/evaluation-actions';
 import { useToast } from "@/hooks/use-toast";
 import { useAIProgress } from "@/hooks/use-ai-progress";
@@ -65,6 +66,7 @@ export default function EvaluacionPage() {
   const [selectedSubjectTopic, setSelectedSubjectTopic] = useState<string>('');
   const [isAnalyzingSubject, setIsAnalyzingSubject] = useState(false);
   const [subjectBookTitle, setSubjectBookTitle] = useState<string>('');
+  const [topicDescriptions, setTopicDescriptions] = useState<Record<string, TopicDescription>>({});
   const hasAnalyzedRef = useRef<string>('');
   
   // Evaluation state
@@ -171,6 +173,12 @@ export default function EvaluacionPage() {
         if (res.topics && res.topics.length > 0) {
           setSubjectTopics(res.topics);
           setSubjectBookTitle(res.bookTitle || '');
+          // Guardar las descripciones de temas si existen
+          if (res.topicDescriptions) {
+            setTopicDescriptions(res.topicDescriptions);
+          } else {
+            setTopicDescriptions({});
+          }
           toast({
             title: translate('quizPdfAnalyzeDone') || 'Análisis completado',
             description: `${translate('quizPdfTopicsFound') || 'Temas detectados'}: ${res.topics.length}`,
@@ -187,6 +195,7 @@ export default function EvaluacionPage() {
       setSubjectTopics([]);
       setSelectedSubjectTopic('');
       setSubjectBookTitle('');
+      setTopicDescriptions({});
     }
   }, [selectedCourse, selectedSubject, currentUiLanguage, toast, translate]);
 
@@ -1063,12 +1072,19 @@ export default function EvaluacionPage() {
         console.log("Using generateEvaluationAction as fallback...");
         console.log('🌍 Language from React context for fallback:', currentUiLanguage);
         
+        // Obtener la descripción del tema si existe
+        const topicDesc = selectedSubjectTopic && topicDescriptions[selectedSubjectTopic] 
+          ? topicDescriptions[selectedSubjectTopic].description 
+          : undefined;
+        
         const result = await generateEvaluationAction({
           bookTitle: bookToUse, // Usar el valor correcto
           topic: trimmedTopic,
+          topicDescription: topicDesc, // Pasar la descripción del tema para orientación
           language: currentUiLanguage as 'en' | 'es', // USAR DIRECTAMENTE EL CONTEXTO DE REACT
           questionCount: questionCountToUse,
           timeLimit: timeLimitToUse,
+          course: courseToUse, // Pasar el curso para contenido apropiado a la edad
         });
         
         if (result && result.questions && result.questions.length === questionCountToUse) {
@@ -1292,16 +1308,23 @@ export default function EvaluacionPage() {
       // Fallback to original method if dynamic generation fails
       try {
         console.log("🔄 ATTEMPTING FALLBACK GENERATION FOR REPEAT...");
-        console.log('� Language from React context for repeat fallback:', currentUiLanguage);
+        console.log('🌍 Language from React context for repeat fallback:', currentUiLanguage);
         
         const bookForFallback = selectedBook || selectedSubject;
+        
+        // Obtener la descripción del tema si existe
+        const topicDesc = selectedSubjectTopic && topicDescriptions[selectedSubjectTopic] 
+          ? topicDescriptions[selectedSubjectTopic].description 
+          : undefined;
         
         const result = await generateEvaluationAction({
           bookTitle: bookForFallback,
           topic: currentTopicForDisplay,
+          topicDescription: topicDesc, // Pasar la descripción del tema para orientación
           language: currentUiLanguage as 'en' | 'es', // USAR DIRECTAMENTE EL CONTEXTO DE REACT
           questionCount: questionCountToUse,
           timeLimit: timeLimitToUse,
+          course: selectedCourse, // Pasar el curso para contenido apropiado a la edad
         });
         
         if (result && result.questions && result.questions.length === questionCountToUse) {
@@ -1685,6 +1708,22 @@ export default function EvaluacionPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    
+                    {/* Mostrar descripción del tema seleccionado */}
+                    {selectedSubjectTopic && topicDescriptions[selectedSubjectTopic] && (
+                      <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-purple-500">📖</span>
+                          <h4 className="font-semibold text-purple-700 dark:text-purple-300 text-sm">
+                            Descripción:
+                          </h4>
+                        </div>
+                        <p className="text-xs text-purple-600 dark:text-purple-400">
+                          {topicDescriptions[selectedSubjectTopic].description}
+                        </p>
+                      </div>
+                    )}
+                    
                     <p className="text-left text-xs text-muted-foreground">
                       💡 {translate('evalTopicHint') || 'La evaluación incluirá preguntas variadas sobre el tema seleccionado.'}
                     </p>

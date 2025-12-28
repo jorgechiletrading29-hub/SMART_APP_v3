@@ -4,7 +4,9 @@ import { createMindMap as createMindMapFlow } from '@/ai/flows/create-mind-map';
 
 export interface MindMapInput {
   centralTheme: string;
+  themeDescription?: string;
   bookTitle: string;
+  courseName?: string;
   language: 'es' | 'en';
   isHorizontal?: boolean;
 }

@@ -11,6 +11,7 @@ import { FileQuestion, Sparkles, Download, Newspaper, Network, ClipboardList, Bo
 import { BookCourseSelector } from '@/components/common/book-course-selector';
 import { generateQuiz } from '@/ai/flows/generate-quiz';
 import { analyzeSubjectTopics } from '@/ai/flows/analyze-subject-topics';
+import { TopicDescription } from '@/lib/topic-descriptions';
 import { useToast } from "@/hooks/use-toast";
 import { useAIProgress } from "@/hooks/use-ai-progress";
 import { Label } from '@/components/ui/label';
@@ -40,6 +41,7 @@ export default function CuestionarioPage() {
   const [selectedSubjectTopic, setSelectedSubjectTopic] = useState<string>('');
   const [isAnalyzingSubject, setIsAnalyzingSubject] = useState(false);
   const [subjectBookTitle, setSubjectBookTitle] = useState<string>('');
+  const [topicDescriptions, setTopicDescriptions] = useState<Record<string, TopicDescription>>({});
   
   // Ref para evitar llamadas duplicadas
   const isGeneratingRef = useRef(false);
@@ -84,6 +86,12 @@ export default function CuestionarioPage() {
         if (res.topics && res.topics.length > 0) {
           setSubjectTopics(res.topics);
           setSubjectBookTitle(res.bookTitle || '');
+          // Guardar las descripciones de temas si existen
+          if (res.topicDescriptions) {
+            setTopicDescriptions(res.topicDescriptions);
+          } else {
+            setTopicDescriptions({});
+          }
           toast({
             title: translate('quizPdfAnalyzeDone') || 'Análisis completado',
             description: `${translate('quizPdfTopicsFound') || 'Temas detectados'}: ${res.topics.length}`,
@@ -100,6 +108,7 @@ export default function CuestionarioPage() {
       setSubjectTopics([]);
       setSelectedSubjectTopic('');
       setSubjectBookTitle('');
+      setTopicDescriptions({});
     }
   }, [selectedCourse, selectedSubject, currentUiLanguage, toast, translate]);
 
@@ -228,11 +237,17 @@ export default function CuestionarioPage() {
     const progressInterval = startProgress('quiz', 7000);
     
     try {
+      // Obtener la descripción del tema si existe
+      const topicDesc = selectedSubjectTopic && topicDescriptions[selectedSubjectTopic] 
+        ? topicDescriptions[selectedSubjectTopic].description 
+        : undefined;
+      
       // Llamada única a Server Action - sin fallback API redundante
       const result = await generateQuiz({
         bookTitle: selectedBook || selectedSubject,
         topic: currentTopic,
-        courseName: selectedCourse || "General", 
+        topicDescription: topicDesc, // Pasar la descripción del tema para orientación
+        courseName: selectedCourse || "General", // Pasar el curso para contenido apropiado a la edad
         language: currentUiLanguage,
       });
       
@@ -375,6 +390,22 @@ export default function CuestionarioPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  
+                  {/* Mostrar descripción del tema seleccionado */}
+                  {selectedSubjectTopic && topicDescriptions[selectedSubjectTopic] && (
+                    <div className="mt-3 p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-cyan-500">📖</span>
+                        <h4 className="font-semibold text-cyan-700 dark:text-cyan-300 text-sm">
+                          Descripción:
+                        </h4>
+                      </div>
+                      <p className="text-xs text-cyan-600 dark:text-cyan-400">
+                        {topicDescriptions[selectedSubjectTopic].description}
+                      </p>
+                    </div>
+                  )}
+                  
                   <p className="text-left text-xs text-muted-foreground">
                     💡 {translate('quizTopicHint') || 'El cuestionario incluirá preguntas variadas sobre el tema seleccionado.'}
                   </p>

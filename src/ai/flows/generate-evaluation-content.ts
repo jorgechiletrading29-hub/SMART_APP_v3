@@ -11,19 +11,23 @@
 import {ai, generateWithAI, useOpenRouter} from '@/ai/genkit';
 import {z} from 'genkit';
 import { getOpenRouterClient, hasOpenRouterApiKey, OPENROUTER_MODELS } from '@/lib/openrouter-client';
+import { getContentGenerationContext, generateAIPromptInstructions } from '@/lib/topic-descriptions';
 
 const GenerateEvaluationInputSchema = z.object({
   topic: z.string().describe('The specific topic for the evaluation.'),
+  topicDescription: z.string().optional().describe('A description of the topic that provides orientation and context for the evaluation.'),
   bookTitle: z.string().describe('The title of the book to base the evaluation on.'),
   language: z.enum(['es', 'en']).describe('The language for the evaluation content (e.g., "es" for Spanish, "en" for English).'),
   questionCount: z.number().optional().describe('Number of questions to generate (default: 15)'),
   timeLimit: z.number().optional().describe('Time limit in seconds (default: 120)'),
+  course: z.string().optional().describe('The course/grade level for age-appropriate content.'),
 });
 type GenerateEvaluationInput = z.infer<typeof GenerateEvaluationInputSchema>;
 
 // Extended schema for dynamic evaluation with PDF content
 const GenerateDynamicEvaluationInputSchema = z.object({
   topic: z.string().describe('The specific topic for the evaluation.'),
+  topicDescription: z.string().optional().describe('A description of the topic that provides orientation and context.'),
   bookTitle: z.string().describe('The title of the book to base the evaluation on.'),
   course: z.string().optional().describe('The course/grade associated with the book.'),
   subject: z.string().optional().describe('The subject associated with the book.'),
@@ -82,13 +86,25 @@ export async function generateEvaluationContent(input: GenerateEvaluationInput):
       topic: input.topic,
       bookTitle: input.bookTitle,
       timeLimit: input.timeLimit,
-      language: input.language
+      language: input.language,
+      course: input.course
     });
     console.log('🌍 generateEvaluationContent received language:', input.language);
     
     const isEs = input.language === 'es';
     const topic = input.topic;
     const topicLower = topic.toLowerCase();
+    
+    // Obtener contexto de generación basado en el curso
+    const courseContext = input.course ? getContentGenerationContext(input.course) : null;
+    const adaptationInstructions = courseContext ? generateAIPromptInstructions(courseContext, input.language) : '';
+    
+    // Construir contexto del tema si hay descripción
+    const topicGuidance = input.topicDescription 
+      ? (isEs 
+          ? `\n📋 ORIENTACIÓN DEL TEMA:\n${input.topicDescription}\nUsa esta descripción para enfocar las preguntas.`
+          : `\n📋 TOPIC GUIDANCE:\n${input.topicDescription}\nUse this description to focus the questions.`)
+      : '';
     
     // Distribuir tipos de preguntas equitativamente
     const tfCount = Math.round(questionCount / 3);
@@ -105,11 +121,17 @@ export async function generateEvaluationContent(input: GenerateEvaluationInput):
       if (openRouterClient) {
         try {
           const systemPrompt = isEs 
-            ? `Eres un experto educador. Genera evaluaciones educativas de alta calidad con preguntas variadas.`
-            : `You are an expert educator. Generate high-quality educational evaluations with varied questions.`;
+            ? `Eres un experto educador. Genera evaluaciones educativas de alta calidad con preguntas variadas, ADAPTADAS AL NIVEL DEL ESTUDIANTE.
+            
+${adaptationInstructions}`
+            : `You are an expert educator. Generate high-quality educational evaluations with varied questions, ADAPTED TO THE STUDENT'S LEVEL.
+            
+${adaptationInstructions}`;
           
           const userPrompt = isEs 
-            ? `Genera una evaluación educativa sobre "${topic}" del libro "${input.bookTitle}".
+            ? `Genera una evaluación educativa sobre "${topic}" del libro "${input.bookTitle}"${input.course ? ` para ${input.course}` : ''}.${topicGuidance}
+
+${courseContext ? `⚠️ IMPORTANTE: El estudiante tiene aproximadamente ${courseContext.approximateAge} años. Adapta la dificultad y vocabulario de las preguntas a su nivel.` : ''}
 
 Genera exactamente ${questionCount} preguntas distribuidas así:
 - ${tfCount} preguntas Verdadero/Falso (type: "TRUE_FALSE")
@@ -128,9 +150,12 @@ Responde en JSON con este formato exacto:
 
 IMPORTANTE:
 - Las preguntas deben ser específicas sobre el contenido de "${topic}"
+- ADAPTA el vocabulario y dificultad al nivel del estudiante
 - Genera contenido educativo real y variado
 - Responde SOLO con JSON válido, sin texto adicional`
-            : `Generate an educational evaluation about "${topic}" from the book "${input.bookTitle}".
+            : `Generate an educational evaluation about "${topic}" from the book "${input.bookTitle}"${input.course ? ` for ${input.course}` : ''}.${topicGuidance}
+
+${courseContext ? `⚠️ IMPORTANT: The student is approximately ${courseContext.approximateAge} years old. Adapt the difficulty and vocabulary of the questions to their level.` : ''}
 
 Generate exactly ${questionCount} questions distributed as:
 - ${tfCount} True/False questions (type: "TRUE_FALSE")
@@ -149,6 +174,7 @@ Respond in JSON with this exact format:
 
 IMPORTANT:
 - Questions must be specific about "${topic}" content
+- ADAPT vocabulary and difficulty to the student's level
 - Generate real and varied educational content
 - Respond ONLY with valid JSON, no additional text`;
           

@@ -28,9 +28,11 @@ export interface EvaluationSubmissionOutput {
 export interface EvaluationGenerationInput {
   bookTitle: string;
   topic: string;
+  topicDescription?: string;
   language: 'es' | 'en';
   questionCount?: number;
   timeLimit?: number;
+  course?: string;
 }
 
 export interface EvaluationGenerationOutput {

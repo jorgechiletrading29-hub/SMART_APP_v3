@@ -13,10 +13,12 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { getOpenRouterClient, hasOpenRouterApiKey, OPENROUTER_MODELS } from '@/lib/openrouter-client';
+import { getContentGenerationContext, generateAIPromptInstructions } from '@/lib/topic-descriptions';
 
 const GenerateSummaryInputSchema = z.object({
   bookTitle: z.string().describe('The title of the book to summarize from.'),
   topic: z.string().describe('The specific topic to summarize. This helps focus the summary.'),
+  topicDescription: z.string().optional().describe('A description of the topic that provides orientation and context for the summary.'),
   includeKeyPoints: z.boolean().optional().describe('Whether to include 10 key points from the summary.'),
   language: z.enum(['es', 'en']).describe('The language for the output summary and key points (e.g., "es" for Spanish, "en" for English).'),
   pdfContent: z.string().optional().describe('The extracted content from the PDF book related to the topic. This provides the educational context for generating an accurate summary.'),
@@ -49,77 +51,82 @@ async function generateWithOpenRouter(input: GenerateSummaryInput): Promise<Gene
 
   const isSpanish = input.language === 'es';
   
+  // Obtener contexto de generación basado en el curso
+  const courseContext = input.course ? getContentGenerationContext(input.course) : null;
+  const adaptationInstructions = courseContext ? generateAIPromptInstructions(courseContext, input.language) : '';
+  
   const systemPrompt = isSpanish 
-    ? `Eres un experto educador y creador de contenido pedagógico especializado en el currículo escolar chileno. Tu tarea es crear resúmenes educativos MUY EXTENSOS, COMPLETOS y de alta calidad en español.
+    ? `Eres un experto educador y creador de contenido pedagógico especializado en el currículo escolar chileno. Tu tarea es crear resúmenes educativos de alta calidad en español, ADAPTADOS AL NIVEL DEL ESTUDIANTE.
 
 IMPORTANTE:
-- Genera contenido educativo REAL, ESPECÍFICO y MUY DETALLADO sobre el tema
-- El resumen debe ser EXTENSO (mínimo 2000-3000 palabras)
+- Genera contenido educativo REAL, ESPECÍFICO y DETALLADO sobre el tema
+- ADAPTA la complejidad del lenguaje y los ejemplos según el nivel del curso
 - NO uses frases genéricas como "es un tema importante" o "conjunto de conocimientos"
-- Incluye definiciones claras, ejemplos concretos, datos específicos y explicaciones profundas
-- Desarrolla CADA sección con múltiples párrafos detallados
+- Incluye definiciones claras, ejemplos concretos apropiados para la edad
 - Usa formato Markdown con ## para títulos y ### para subtítulos
 - Usa **negrita** para términos importantes
-- Incluye ejemplos del mundo real y aplicaciones prácticas`
-    : `You are an expert educator and pedagogical content creator specialized in the Chilean school curriculum. Your task is to create VERY EXTENSIVE, COMPLETE and high-quality educational summaries in English.
+- Incluye ejemplos del mundo real apropiados para la edad del estudiante
+
+${adaptationInstructions}`
+    : `You are an expert educator and pedagogical content creator specialized in the Chilean school curriculum. Your task is to create high-quality educational summaries in English, ADAPTED TO THE STUDENT'S LEVEL.
 
 IMPORTANT:
-- Generate REAL, SPECIFIC and VERY DETAILED educational content about the topic
-- The summary must be EXTENSIVE (minimum 2000-3000 words)
+- Generate REAL, SPECIFIC and DETAILED educational content about the topic
+- ADAPT the language complexity and examples according to the grade level
 - DO NOT use generic phrases like "this is an important topic" or "set of knowledge"
-- Include clear definitions, concrete examples, specific data and deep explanations
-- Develop EACH section with multiple detailed paragraphs
+- Include clear definitions, concrete examples appropriate for the age
 - Use Markdown format with ## for titles and ### for subtitles
 - Use **bold** for important terms
-- Include real-world examples and practical applications`;
+- Include real-world examples appropriate for the student's age
+
+${adaptationInstructions}`;
+
+  // Construir la descripción del tema si está disponible
+  const topicContext = input.topicDescription 
+    ? (isSpanish 
+        ? `\n\n📋 ORIENTACIÓN DEL TEMA:\n${input.topicDescription}\n\nUsa esta descripción como guía para enfocar el contenido del resumen.`
+        : `\n\n📋 TOPIC GUIDANCE:\n${input.topicDescription}\n\nUse this description as a guide to focus the summary content.`)
+    : '';
 
   let userPrompt = isSpanish
-    ? `Genera un resumen educativo MUY EXTENSO Y DETALLADO sobre "${input.topic}" para la asignatura de ${input.bookTitle}${input.course ? ` (nivel: ${input.course})` : ''}.
+    ? `Genera un resumen educativo sobre "${input.topic}" para la asignatura de ${input.bookTitle}${input.course ? ` (nivel: ${input.course})` : ''}.${topicContext}
 
-⚠️ REQUISITO: El resumen debe ser EXTENSO, con mínimo 2000-3000 palabras. Desarrolla cada sección con MÚLTIPLES PÁRRAFOS detallados.
+⚠️ REQUISITO: El resumen debe estar ADAPTADO al nivel del estudiante. ${courseContext ? `Este estudiante tiene aproximadamente ${courseContext.approximateAge} años.` : ''}
 
-El resumen DEBE incluir las siguientes secciones (cada una con varios párrafos):
+El resumen DEBE incluir las siguientes secciones (adaptadas al nivel del estudiante):
 
-1. **Introducción** (mínimo 2 párrafos): Qué es ${input.topic}, contexto histórico y por qué es importante estudiarlo
+1. **Introducción**: Qué es ${input.topic}, contexto y por qué es importante estudiarlo
 
-2. **Conceptos Fundamentales** (mínimo 3 párrafos): Definiciones claras, precisas y detalladas de todos los términos clave
+2. **Conceptos Fundamentales**: Definiciones claras y precisas de los términos clave
 
-3. **Desarrollo del Tema** (mínimo 4-5 párrafos): Explicación profunda y detallada con múltiples ejemplos y casos
+3. **Desarrollo del Tema**: Explicación detallada con ejemplos apropiados para la edad
 
-4. **Características y Componentes** (mínimo 3 párrafos): Elementos principales, clasificaciones y subdivisiones del tema
+4. **Características y Componentes**: Elementos principales y clasificaciones del tema
 
-5. **Procesos y Mecanismos** (mínimo 2-3 párrafos): Cómo funciona, etapas, fases o pasos involucrados
+5. **Ejemplos Prácticos y Aplicaciones**: Casos concretos que el estudiante pueda relacionar con su vida
 
-6. **Ejemplos Prácticos y Aplicaciones** (mínimo 3 párrafos): Casos concretos del mundo real, aplicaciones en la vida cotidiana
+6. **Importancia y Relevancia**: Por qué es relevante para el estudiante
 
-7. **Importancia y Relevancia** (mínimo 2 párrafos): Por qué es relevante, impacto en la sociedad, ciencia o vida diaria
+7. **Conclusión**: Síntesis de los puntos principales`
+    : `Generate an educational summary about "${input.topic}" for the subject ${input.bookTitle}${input.course ? ` (level: ${input.course})` : ''}.${topicContext}
 
-8. **Datos Curiosos e Información Adicional** (mínimo 1-2 párrafos): Hechos interesantes, descubrimientos recientes
+⚠️ REQUIREMENT: The summary must be ADAPTED to the student's level. ${courseContext ? `This student is approximately ${courseContext.approximateAge} years old.` : ''}
 
-9. **Conclusión** (mínimo 2 párrafos): Síntesis completa de todos los puntos principales`
-    : `Generate a VERY EXTENSIVE AND DETAILED educational summary about "${input.topic}" for the subject ${input.bookTitle}${input.course ? ` (level: ${input.course})` : ''}.
+The summary MUST include the following sections (adapted to the student's level):
 
-⚠️ REQUIREMENT: The summary must be EXTENSIVE, with a minimum of 2000-3000 words. Develop each section with MULTIPLE detailed paragraphs.
+1. **Introduction**: What is ${input.topic}, context and why it's important to study
 
-The summary MUST include the following sections (each with several paragraphs):
+2. **Fundamental Concepts**: Clear and precise definitions of key terms
 
-1. **Introduction** (minimum 2 paragraphs): What is ${input.topic}, historical context and why it's important to study
+3. **Topic Development**: Detailed explanation with age-appropriate examples
 
-2. **Fundamental Concepts** (minimum 3 paragraphs): Clear, precise and detailed definitions of all key terms
+4. **Characteristics and Components**: Main elements and classifications of the topic
 
-3. **Topic Development** (minimum 4-5 paragraphs): Deep and detailed explanation with multiple examples and cases
+5. **Practical Examples and Applications**: Concrete cases the student can relate to their life
 
-4. **Characteristics and Components** (minimum 3 paragraphs): Main elements, classifications and subdivisions of the topic
+6. **Importance and Relevance**: Why it's relevant for the student
 
-5. **Processes and Mechanisms** (minimum 2-3 paragraphs): How it works, stages, phases or steps involved
-
-6. **Practical Examples and Applications** (minimum 3 paragraphs): Concrete real-world cases, applications in daily life
-
-7. **Importance and Relevance** (minimum 2 paragraphs): Why it's relevant, impact on society, science or daily life
-
-8. **Curious Facts and Additional Information** (minimum 1-2 paragraphs): Interesting facts, recent discoveries
-
-9. **Conclusion** (minimum 2 paragraphs): Complete synthesis of all main points`;
+7. **Conclusion**: Synthesis of the main points`;
 
   // Si hay contenido PDF, agregarlo como contexto
   if (input.pdfContent && input.pdfContent.length > 100) {

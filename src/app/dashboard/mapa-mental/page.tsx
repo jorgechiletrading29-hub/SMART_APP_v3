@@ -20,6 +20,7 @@ import { contentDB } from '@/lib/sql-content';
 import { useAuth } from '@/contexts/auth-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { analyzeSubjectTopics } from '@/ai/flows/analyze-subject-topics';
+import { TopicDescription } from '@/lib/topic-descriptions';
 
 export default function MapaMentalPage() {
   const { translate, language: currentUiLanguage } = useLanguage();
@@ -39,6 +40,7 @@ export default function MapaMentalPage() {
   const [selectedSubjectTopic, setSelectedSubjectTopic] = useState<string>('');
   const [isAnalyzingSubject, setIsAnalyzingSubject] = useState(false);
   const [subjectBookTitle, setSubjectBookTitle] = useState<string>('');
+  const [topicDescriptions, setTopicDescriptions] = useState<Record<string, TopicDescription>>({});
   
   // Ref para evitar llamadas duplicadas
   const hasAnalyzedRef = useRef<string>('');
@@ -82,6 +84,12 @@ export default function MapaMentalPage() {
         if (res.topics && res.topics.length > 0) {
           setSubjectTopics(res.topics);
           setSubjectBookTitle(res.bookTitle || '');
+          // Guardar las descripciones de temas si existen
+          if (res.topicDescriptions) {
+            setTopicDescriptions(res.topicDescriptions);
+          } else {
+            setTopicDescriptions({});
+          }
           toast({
             title: translate('quizPdfAnalyzeDone') || 'Análisis completado',
             description: `${translate('quizPdfTopicsFound') || 'Temas detectados'}: ${res.topics.length}`,
@@ -98,6 +106,7 @@ export default function MapaMentalPage() {
       setSubjectTopics([]);
       setSelectedSubjectTopic('');
       setSubjectBookTitle('');
+      setTopicDescriptions({});
     }
   }, [selectedCourse, selectedSubject, currentUiLanguage, toast, translate]);
 
@@ -116,6 +125,7 @@ export default function MapaMentalPage() {
     setSelectedSubjectTopic('');
     setSubjectTopics([]);
     setSubjectBookTitle('');
+    setTopicDescriptions({});
     setIsHorizontal(false);
     hasAnalyzedRef.current = '';
     setMindMapResult(null);
@@ -138,12 +148,19 @@ export default function MapaMentalPage() {
     // Start progress simulation
     const progressInterval = startProgress('mindmap', 10000);
     
+    // Obtener la descripción del tema si existe
+    const themeDesc = selectedSubjectTopic && topicDescriptions[selectedSubjectTopic] 
+      ? topicDescriptions[selectedSubjectTopic].description 
+      : undefined;
+    
     try {
       // Intentar Server Action primero
       try {
         const result = await createMindMapAction({
           centralTheme: centralTheme.trim(),
+          themeDescription: themeDesc, // Pasar la descripción del tema para orientación
           bookTitle: selectedBook || selectedSubject,
+          courseName: selectedCourse, // Pasar el curso para contenido apropiado a la edad
           language: currentUiLanguage,
           isHorizontal: isHorizontal,
         });
@@ -173,7 +190,9 @@ export default function MapaMentalPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             centralTheme: centralTheme.trim(),
+            themeDescription: themeDesc, // Pasar la descripción del tema
             bookTitle: selectedBook || selectedSubject,
+            courseName: selectedCourse, // Pasar el curso
             language: currentUiLanguage,
             isHorizontal: isHorizontal,
           })
@@ -341,6 +360,22 @@ export default function MapaMentalPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  
+                  {/* Mostrar descripción del tema seleccionado */}
+                  {selectedSubjectTopic && topicDescriptions[selectedSubjectTopic] && (
+                    <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-yellow-500">📖</span>
+                        <h4 className="font-semibold text-yellow-700 dark:text-yellow-300 text-sm">
+                          Descripción:
+                        </h4>
+                      </div>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                        {topicDescriptions[selectedSubjectTopic].description}
+                      </p>
+                    </div>
+                  )}
+                  
                   <p className="text-left text-xs text-muted-foreground">
                     💡 {translate('mapTopicHint') || 'El mapa mental mostrará los conceptos principales y sus relaciones.'}
                   </p>
