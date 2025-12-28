@@ -454,6 +454,7 @@ export default function ResumenPage() {
             selectedSubject={selectedSubject}
             showSubjectSelector={true}
             showBookSelector={false}
+            accentColor="blue"
             onCourseChange={(course) => {
               // Cuando cambia el curso, resetear también la asignatura y tema
               setSelectedCourse(course);
@@ -507,7 +508,7 @@ export default function ResumenPage() {
                     <SelectTrigger>
                       <SelectValue placeholder={translate('summaryChooseTopic') || 'Elige un tema…'} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="select-accent-blue">
                       {subjectTopics.map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}

@@ -321,6 +321,7 @@ export default function MapaMentalPage() {
             }}
             showSubjectSelector={true}
             showBookSelector={false}
+            accentColor="yellow"
           />
 
           {/* Sección automática de temas de cualquier asignatura desde la biblioteca */}
@@ -352,7 +353,7 @@ export default function MapaMentalPage() {
                     <SelectTrigger>
                       <SelectValue placeholder={translate('mapChooseTopic') || 'Elige un tema…'} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="select-accent-yellow">
                       {subjectTopics.map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}

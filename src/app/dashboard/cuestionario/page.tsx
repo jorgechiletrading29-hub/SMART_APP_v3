@@ -348,6 +348,7 @@ export default function CuestionarioPage() {
             selectedSubject={selectedSubject}
             showSubjectSelector={true}
             showBookSelector={false}
+            accentColor="cyan"
             onCourseChange={setSelectedCourse}
             onBookChange={setSelectedBook}
             onSubjectChange={setSelectedSubject}
@@ -382,7 +383,7 @@ export default function CuestionarioPage() {
                     <SelectTrigger>
                       <SelectValue placeholder={translate('quizChooseTopic') || 'Elige un tema…'} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="select-accent-cyan">
                       {subjectTopics.map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}

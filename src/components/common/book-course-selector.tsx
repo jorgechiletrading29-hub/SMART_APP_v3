@@ -64,6 +64,7 @@ interface BookCourseSelectorProps {
   onSubjectChange?: (subject: string) => void; // Callback para cambio de asignatura
   selectedSubject?: string; // Asignatura seleccionada
   showBookSelector?: boolean; // Para mostrar/ocultar selector de libros
+  accentColor?: 'blue' | 'cyan' | 'purple' | 'yellow' | 'green' | 'orange'; // Color de acento para los selectores
 }
 
 export function BookCourseSelector({ 
@@ -75,7 +76,8 @@ export function BookCourseSelector({
   showSubjectSelector = false,
   onSubjectChange,
   selectedSubject = '',
-  showBookSelector = true
+  showBookSelector = true,
+  accentColor
 }: BookCourseSelectorProps) {
   const { translate, language } = useLanguage();
   const { courses } = useAppData();
@@ -716,13 +718,16 @@ export function BookCourseSelector({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCourse, selectedSubject, language, courses, initialBookNameToSelect, user?.role, showSubjectSelector]); // agregado selectedSubject; permiso derivado de filteredCourses
 
+  // Clase de acento para los selectores
+  const accentClass = accentColor ? `select-accent-${accentColor}` : '';
+
   return (
     <>
       <Select onValueChange={onCourseChange} value={selectedCourse}>
         <SelectTrigger className="w-full py-3 text-base md:text-sm">
           <SelectValue placeholder={translate('selectCourse')} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className={accentClass}>
           {filteredCourses.map(courseName => (
             <SelectItem key={courseName} value={courseName}>
               {courseName.replace(/Básico/g, 'Básico').replace(/Medio/g, 'Medio')}
@@ -746,7 +751,7 @@ export function BookCourseSelector({
           <SelectTrigger className="w-full py-3 text-base md:text-sm">
             <SelectValue placeholder={translate('selectSubject')} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className={accentClass}>
             {availableSubjects.map(subject => (
               <SelectItem key={subject} value={subject}>
                 {translateSubjectName(subject)}
@@ -761,7 +766,7 @@ export function BookCourseSelector({
           <SelectTrigger className="w-full py-3 text-base md:text-sm">
             <SelectValue placeholder={translate('selectBook')} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className={accentClass}>
             {booksForCourse.map(bookName => (
               <SelectItem key={bookName} value={bookName}>
                 {bookName}

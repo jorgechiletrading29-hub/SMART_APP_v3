@@ -1665,6 +1665,7 @@ export default function EvaluacionPage() {
               selectedSubject={selectedSubject}
               showSubjectSelector={true}
               showBookSelector={false}
+              accentColor="purple"
               onCourseChange={setSelectedCourse}
               onBookChange={setSelectedBook}
               onSubjectChange={setSelectedSubject}
@@ -1700,7 +1701,7 @@ export default function EvaluacionPage() {
                       <SelectTrigger>
                         <SelectValue placeholder={translate('evalChooseTopic') || 'Elige un tema…'} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="select-accent-purple">
                         {subjectTopics.map((t) => (
                           <SelectItem key={t} value={t}>
                             {t}
@@ -1748,7 +1749,7 @@ export default function EvaluacionPage() {
                 <SelectTrigger id="question-count-select" className="text-base md:text-sm">
                   <SelectValue placeholder={translate('evalQuestionCountPlaceholder', { defaultValue: 'Selecciona la cantidad de preguntas' })} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="select-accent-purple">
                   <SelectItem value="5">5 preguntas</SelectItem>
                   <SelectItem value="10">10 preguntas</SelectItem>
                   <SelectItem value="15">15 preguntas</SelectItem>
