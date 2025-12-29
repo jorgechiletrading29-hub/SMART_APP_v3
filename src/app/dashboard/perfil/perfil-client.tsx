@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserCircle, UserCircle2, BarChart3, History as HistoryIcon, Download, Trash2, Edit3, Award, Percent, Newspaper, Network, FileQuestion, Upload, Camera, Shield, Crown, GraduationCap, CheckCircle, AlertTriangle, Users } from 'lucide-react';
+import { UserCircle, UserCircle2, BarChart3, History as HistoryIcon, Download, Trash2, Edit3, Award, Percent, Newspaper, Network, FileQuestion, Upload, Camera, Shield, Crown, GraduationCap, CheckCircle, AlertTriangle, Users, BookOpen, Layers, School } from 'lucide-react';
 import type { UserProfile, SubjectProgress, EvaluationHistoryItem } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
 import { LocalStorageManager } from '@/lib/education-utils';
@@ -1866,10 +1866,67 @@ export default function PerfilClient() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 uppercase tracking-wider mb-2">
-                      {user?.role === 'teacher' ? translate('editUserAcademicInfo') : user?.role === 'guardian' ? (translate('profileAssignedStudents') || 'Estudiantes Asignados') : translate('profileAssignedCourse')}
+                      {user?.role === 'admin' ? (translate('profileSystemOverview') || 'System Overview') : user?.role === 'teacher' ? translate('editUserAcademicInfo') : user?.role === 'guardian' ? (translate('profileAssignedStudents') || 'Estudiantes Asignados') : translate('profileAssignedCourse')}
                     </label>
                     
-                    {user?.role === 'guardian' ? (
+                    {user?.role === 'admin' ? (
+                      // Para administradores: mostrar badges con totales del sistema
+                      (() => {
+                        try {
+                          const currentYear = new Date().getFullYear();
+                          
+                          // Obtener todos los datos del sistema
+                          const courses = LocalStorageManager.getCoursesForYear(currentYear) || [];
+                          const sections = LocalStorageManager.getSectionsForYear(currentYear) || [];
+                          const subjects = LocalStorageManager.getSubjectsForYear(currentYear) || [];
+                          const students = LocalStorageManager.getStudentsForYear(currentYear) || [];
+                          const studentAssignments = LocalStorageManager.getStudentAssignmentsForYear(currentYear) || [];
+                          
+                          // Calcular estudiantes asignados (con curso y sección)
+                          const assignedStudents = studentAssignments.length > 0 
+                            ? studentAssignments.length 
+                            : students.filter((s: any) => s.courseId && s.sectionId).length;
+                          
+                          return (
+                            <div className="space-y-3">
+                              {/* Fila 1: Cursos y Asignaturas */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-md">
+                                  <School className="w-3.5 h-3.5 mr-1.5" />
+                                  {language === 'es' ? 'Todos los Cursos' : 'All Courses'}
+                                </Badge>
+                                <Badge className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 shadow-md">
+                                  <BookOpen className="w-3.5 h-3.5 mr-1.5" />
+                                  {language === 'es' ? 'Todas las Asignaturas' : 'All Subjects'}
+                                </Badge>
+                              </div>
+                              
+                              {/* Fila 2: Secciones y Estudiantes */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-0 shadow-md">
+                                  <Layers className="w-3.5 h-3.5 mr-1.5" />
+                                  {language === 'es' ? 'Todas las Secciones' : 'All Sections'}
+                                </Badge>
+                                <Badge className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white border-0 shadow-md">
+                                  <Users className="w-3.5 h-3.5 mr-1.5" />
+                                  {language === 'es' ? 'Todos los Estudiantes' : 'All Students'}
+                                </Badge>
+                              </div>
+                              
+                              {/* Nota informativa */}
+                              <div className="text-xs text-gray-500 dark:text-slate-400 mt-2 italic">
+                                {language === 'es' 
+                                  ? `Año académico ${currentYear} - Acceso total al sistema`
+                                  : `Academic year ${currentYear} - Full system access`}
+                              </div>
+                            </div>
+                          );
+                        } catch (error) {
+                          console.error('Error al cargar datos del administrador:', error);
+                          return <div className="text-sm text-gray-600 dark:text-slate-300 italic">{translate('profileErrorLoadingAcademicInfo')}</div>;
+                        }
+                      })()
+                    ) : user?.role === 'guardian' ? (
                       // Para apoderados: mostrar estudiantes asignados
                       (() => {
                         if (!user?.username) return <div className="text-sm text-gray-600 dark:text-slate-300 italic">{translate('profileNoUserDataFound')}</div>;

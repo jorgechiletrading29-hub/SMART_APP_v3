@@ -122,29 +122,66 @@ const generateMathMindMapStructurePrompt = ai.definePrompt({
   name: 'generateMathMindMapStructurePrompt',
   input: { schema: CreateMindMapInputSchema },
   output: { schema: MindMapStructureSchema },
-  prompt: `Eres un experto en didáctica de matemáticas y diseño instruccional.
-Genera una estructura jerárquica para un MAPA MENTAL ESPECIALIZADO EN MATEMÁTICAS.
-El tema central es: "{{centralTheme}}" de la asignatura "{{bookTitle}}".
-El idioma para todos los nodos debe ser: {{language}}.
+  prompt: `You are an expert in mathematics education and instructional design.
+Generate a hierarchical structure for a MATHEMATICS-SPECIALIZED MIND MAP.
+The central theme is: "{{centralTheme}}" from the subject "{{bookTitle}}".
 
-IMPORTANTE - Este es un mapa mental de MATEMÁTICAS, por lo tanto debe incluir:
+**CRITICAL LANGUAGE REQUIREMENT: ALL text content MUST be written EXCLUSIVELY in {{language}}.**
+{{#if (eq language "en")}}You MUST write ALL labels in ENGLISH only. Do NOT use Spanish.{{else}}You MUST write ALL labels in SPANISH only. Do NOT use English.{{/if}}
 
-1. **FÓRMULAS Y NOTACIÓN MATEMÁTICA**: Incluye fórmulas clave usando notación simple (por ejemplo: "a² + b² = c²", "A = π·r²", "x = (-b±√Δ)/2a")
+IMPORTANT - This is a MATHEMATICS mind map, therefore it must include:
 
-2. **PROCEDIMIENTOS Y PASOS**: Para resolver problemas, incluye los pasos numerados o secuenciales
+1. **FORMULAS AND MATHEMATICAL NOTATION**: Include key formulas using simple notation (e.g.: "a² + b² = c²", "A = π·r²", "x = (-b±√Δ)/2a")
 
-3. **EJEMPLOS CON EJERCICIOS**: Incluye ejemplos numéricos concretos que ilustren el concepto (ej: "Ej: 3² + 4² = 5²")
+2. **PROCEDURES AND STEPS**: For solving problems, include numbered or sequential steps
 
-4. **PROPIEDADES Y TEOREMAS**: Menciona propiedades, axiomas o teoremas relevantes
+3. **EXAMPLES WITH EXERCISES**: Include concrete numerical examples that illustrate the concept
 
-5. **CASOS ESPECIALES**: Si aplica, incluye casos particulares o excepciones
+4. **PROPERTIES AND THEOREMS**: Mention relevant properties, axioms, or theorems
 
-Tu estructura debe tener:
-- 1 nodo central con el tema principal
-- 4-5 ramas principales que pueden ser: Definición, Fórmulas, Procedimiento, Ejemplos, Aplicaciones
-- 2-3 subnodos por rama con contenido específico matemático
+5. **SPECIAL CASES**: If applicable, include particular cases or exceptions
 
-Ejemplo de estructura para "Ecuación Cuadrática":
+Your structure must have:
+- 1 central node with the main topic
+- 4-5 main branches that can be: Definition, Formulas, Procedure, Examples, Applications
+- 2-3 subnodes per branch with specific mathematical content
+
+{{#if (eq language "en")}}Example structure for "Quadratic Equation":
+{
+  "centralThemeLabel": "QUADRATIC EQUATION ax²+bx+c=0",
+  "mainBranches": [
+    { 
+      "label": "📐 General Formula", 
+      "children": [
+        { "label": "x = (-b±√Δ)/2a" }, 
+        { "label": "Δ = b² - 4ac" }
+      ] 
+    },
+    { 
+      "label": "🔢 Procedure", 
+      "children": [
+        { "label": "1. Identify a,b,c" }, 
+        { "label": "2. Calculate Δ" },
+        { "label": "3. Apply formula" }
+      ] 
+    },
+    { 
+      "label": "✏️ Solved Example", 
+      "children": [
+        { "label": "x²-5x+6=0" }, 
+        { "label": "x₁=2, x₂=3" }
+      ] 
+    },
+    { 
+      "label": "📊 Types of Roots", 
+      "children": [
+        { "label": "Δ>0: 2 real" }, 
+        { "label": "Δ=0: 1 double real" },
+        { "label": "Δ<0: complex" }
+      ] 
+    }
+  ]
+}{{else}}Example structure for "Ecuación Cuadrática":
 {
   "centralThemeLabel": "ECUACIÓN CUADRÁTICA ax²+bx+c=0",
   "mainBranches": [
@@ -179,11 +216,13 @@ Ejemplo de estructura para "Ecuación Cuadrática":
       ] 
     }
   ]
-}
+}{{/if}}
 
-NOTA: Usa emojis apropiados para las ramas principales (📐🔢✏️📊📏🧮) pero NO en los subnodos.
-Mantén las fórmulas y notación matemática claras y legibles.
-El contenido debe ser PRÁCTICO y orientado a EJERCICIOS, no solo teórico.
+NOTE: Use appropriate emojis for main branches (📐🔢✏️📊📏🧮) but NOT in subnodes.
+Keep formulas and mathematical notation clear and legible.
+Content should be PRACTICAL and exercise-oriented, not just theoretical.
+
+**REMINDER: Generate ALL text content in {{language}} only! Do NOT mix languages.**
 `,
 });
 
@@ -196,25 +235,38 @@ const generateMindMapStructurePrompt = ai.definePrompt({
   prompt: `You are an expert in instructional design and content organization.
 Based on the book titled "{{bookTitle}}", generate a hierarchical structure for a conceptual map.
 The central theme is: "{{centralTheme}}".
-The language for all node labels must be: {{language}}.
+
+**CRITICAL LANGUAGE REQUIREMENT: ALL text content (labels, terms, descriptions) MUST be written EXCLUSIVELY in {{language}}.**
+{{#if (eq language "en")}}You MUST write ALL labels in ENGLISH only. Do NOT use Spanish or any other language.{{else}}You MUST write ALL labels in SPANISH only. Do NOT use English or any other language.{{/if}}
 
 Your task is to:
-1.  Confirm or slightly refine the central theme label if necessary for clarity, ensuring it's concise.
-2.  Identify 3 to 5 main concepts or topics directly related to this central theme, as found in the book. These will be the main branches.
-3.  For each main branch, identify 2 to 3 key sub-topics or supporting details from the book. These sub-topics form a connected hierarchy under their parent main branch.
-4.  Ensure all labels (central theme, main branches, sub-topics) are concise, clear, and in the specified language ({{language}}).
+1.  Confirm or slightly refine the central theme label if necessary for clarity, ensuring it's concise and in {{language}}.
+2.  Identify 3 to 5 main concepts or topics directly related to this central theme, as found in the book. These will be the main branches. ALL in {{language}}.
+3.  For each main branch, identify 2 to 3 key sub-topics or supporting details from the book. These sub-topics form a connected hierarchy under their parent main branch. ALL in {{language}}.
+4.  Ensure all labels (central theme, main branches, sub-topics) are concise, clear, and ONLY in {{language}}.
 5.  Structure the output according to the MindMapStructureSchema. All generated nodes must be part of this connected hierarchy.
 
-Example of desired output structure (conceptual):
+{{#if (eq language "en")}}Example of desired output structure (for ENGLISH):
 {
-  "centralThemeLabel": "Photosynthesis (FOTOSÍNTESIS)",
+  "centralThemeLabel": "PHOTOSYNTHESIS",
   "mainBranches": [
-    { "label": "Inputs (Entradas)", "children": [{ "label": "Light (Luz)" }, { "label": "Water (Agua)" }, { "label": "CO2" }] },
-    { "label": "Process (Proceso)", "children": [{ "label": "Light Reactions (Reacciones Luminosas)" }, { "label": "Calvin Cycle (Ciclo de Calvin)" }] },
-    { "label": "Outputs (Salidas)", "children": [{ "label": "Glucose (Glucosa)" }, { "label": "Oxygen (Oxígeno)" }] }
+    { "label": "Inputs", "children": [{ "label": "Sunlight" }, { "label": "Water" }, { "label": "Carbon Dioxide" }] },
+    { "label": "Process", "children": [{ "label": "Light Reactions" }, { "label": "Calvin Cycle" }] },
+    { "label": "Outputs", "children": [{ "label": "Glucose" }, { "label": "Oxygen" }] }
   ]
-}
+}{{else}}Example of desired output structure (for SPANISH):
+{
+  "centralThemeLabel": "FOTOSÍNTESIS",
+  "mainBranches": [
+    { "label": "Entradas", "children": [{ "label": "Luz solar" }, { "label": "Agua" }, { "label": "Dióxido de carbono" }] },
+    { "label": "Proceso", "children": [{ "label": "Reacciones luminosas" }, { "label": "Ciclo de Calvin" }] },
+    { "label": "Salidas", "children": [{ "label": "Glucosa" }, { "label": "Oxígeno" }] }
+  ]
+}{{/if}}
+
 Focus on accuracy and relevance to the book content. Ensure a clear hierarchical structure suitable for a conceptual map where all nodes are interconnected.
+
+**REMINDER: Generate ALL text content EXCLUSIVELY in {{language}}! Do not mix languages.**
 `,
 });
 
@@ -356,10 +408,12 @@ async function generateStructureWithOpenRouter(input: CreateMindMapInput): Promi
   
   const systemPrompt = isSpanish 
     ? `Eres un experto en diseño instruccional. Genera estructuras jerárquicas para mapas mentales educativos ADAPTADOS AL NIVEL DEL ESTUDIANTE.
-IMPORTANTE: Responde SOLO con JSON válido, sin texto adicional ni markdown.${scienceInstructions}
+IMPORTANTE: Responde SOLO con JSON válido, sin texto adicional ni markdown.
+⚠️ TODO EL CONTENIDO DEBE ESTAR EN ESPAÑOL. No uses inglés.${scienceInstructions}
 ${adaptationInstructions}`
     : `You are an expert in instructional design. Generate hierarchical structures for educational mind maps ADAPTED TO THE STUDENT'S LEVEL.
-IMPORTANT: Respond ONLY with valid JSON, no additional text or markdown.${scienceInstructions}
+IMPORTANT: Respond ONLY with valid JSON, no additional text or markdown.
+⚠️ ALL CONTENT MUST BE IN ENGLISH. Do NOT use Spanish or any other language.${scienceInstructions}
 ${adaptationInstructions}`;
 
   const userPrompt = isSpanish
@@ -409,6 +463,7 @@ REGLAS:
 - El contenido debe ser ESPECÍFICO y EDUCATIVO sobre "${input.centralTheme}"
 - ADAPTA el vocabulario y complejidad al nivel del estudiante
 - NO uses contenido genérico como "Elemento 1" o "Componente"
+- ⚠️ TODO EL TEXTO DEBE ESTAR EN ESPAÑOL. No mezcles idiomas.
 - Responde SOLO el JSON, nada más`
     : `Generate the structure of a mind map about "${input.centralTheme}" for the subject "${input.bookTitle}"${input.courseName ? ` (${input.courseName})` : ''}.${themeGuidance}
 
@@ -456,6 +511,7 @@ RULES:
 - Content must be SPECIFIC and EDUCATIONAL about "${input.centralTheme}"
 - ADAPT vocabulary and complexity to the student's level
 - DO NOT use generic content like "Element 1" or "Component"
+- ⚠️ ALL TEXT MUST BE IN ENGLISH. Do NOT use Spanish or mix languages.
 - Respond ONLY with JSON, nothing else`;
 
   try {

@@ -434,7 +434,12 @@ const topicTranslations: Record<string, { topic: string; unit: string; descripti
   'La Noticia': { topic: 'The News', unit: 'Unit 3 - There\'s room for everyone', description: 'News structure (headline, lead, body). Distinguishing facts from opinions.' },
   'Biografía y Autobiografía': { topic: 'Biography and Autobiography', unit: 'Unit 5 - And now... what do I do?', description: 'Reading lives of notable people. Writing about one\'s own life.' },
   
-  // 4to Básico - Ciencias
+  // 4to Básico - Ciencias Naturales (temas exactos del currículo)
+  'Materia y Fuerza': { topic: 'Matter and Force', unit: 'Unit 1 - Exploring Matter and Forces', description: 'Measurement of mass and volume. States of matter (solid, liquid, gas). Effects of forces (friction, magnetic, weight) on objects.' },
+  'La Tierra y sus Capas': { topic: 'The Earth and Its Layers', unit: 'Unit 2 - Discovering Earth\'s Structure', description: 'Model of Earth\'s layers (crust, mantle, core). Tectonic plates and their movements (earthquakes, tsunamis, volcanoes).' },
+  'Sistema Esquelético y Nervioso': { topic: 'Skeletal and Nervous System', unit: 'Unit 3 - Moving and Caring for My Body', description: 'Function of bones, muscles and joints in movement. The nervous system (brain, nerves) and effects of alcohol on the body.' },
+  'Ecosistemas': { topic: 'Ecosystems', unit: 'Unit 4 - Analyzing Living Beings in Their Environment', description: 'Relationship between living beings (biotic) and non-living (abiotic) factors. Food chains and adaptations of plants and animals to their environment.' },
+  // 4to Básico - Ciencias (adicionales)
   'Ecosistemas Chilenos': { topic: 'Chilean Ecosystems', unit: 'Unit 1 - Living beings and their environment', description: 'Identifying ecosystems of Chile (desert, Mediterranean, rainy). Adaptations of organisms.' },
   'Cuerpo Humano: Sistemas': { topic: 'Human Body: Systems', unit: 'Unit 2 - How does our body work?', description: 'Function and structure of skeletal, muscular, nervous and locomotor systems.' },
   'La Materia': { topic: 'Matter', unit: 'Unit 3 - What is matter?', description: 'Physical and chemical properties of matter. State changes, mass and volume. Mixtures and pure substances.' },
@@ -1092,6 +1097,31 @@ const wordTranslations: Record<string, string> = {
   'hispano': 'Spanish', 'indígena': 'Indigenous', 'indigena': 'Indigenous',
   'malones': 'Raids', 'malocas': 'Counter-raids',
   'arauco': 'Arauco', 'guerra': 'War',
+  
+  // Términos adicionales para traducciones de temas
+  'calendario': 'Calendar', 'valor': 'Value', 'posicional': 'Place',
+  'estimación': 'Estimation', 'estimacion': 'Estimation',
+  'imaginación': 'Imagination', 'imaginacion': 'Imagination',
+  'moralejas': 'Morals', 'moraleja': 'Moral',
+  'ortografía': 'Spelling', 'ortografia': 'Spelling',
+  'gramática': 'Grammar', 'gramatica': 'Grammar',
+  'héroe': 'Hero', 'heroe': 'Hero', 'héroes': 'Heroes', 'heroes': 'Heroes',
+  'viaje': 'Journey', 'viajes': 'Journeys',
+  'terror': 'Horror', 'miedo': 'Fear',
+  'pasión': 'Passion', 'pasion': 'Passion',
+  'razón': 'Reason', 'razon': 'Reason',
+  'migración': 'Migration', 'migracion': 'Migration',
+  'inclusión': 'Inclusion', 'inclusion': 'Inclusion',
+  'ética': 'Ethics', 'etica': 'Ethics',
+  'política': 'Politics', 'politica': 'Politics',
+  'estética': 'Aesthetics', 'estetica': 'Aesthetics',
+  'filosofía': 'Philosophy', 'filosofia': 'Philosophy',
+  'bienestar': 'Wellness', 'seguridad': 'Safety',
+  'autocuidado': 'Self-care', 'sostenibilidad': 'Sustainability',
+  'teselaciones': 'Tessellations', 'teselación': 'Tessellation', 'teselacion': 'Tessellation',
+  'hominización': 'Hominization', 'hominizacion': 'Hominization',
+  'neolítico': 'Neolithic', 'neolitico': 'Neolithic',
+  'clásicas': 'Classical', 'clasicas': 'Classical', 'clásico': 'Classical', 'clasico': 'Classical',
 };
 
 // Traducciones completas de frases específicas (antes del diccionario de palabras)
@@ -1152,11 +1182,25 @@ const phraseTranslations: Record<string, string> = {
   'Pueblos Originarios': 'Indigenous Peoples',
   'Diversidad y Herencia': 'Diversity and Heritage',
   
+  // Matemáticas 2do Básico
+  'Números hasta el 50': 'Numbers up to 50',
+  'Operaciones (Suma y Resta)': 'Operations (Addition and Subtraction)',
+  'El Tiempo y el Calendario': 'Time and Calendar',
+  'Números hasta el 100 y 1.000': 'Numbers up to 100 and 1,000',
+  'Valor Posicional (Unidad y Decena)': 'Place Value (Unit and Tens)',
+  'Estimación': 'Estimation',
+  
   // Lenguaje 2do Básico
   'Lectura de Cuentos': 'Reading Stories',
   'Cartas y Mensajes': 'Letters and Messages',
   'Historietas y Cómics': 'Comics and Graphic Stories',
   'Textos Descriptivos': 'Descriptive Texts',
+  'Cuentos e Imaginación': 'Stories and Imagination',
+  'Escritura Descriptiva': 'Descriptive Writing',
+  'Fábulas y Moralejas': 'Fables and Morals',
+  'Artículos Informativos': 'Informative Articles',
+  'Leyendas y Tradiciones': 'Legends and Traditions',
+  'Gramática y Ortografía': 'Grammar and Spelling',
   
   // Matemáticas 3ro Básico
   'Números hasta el 1.000': 'Numbers up to 1,000',
@@ -1470,6 +1514,129 @@ const phraseTranslations: Record<string, string> = {
   'Decisiones Financieras': 'Financial Decisions',
   'Funciones Trigonométricas y Modelamiento': 'Trigonometric Functions and Modeling',
   'Probabilidades y Distribuciones': 'Probabilities and Distributions',
+  
+  // 5to Básico - Historia
+  'Zonas Naturales de Chile': 'Natural Zones of Chile',
+  'Recursos Naturales': 'Natural Resources',
+  'La Expansión Europea': 'European Expansion',
+  'Conquista de América y Chile': 'Conquest of America and Chile',
+  'Guerra de Arauco y Vida Fronteriza': 'War of Arauco and Frontier Life',
+  'La Colonia': 'The Colony',
+  'Riesgos Naturales': 'Natural Risks',
+  
+  // 6to Básico - Lenguaje
+  'Novelas y Motivaciones': 'Novels and Motivations',
+  'Textos Informativos': 'Informative Texts',
+  
+  // 6to Básico - Historia
+  'Democracia y Constitución': 'Democracy and Constitution',
+  'Organización de la República y Siglo XIX': 'Organization of the Republic and 19th Century',
+  'Chile en el Siglo XX': 'Chile in the 20th Century',
+  'Geografía Regional y Desastres': 'Regional Geography and Disasters',
+  
+  // 6to Básico - Matemáticas
+  'Operaciones y Números Naturales': 'Operations and Natural Numbers',
+  'Razones y Porcentajes': 'Ratios and Percentages',
+  'Patrones y Álgebra': 'Patterns and Algebra',
+  'Ecuaciones': 'Equations',
+  'Ángulos y Construcciones Geométricas': 'Angles and Geometric Constructions',
+  'Teselaciones': 'Tessellations',
+  'Área y Volumen': 'Area and Volume',
+  
+  // 7mo Básico - Matemáticas
+  'Porcentajes y Potencias': 'Percentages and Powers',
+  'Geometría (Polígonos y Círculos)': 'Geometry (Polygons and Circles)',
+  'Plano Cartesiano y Vectores': 'Cartesian Plane and Vectors',
+  'Números Enteros (Z)': 'Integers (Z)',
+  
+  // 7mo Básico - Lenguaje
+  'El Héroe y el Viaje': 'The Hero and the Journey',
+  'La Amistad en la Literatura': 'Friendship in Literature',
+  'Textos Argumentativos (Opinión)': 'Argumentative Texts (Opinion)',
+  'Mitología y Cultura Popular': 'Mythology and Popular Culture',
+  'Literatura de Terror y Miedo': 'Horror and Fear Literature',
+  
+  // 7mo Básico - Ciencias
+  'La Materia y sus Cambios': 'Matter and Its Changes',
+  'Los Gases y sus Leyes': 'Gases and Their Laws',
+  'Fuerza y Presión': 'Force and Pressure',
+  'Dinámica Terrestre': 'Earth Dynamics',
+  'Microorganismos y Barreras Defensivas': 'Microorganisms and Defense Barriers',
+  'Sexualidad y Autocuidado': 'Sexuality and Self-care',
+  
+  // 7mo Básico - Historia
+  'Evolución y Hominización': 'Evolution and Hominization',
+  'Revolución del Neolítico': 'Neolithic Revolution',
+  'Civilizaciones Clásicas: Grecia': 'Classical Civilizations: Greece',
+  'Civilizaciones Clásicas: Roma': 'Classical Civilizations: Rome',
+  'La Edad Media': 'The Middle Ages',
+  'Civilizaciones de América': 'Civilizations of America',
+  
+  // 4to Medio - Lenguaje
+  'Razón y Pasión': 'Reason and Passion',
+  'Individuo y Sociedad': 'Individual and Society',
+  'Migración e Identidad': 'Migration and Identity',
+  
+  // 4to Medio - Educación Ciudadana
+  'Participación Activa': 'Active Participation',
+  'Medios de Comunicación': 'Media and Communication',
+  'Inclusión y Democracia': 'Inclusion and Democracy',
+  'Trabajo y Desarrollo': 'Work and Development',
+  
+  // 4to Medio - Filosofía
+  'Ética y Política': 'Ethics and Politics',
+  'Estética': 'Aesthetics',
+  'Filosofía y Sociedad Actual': 'Philosophy and Current Society',
+  
+  // 4to Medio - Ciencias para la Ciudadanía
+  'Bienestar y Salud': 'Wellness and Health',
+  'Seguridad y Autocuidado': 'Safety and Self-care',
+  'Ambiente y Sostenibilidad': 'Environment and Sustainability',
+  'Tecnología y Sociedad': 'Technology and Society',
+  
+  // 5to Básico - Ciencias
+  'El Agua en el Planeta': 'Water on the Planet',
+  'Usos y Cuidado del Agua': 'Uses and Care of Water',
+  'Sistemas del Cuerpo Humano': 'Human Body Systems',
+  'Nutrición y Alimentación': 'Nutrition and Diet',
+  'Salud y Microorganismos': 'Health and Microorganisms',
+  'La Energía Eléctrica': 'Electrical Energy',
+  
+  // 6to Básico - Ciencias
+  'Reproducción y Pubertad': 'Reproduction and Puberty',
+  'Vida Saludable y Drogas': 'Healthy Living and Drugs',
+  'Fotosíntesis y Cadenas Tróficas': 'Photosynthesis and Food Chains',
+  'Materia y Cambios de Estado': 'Matter and State Changes',
+  'Energía y Recursos': 'Energy and Resources',
+  'Capas de la Tierra y Suelo': 'Earth Layers and Soil',
+  
+  // 5to Básico - Lenguaje
+  'El Arte de Contar Historias': 'The Art of Storytelling',
+  'Textos Informativos y Noticias': 'Informative Texts and News',
+  'Biografías y Creatividad': 'Biographies and Creativity',
+  'La Novela y el Viaje': 'The Novel and the Journey',
+  'Texto Dramático': 'Dramatic Text',
+  
+  // 5to Básico - Matemáticas
+  'Grandes Números': 'Large Numbers',
+  'Estrategias de Cálculo': 'Calculation Strategies',
+  'Figuras Geométricas y Congruencia': 'Geometric Figures and Congruence',
+  'Área y Perímetro': 'Area and Perimeter',
+  'Plano Cartesiano': 'Cartesian Plane',
+  'Fracciones y Números Mixtos': 'Fractions and Mixed Numbers',
+  'Operaciones con Fracciones': 'Operations with Fractions',
+  'Números Decimales': 'Decimal Numbers',
+  'Álgebra (Ecuaciones)': 'Algebra (Equations)',
+  'Datos y Probabilidades': 'Data and Probabilities',
+  
+  // 3ro Básico - Matemáticas
+  'Orden y Comparación': 'Order and Comparison',
+  'Adición y Sustracción': 'Addition and Subtraction',
+  'Figuras 3D y Perímetro': '3D Shapes and Perimeter',
+  'El Tiempo': 'Time',
+  'Gráficos y Probabilidades': 'Graphs and Probabilities',
+  'Fracciones': 'Fractions',
+  'Geometría y Ubicación': 'Geometry and Location',
   
   // Descripciones de Biología 1ro Medio
   'Evidencias de la evolución (fósiles, anatomía comparada, ADN). Teoría de la Selección Natural de Darwin y Wallace. Clasificación de los seres vivos (Taxonomía) y filogenia humana.': 'Evidence of evolution (fossils, comparative anatomy, DNA). Theory of Natural Selection by Darwin and Wallace. Classification of living things (Taxonomy) and human phylogeny.',

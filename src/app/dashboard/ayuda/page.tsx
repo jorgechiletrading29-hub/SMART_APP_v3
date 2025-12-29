@@ -50,17 +50,6 @@ export default function AyudaPage() {
               </AccordionItem>
             ))}
           </Accordion>
-          <div className="text-center mt-8 border-t pt-6">
-            <p className="mb-3 text-muted-foreground">{translate('faqNotFound')}</p>
-            <Button 
-              className={cn(
-                "bg-custom-blue-100 text-custom-blue-800 hover:bg-custom-blue-100/80 dark:bg-blue-500/20 dark:text-blue-300 dark:hover:bg-blue-500/30",
-                "hover:brightness-110 hover:shadow-lg hover:scale-105 transition-all duration-200"
-              )}
-            >
-              {translate('faqContactUs')}
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

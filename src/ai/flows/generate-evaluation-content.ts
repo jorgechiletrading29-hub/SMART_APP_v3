@@ -1100,6 +1100,7 @@ Respond ONLY with JSON, no additional text.`;
         .replace(/entonces/g, 'then')
         .replace(/por lo tanto/g, 'therefore')
         .replace(/porque/g, 'because');
+    };
 
     // Distribución aproximada en tercios
     const tfCount = Math.round(count / 3);

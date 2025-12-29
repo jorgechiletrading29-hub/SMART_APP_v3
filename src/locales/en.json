@@ -533,6 +533,7 @@
     "profileSystemRole": "System Role",
     "profileAcademicData": "Academic Data",
     "profileAssignedCourse": "Assigned Course",
+    "profileSystemOverview": "System Overview",
     "profileAssignedStudents": "Assigned Students",
     "profileNoAssignedStudents": "No assigned students",
     "profileContactAdminForStudents": "Contact the administrator to assign students",
