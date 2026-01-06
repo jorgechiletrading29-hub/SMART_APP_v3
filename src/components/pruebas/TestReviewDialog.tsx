@@ -96,9 +96,28 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
     }
   }, [test?.id, open])
 
-  // Utilidad: obtener estudiantes por sectionId desde assignments
+  // Utilidad: obtener estudiantes por sectionId desde múltiples fuentes
   const getStudentsForSection = useCallback((sectionId: string) => {
     const users = JSON.parse(localStorage.getItem('smart-student-users') || '[]') as any[]
+    const currentYear = new Date().getFullYear()
+    
+    // MÉTODO PRINCIPAL: Buscar en smart-student-students-{year}
+    const studentsForYear = JSON.parse(localStorage.getItem(`smart-student-students-${currentYear}`) || '[]') as any[]
+    
+    if (studentsForYear.length > 0) {
+      // Filtrar estudiantes por sectionId
+      const studentsInSection = studentsForYear.filter((s: any) => 
+        String(s.sectionId) === String(sectionId)
+      )
+      
+      if (studentsInSection.length > 0) {
+        console.log(`📚 [TestReview] Encontrados ${studentsInSection.length} estudiantes en sección ${sectionId} desde students-${currentYear}`)
+        studentsInSection.sort((a: any, b: any) => String(a.displayName || a.name || '').localeCompare(String(b.displayName || b.name || '')))
+        return studentsInSection
+      }
+    }
+    
+    // MÉTODO SECUNDARIO: Buscar en assignments (fallback)
     const assignments = JSON.parse(localStorage.getItem('smart-student-student-assignments') || '[]') as any[]
     const ids = new Set(
       assignments
@@ -107,6 +126,8 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
     )
     const list = users.filter(u => (u.role === 'student' || u.role === 'estudiante') && (ids.has(String(u.id)) || ids.has(String(u.username))))
     list.sort((a, b) => String(a.displayName || '').localeCompare(String(b.displayName || '')))
+    
+    console.log(`📚 [TestReview] Encontrados ${list.length} estudiantes en sección ${sectionId} desde assignments`)
     return list
   }, [])
 
@@ -456,15 +477,19 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
         let porcentaje: number | null = null
         if (porcStr && !isNaN(Number(porcStr))) porcentaje = Number(porcStr)
         if (puntos == null && porcentaje == null) continue
-        // Calcular correct answers
-        let correct = 0
-        if (puntos != null && totalPts > 0 && qTot > 0) {
+        // Calcular porcentaje DIRECTAMENTE sin pasar por "correct answers" para evitar error de redondeo
+        // Por ejemplo: 80 puntos de 100 = 80% exacto, no 81% por doble redondeo
+        let pct = 0
+        if (puntos != null && totalPts > 0) {
+          // Calcular porcentaje directamente desde los puntos
           const clampedPts = Math.max(0, Math.min(puntos, totalPts))
-          correct = Math.round((clampedPts / totalPts) * qTot)
-        } else if (porcentaje != null && qTot > 0) {
-          const clampedPct = Math.max(0, Math.min(porcentaje, 100))
-          correct = Math.round((clampedPct / 100) * qTot)
+          pct = Math.round((clampedPts / totalPts) * 100)
+        } else if (porcentaje != null) {
+          // Usar el porcentaje directamente si se proporcionó
+          pct = Math.round(Math.max(0, Math.min(porcentaje, 100)))
         }
+        // Calcular correct answers solo para el historial visual (no afecta el score guardado)
+        let correct = qTot > 0 ? Math.round((pct / 100) * qTot) : 0
         // Mapear a studentId real si existe
         let studentObj: any = null
         if (students.length) {
@@ -473,8 +498,7 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
         const studentId = studentObj ? String(studentObj.id || studentObj.username) : (rawId || rawName)
         const studentName = studentObj ? (studentObj.displayName || studentObj.username) : rawName || rawId
         if (!studentId || !studentName) continue
-        // Upsert grade (guardar como porcentaje 0-100)
-        const pct = qTot > 0 ? Math.round((Math.max(0, Math.min(correct, qTot)) / qTot) * 100) : 0
+        // pct ya fue calculado directamente arriba
         upsertTestGrade({
           testId: test.id,
           studentId,
@@ -896,10 +920,16 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                             <td className="py-1 pr-2 truncate whitespace-nowrap">
                               {(() => {
                                 if (!latest) return '-'
+                                const qTot = typeof latest.totalQuestions === 'number' ? latest.totalQuestions : (test?.questions?.length || 0)
+                                const tPts = (latest?.totalPoints ?? (test as any)?.totalPoints ?? qTot) as number
                                 // Preferir porcentaje crudo importado si existe
                                 if (typeof latest.rawPercent === 'number') return `${Math.round(Math.max(0, Math.min(latest.rawPercent, 100)))}%`
+                                // Si hay puntos crudos, calcular porcentaje desde ellos
+                                if (typeof latest.rawPoints === 'number' && tPts > 0) {
+                                  const pct = Math.round((latest.rawPoints / tPts) * 100)
+                                  return `${Math.max(0, Math.min(pct, 100))}%`
+                                }
                                 if (typeof latest.score !== 'number') return '-'
-                                const qTot = typeof latest.totalQuestions === 'number' ? latest.totalQuestions : (test?.questions?.length || 0)
                                 if (qTot <= 0) return '-'
                                 const pct = Math.round((Math.min(latest.score, qTot) / qTot) * 100)
                                 return `${pct}%`

@@ -178,10 +178,14 @@ export default function PruebasPage() {
 	}
 
 	// Generador local sencillo como fallback si falla el SSE
-	const generateLocalQuestions = (topic: string, counts?: { tf?: number; mc?: number; ms?: number; des?: number }) => {
+	const generateLocalQuestions = (topic: string, counts?: { tf?: number; mc?: number; ms?: number; des?: number }, subjectName?: string) => {
 		const res: any[] = []
 		if (!counts) return res
 		const makeId = (p: string) => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+		
+		// Detectar si es matemáticas para generar problemas prácticos
+		const isMath = /matem[aá]tica|math|algebra|geometr[ií]a|aritm[eé]tica|c[aá]lculo|ecuacion|fracci[oó]n|porcentaje|trigonometr/i.test(topic + ' ' + (subjectName || ''))
+		
 		for (let i = 0; i < (counts.tf || 0); i++) {
 			res.push({ id: makeId('tf'), type: 'tf', text: `(${i + 1}) ${topic}: enunciado verdadero/falso`, answer: Math.random() > 0.5 })
 		}
@@ -201,9 +205,98 @@ export default function PruebasPage() {
 			res.push({ id: makeId('ms'), type: 'ms', text: `(${i + 1}) ${topic}: seleccione todas las correctas`, options: arr.sort(() => Math.random() - 0.5) })
 		}
 		for (let i = 0; i < (counts.des || 0); i++) {
-			res.push({ id: makeId('des'), type: 'des', prompt: `(${i + 1}) ${topic}: desarrolle una respuesta fundamentada` })
+			// Para matemáticas, generar problemas prácticos
+			if (isMath) {
+				const mathProblems = getMathProblemForTopic(topic, i + 1)
+				res.push({ id: makeId('des'), type: 'des', prompt: mathProblems })
+			} else {
+				res.push({ id: makeId('des'), type: 'des', prompt: `(${i + 1}) ${topic}: desarrolle una respuesta fundamentada` })
+			}
 		}
 		return res
+	}
+
+	// Generador de problemas prácticos de matemáticas según el tema
+	const getMathProblemForTopic = (topic: string, num: number): string => {
+		const topicLower = topic.toLowerCase()
+		
+		// Sumas y restas
+		if (/suma|resta|adici[oó]n|sustracci[oó]n/.test(topicLower)) {
+			const problems = [
+				`Problema ${num}: María tiene 45 manzanas. Le regala 18 a su vecino y luego compra 27 más en el mercado. ¿Cuántas manzanas tiene ahora? Muestra el procedimiento completo.`,
+				`Problema ${num}: Un bus viaja con 38 pasajeros. En la primera parada bajan 12 y suben 9. En la segunda parada bajan 8 y suben 15. ¿Cuántos pasajeros hay al final? Desarrolla paso a paso.`,
+				`Problema ${num}: Pedro ahorra $125 el lunes, $89 el martes y gasta $67 el miércoles. ¿Cuánto dinero tiene? Explica tu procedimiento.`
+			]
+			return problems[num % problems.length]
+		}
+		
+		// Multiplicación
+		if (/multiplic|producto|veces/.test(topicLower)) {
+			const problems = [
+				`Problema ${num}: Una caja contiene 24 lápices. Si hay 15 cajas, ¿cuántos lápices hay en total? Muestra tu procedimiento.`,
+				`Problema ${num}: Un teatro tiene 28 filas con 32 asientos cada una. ¿Cuál es la capacidad total del teatro? Desarrolla el cálculo.`,
+				`Problema ${num}: Si un libro cuesta $45 y se compran 7 libros, ¿cuánto se paga en total? Explica paso a paso.`
+			]
+			return problems[num % problems.length]
+		}
+		
+		// División
+		if (/divisi[oó]n|dividir|cociente|reparto/.test(topicLower)) {
+			const problems = [
+				`Problema ${num}: Se tienen 156 chocolates para repartir entre 12 niños en partes iguales. ¿Cuántos chocolates recibe cada niño? ¿Sobran chocolates? Muestra el procedimiento.`,
+				`Problema ${num}: Un granjero tiene 245 huevos y quiere ponerlos en cajas de 30. ¿Cuántas cajas puede llenar completamente? ¿Cuántos huevos quedan? Desarrolla.`,
+				`Problema ${num}: Si un viaje de 728 km se divide en 4 días iguales, ¿cuántos km se recorren cada día? Explica tu cálculo.`
+			]
+			return problems[num % problems.length]
+		}
+		
+		// Fracciones
+		if (/fracci[oó]n|numerador|denominador|quebrado/.test(topicLower)) {
+			const problems = [
+				`Problema ${num}: Juan comió 2/5 de una pizza y María comió 1/4 de la misma pizza. ¿Qué fracción de la pizza comieron entre los dos? Muestra el procedimiento completo.`,
+				`Problema ${num}: Una receta necesita 3/4 de taza de azúcar. Si quiero hacer la mitad de la receta, ¿cuánta azúcar necesito? Desarrolla paso a paso.`,
+				`Problema ${num}: De un pastel, Ana come 1/3, Luis come 1/6 y queda el resto. ¿Qué fracción del pastel quedó? Explica.`
+			]
+			return problems[num % problems.length]
+		}
+		
+		// Porcentajes
+		if (/porcentaje|%|descuento|aumento/.test(topicLower)) {
+			const problems = [
+				`Problema ${num}: Una tienda ofrece 25% de descuento en un producto que cuesta $120. ¿Cuál es el precio final? Muestra todos los cálculos.`,
+				`Problema ${num}: Si el precio de un artículo aumentó de $80 a $100, ¿cuál fue el porcentaje de aumento? Desarrolla el procedimiento.`,
+				`Problema ${num}: En una clase de 40 estudiantes, el 35% son mujeres. ¿Cuántas mujeres hay en la clase? Explica paso a paso.`
+			]
+			return problems[num % problems.length]
+		}
+		
+		// Ecuaciones
+		if (/ecuaci[oó]n|inc[oó]gnita|variable|despej/.test(topicLower)) {
+			const problems = [
+				`Problema ${num}: Si el triple de un número más 7 es igual a 25, ¿cuál es el número? Plantea la ecuación y resuélvela paso a paso.`,
+				`Problema ${num}: La edad de Pedro es el doble de la edad de Juan más 5 años. Si Pedro tiene 35 años, ¿cuántos años tiene Juan? Desarrolla.`,
+				`Problema ${num}: Resuelve: 3x + 12 = 5x - 8. Muestra cada paso de la solución.`
+			]
+			return problems[num % problems.length]
+		}
+		
+		// Geometría
+		if (/geometr|[aá]rea|per[ií]metro|tri[aá]ngulo|rect[aá]ngulo|c[ií]rculo|cuadrado/.test(topicLower)) {
+			const problems = [
+				`Problema ${num}: Un terreno rectangular mide 45 metros de largo y 28 metros de ancho. Calcula su perímetro y su área. Muestra el procedimiento.`,
+				`Problema ${num}: Un triángulo tiene base de 12 cm y altura de 8 cm. ¿Cuál es su área? Explica la fórmula utilizada.`,
+				`Problema ${num}: Un círculo tiene radio de 7 cm. Calcula su circunferencia y su área (usa π = 3.14). Desarrolla paso a paso.`
+			]
+			return problems[num % problems.length]
+		}
+		
+		// Genérico para otros temas de matemáticas
+		const genericProblems = [
+			`Problema ${num} - ${topic}: Plantea un problema práctico relacionado con el tema, identifica los datos, resuelve paso a paso y verifica tu respuesta.`,
+			`Problema ${num} - ${topic}: Aplica los conceptos estudiados para resolver un ejercicio de la vida cotidiana. Muestra todo el procedimiento.`,
+			`Problema ${num} - ${topic}: Desarrolla un ejemplo numérico que demuestre tu comprensión del tema. Explica cada paso.`
+		]
+		return genericProblems[num % genericProblems.length]
 	}
 
 	// Crear prueba: guarda item en estado "generating" y dispara SSE; fallback a generador local.
@@ -278,19 +371,19 @@ export default function PruebasPage() {
 					})
 					const desCount = Number(builder?.counts?.des || 0)
 					if (desCount > 0) {
-						mapped.push(...generateLocalQuestions(topic, { tf: 0, mc: 0, ms: 0, des: desCount }))
+						mapped.push(...generateLocalQuestions(topic, { tf: 0, mc: 0, ms: 0, des: desCount }, subjName))
 					}
 					patchTest(id, { questions: mapped, status: 'ready', progress: 100 })
 				} finally { es.close() }
 			})
 			es.addEventListener('error', () => {
 				es.close()
-				const fallback = generateLocalQuestions(builder?.topic || title, builder?.counts)
+				const fallback = generateLocalQuestions(builder?.topic || title, builder?.counts, subjName)
 				patchTest(item.id, { questions: fallback, status: 'ready', progress: 100 })
 			})
 		} catch (e) {
 			console.error('[Pruebas] SSE error, usando generador local:', e)
-			const fallback = generateLocalQuestions(builder?.topic || 'Tema', builder?.counts)
+			const fallback = generateLocalQuestions(builder?.topic || 'Tema', builder?.counts, builder?.subjectName)
 			patchTest(item.id, { questions: fallback, status: 'ready', progress: 100 })
 		}
 	}
