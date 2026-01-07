@@ -883,10 +883,8 @@
         const courses = JSON.parse(localStorage.getItem('smart-student-courses') || '[]');
         const sections = JSON.parse(localStorage.getItem('smart-student-sections') || '[]');
         const availableCourses = getAvailableCoursesWithNames();
-        const currentYear = new Date().getFullYear();
-        const students = JSON.parse(localStorage.getItem(`smart-student-students-${currentYear}`) || '[]');
         
-        // Método 1: Buscar en cursos disponibles (más completo - ya incluye sección)
+        // Método 1: Buscar en cursos disponibles (más completo)
         const foundCourse = availableCourses.find(c => c.id === courseCode || c.courseId === courseCode);
         if (foundCourse && foundCourse.name) {
           return foundCourse.name;
@@ -911,23 +909,6 @@
         // Método 3: Buscar solo por courseId si no es compuesto
         const course = courses.find((c: any) => c.id === courseCode);
         if (course) {
-          // Intentar obtener la sección del estudiante actual
-          const studentId = (user as any)?.id || user?.username;
-          const student = students.find((s: any) => s.id === studentId || s.username === studentId);
-          
-          if (student?.sectionId) {
-            const section = sections.find((s: any) => s.id === student.sectionId);
-            if (section) {
-              return `${course.name} ${translate('userManagementSection')} ${section.name}`;
-            }
-          }
-          
-          // Si no encontramos sección del estudiante, buscar por courseId en secciones
-          const sectionForCourse = sections.find((s: any) => s.courseId === courseCode || s.courseId === course.id);
-          if (sectionForCourse) {
-            return `${course.name} ${translate('userManagementSection')} ${sectionForCourse.name}`;
-          }
-          
           return course.name;
         }
         
@@ -1191,14 +1172,11 @@
         const allUsers: ExtendedUser[] = JSON.parse(localStorage.getItem('smart-student-users') || '[]');
         const studentAssignments: any[] = JSON.parse(localStorage.getItem('smart-student-student-assignments') || '[]');
         const teacherAssignments: any[] = JSON.parse(localStorage.getItem('smart-student-teacher-assignments') || '[]');
-        const currentYear = new Date().getFullYear();
-        const studentsForYear: any[] = JSON.parse(localStorage.getItem(`smart-student-students-${currentYear}`) || '[]');
         
         console.log(`📊 [SINCRONIZACIÓN] Datos cargados desde localStorage:`);
         console.log(`   • Usuarios totales: ${allUsers.length}`);
         console.log(`   • Asignaciones de estudiantes: ${studentAssignments.length}`);
         console.log(`   • Asignaciones de profesores: ${teacherAssignments.length}`);
-        console.log(`   • Estudiantes del año ${currentYear}: ${studentsForYear.length}`);
         
         // 🔍 DEBUG DETALLADO: Mostrar estructura completa para "5to A"
         if (courseId.includes('5to') || courseId.includes('A')) {
@@ -1208,117 +1186,15 @@
           console.log('   👨‍🏫 Asignaciones profesores:', teacherAssignments);
         }
         
-        // 🆕 MÉTODO PRINCIPAL: Usar smart-student-students-{year} que tiene sectionId
-        if (studentsForYear.length > 0) {
-          console.log(`🎯 [MÉTODO PRINCIPAL] Usando estudiantes del año ${currentYear}`);
-          
-          // Extraer sectionId del courseId combinado
-          let sectionIdToSearch = '';
-          let courseIdToSearch = '';
-          
-          // Determinar si es un ID combinado (courseId-sectionId)
-          if (courseId.includes('-') && courseId.length > 40) {
-            // Es un ID combinado - extraer courseId y sectionId
-            const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            const parts = courseId.split('-');
-            
-            // Buscar dónde termina el primer UUID
-            for (let i = 5; i < parts.length - 4; i++) {
-              const testCourseId = parts.slice(0, i).join('-');
-              const testSectionId = parts.slice(i).join('-');
-              
-              if (guidPattern.test(testCourseId) && guidPattern.test(testSectionId)) {
-                courseIdToSearch = testCourseId;
-                sectionIdToSearch = testSectionId;
-                break;
-              }
-            }
-            console.log(`📋 [ID COMBINADO] courseId: ${courseIdToSearch}, sectionId: ${sectionIdToSearch}`);
-          } else {
-            // Es un ID simple - usar como courseId
-            courseIdToSearch = courseId;
-            console.log(`📋 [ID SIMPLE] courseId: ${courseIdToSearch}`);
-          }
-          
-          // Buscar estudiantes que coincidan con el curso/sección
-          let estudiantesEncontrados: any[] = [];
-          
-          if (sectionIdToSearch) {
-            // Buscar por sectionId primero (más preciso)
-            estudiantesEncontrados = studentsForYear.filter((s: any) => 
-              String(s.sectionId) === String(sectionIdToSearch)
-            );
-            console.log(`🔍 Estudiantes por sectionId "${sectionIdToSearch}": ${estudiantesEncontrados.length}`);
-          }
-          
-          // Si no hay por sectionId, buscar por courseId
-          if (estudiantesEncontrados.length === 0 && courseIdToSearch) {
-            estudiantesEncontrados = studentsForYear.filter((s: any) => 
-              String(s.courseId) === String(courseIdToSearch)
-            );
-            console.log(`🔍 Estudiantes por courseId "${courseIdToSearch}": ${estudiantesEncontrados.length}`);
-          }
-          
-          // 🆕 FALLBACK: Buscar por nombre de curso/sección si los IDs no coinciden
-          if (estudiantesEncontrados.length === 0) {
-            console.log(`🔍 [FALLBACK] Buscando por sectionName o courseName...`);
-            const sections = JSON.parse(localStorage.getItem('smart-student-sections') || '[]');
-            const courses = JSON.parse(localStorage.getItem('smart-student-courses') || '[]');
-            
-            // Buscar el nombre de la sección
-            let sectionName = '';
-            let courseName = '';
-            
-            if (sectionIdToSearch) {
-              const section = sections.find((s: any) => s.id === sectionIdToSearch);
-              sectionName = section?.name || '';
-            }
-            if (courseIdToSearch) {
-              const course = courses.find((c: any) => c.id === courseIdToSearch);
-              courseName = course?.name || '';
-            }
-            
-            console.log(`📋 [NOMBRES] sectionName: "${sectionName}", courseName: "${courseName}"`);
-            
-            if (sectionName) {
-              estudiantesEncontrados = studentsForYear.filter((s: any) => 
-                s.sectionName === sectionName || s.section === sectionName
-              );
-              console.log(`🔍 Estudiantes por sectionName "${sectionName}": ${estudiantesEncontrados.length}`);
-            }
-            
-            if (estudiantesEncontrados.length === 0 && courseName) {
-              estudiantesEncontrados = studentsForYear.filter((s: any) => 
-                s.courseName === courseName || s.course === courseName
-              );
-              console.log(`🔍 Estudiantes por courseName "${courseName}": ${estudiantesEncontrados.length}`);
-            }
-          }
-          
-          if (estudiantesEncontrados.length > 0) {
-            const resultado = estudiantesEncontrados.map((estudiante: any) => ({
-              id: estudiante.id,
-              username: estudiante.username || estudiante.rut || `student-${estudiante.id}`,
-              displayName: estudiante.displayName || estudiante.name || estudiante.username || 'Estudiante'
-            }));
-            
-            console.log(`✅ [MÉTODO PRINCIPAL] Encontrados ${resultado.length} estudiantes por students-year`);
-            resultado.forEach((e, i) => console.log(`   ${i + 1}. ${e.displayName} (${e.username})`));
-            return resultado; // 🎯 RETORNAR INMEDIATAMENTE SI ENCUENTRA ESTUDIANTES
-          } else {
-            console.warn(`⚠️ [MÉTODO PRINCIPAL] No se encontraron estudiantes en students-year para courseId: ${courseId}`);
-            console.log(`   📋 Intentando con el MÉTODO LEGACY...`);
-          }
-        }
-        
-        // MÉTODO LEGACY: Verificar si faltan datos críticos
+        // Verificar si faltan datos críticos
         if (studentAssignments.length === 0) {
-          console.warn('⚠️ [CONFIGURACIÓN REQUERIDA] No hay asignaciones de estudiantes ni en students-year');
+          console.warn('⚠️ [CONFIGURACIÓN REQUERIDA] No hay asignaciones de estudiantes en localStorage');
           console.log('💡 [SOLUCIÓN] Para que aparezcan estudiantes:');
           console.log('   1. Ve a Admin → Gestión de Usuarios → Asignaciones');
           console.log('   2. Asigna estudiantes a las secciones correspondientes');
           console.log('   3. Asigna profesores a las secciones');
           console.log('   4. Regresa aquí y los estudiantes aparecerán automáticamente');
+          return [];
         }
         
         if (teacherAssignments.length === 0) {
@@ -1670,38 +1546,10 @@
       // Si la tarea está asignada a todo un curso
       else if (task.assignedTo === 'course' && task.course) { 
         console.log(`🏫 Tarea asignada a curso completo: ${task.course}`);
-        console.log(`📋 Datos de la tarea: courseSectionId="${task.courseSectionId}", sectionId="${task.sectionId}"`);
-        
-        // 🎯 MÉTODO DIRECTO: Si tiene sectionId, buscar directamente en students-year
-        if (task.sectionId) {
-          const currentYear = new Date().getFullYear();
-          const studentsForYear = JSON.parse(localStorage.getItem(`smart-student-students-${currentYear}`) || '[]');
-          
-          console.log(`🔍 [MÉTODO DIRECTO] Buscando por sectionId: "${task.sectionId}" en ${studentsForYear.length} estudiantes`);
-          
-          const estudiantesEncontrados = studentsForYear.filter((s: any) => 
-            String(s.sectionId) === String(task.sectionId)
-          );
-          
-          if (estudiantesEncontrados.length > 0) {
-            students = estudiantesEncontrados.map((estudiante: any) => ({
-              id: estudiante.id,
-              username: estudiante.username || estudiante.rut || `student-${estudiante.id}`,
-              displayName: estudiante.displayName || estudiante.name || estudiante.username || 'Estudiante'
-            }));
-            console.log(`✅ [MÉTODO DIRECTO] Encontrados ${students.length} estudiantes por sectionId`);
-          } else {
-            console.log(`⚠️ [MÉTODO DIRECTO] No se encontraron estudiantes por sectionId, usando método combinado`);
-          }
-        }
-        
-        // Si no encontró por método directo, usar courseSectionId o course
-        if (students.length === 0) {
-          const courseToUse = task.courseSectionId || task.course;
-          console.log(`🔍 Usando courseId: "${courseToUse}" (${task.courseSectionId ? 'nuevo formato' : 'formato legacy'})`);
-          students = getStudentsFromCourseRelevantToTask(courseToUse, task.assignedById);
-        }
-        
+        // Usar courseSectionId si está disponible (para tareas nuevas), sino usar course (compatibilidad)
+        const courseToUse = task.courseSectionId || task.course;
+        console.log(`🔍 Usando courseId: "${courseToUse}" (${task.courseSectionId ? 'nuevo formato' : 'formato legacy'})`);
+        students = getStudentsFromCourseRelevantToTask(courseToUse, task.assignedById);
         console.log(`👥 Estudiantes encontrados en curso: ${students.length}`);
       }
       else {
@@ -1821,7 +1669,7 @@
       }
       
       console.log(`🔍 [isStudentAssignedToTask] Verificando acceso para estudiante ${studentUsername} (ID: ${studentId}) a tarea "${task.title}"`);
-      console.log(`📋 [isStudentAssignedToTask] Tarea asignada a: ${task.assignedTo}, curso: ${task.course || task.courseSectionId}, sectionId: ${task.sectionId}`);
+      console.log(`📋 [isStudentAssignedToTask] Tarea asignada a: ${task.assignedTo}, curso: ${task.course || task.courseSectionId}`);
       
       // Si la tarea está asignada a estudiantes específicos
       if (task.assignedTo === 'student' && task.assignedStudentIds) {
@@ -1832,72 +1680,15 @@
       
       // Si la tarea está asignada a todo el curso
       if (task.assignedTo === 'course') {
+        // Verificar que el estudiante pertenezca al mismo curso y sección de la tarea
         const taskCourseId = task.courseSectionId || task.course;
-        const taskSectionId = task.sectionId;
         
-        if (!taskCourseId && !taskSectionId) {
-          console.log(`⚠️ [isStudentAssignedToTask] Tarea sin courseId ni sectionId definido`);
+        if (!taskCourseId) {
+          console.log(`⚠️ [isStudentAssignedToTask] Tarea sin courseId definido`);
           return false;
         }
         
-        // 🆕 MÉTODO PRINCIPAL: Usar smart-student-students-{year} con sectionId
-        const currentYear = new Date().getFullYear();
-        const studentsForYear = JSON.parse(localStorage.getItem(`smart-student-students-${currentYear}`) || '[]');
-        
-        if (studentsForYear.length > 0 && taskSectionId) {
-          // Buscar al estudiante actual en students-year
-          const studentInYear = studentsForYear.find((s: any) => 
-            s.id === studentId || s.username === studentUsername
-          );
-          
-          if (studentInYear) {
-            const isInSameSection = String(studentInYear.sectionId) === String(taskSectionId);
-            console.log(`🎯 [MÉTODO PRINCIPAL] Estudiante ${studentUsername} sectionId: "${studentInYear.sectionId}", tarea sectionId: "${taskSectionId}"`);
-            console.log(`✅ [MÉTODO PRINCIPAL] ¿Mismo sección?: ${isInSameSection ? '✅ SÍ' : '❌ NO'}`);
-            
-            if (isInSameSection) {
-              return true;
-            }
-          } else {
-            console.log(`⚠️ [MÉTODO PRINCIPAL] Estudiante ${studentUsername} no encontrado en students-${currentYear}`);
-          }
-        }
-        
-        // 🆕 MÉTODO ALTERNATIVO: Extraer sectionId del courseSectionId si task.sectionId no existe
-        if (!taskSectionId && taskCourseId && taskCourseId.includes('-') && taskCourseId.length > 40) {
-          console.log(`🔄 [MÉTODO ALTERNATIVO] Extrayendo sectionId del courseSectionId...`);
-          
-          // Extraer sectionId del ID combinado
-          const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const parts = taskCourseId.split('-');
-          let extractedSectionId = '';
-          
-          for (let i = 5; i < parts.length - 4; i++) {
-            const testSectionId = parts.slice(i).join('-');
-            if (guidPattern.test(testSectionId)) {
-              extractedSectionId = testSectionId;
-              break;
-            }
-          }
-          
-          if (extractedSectionId && studentsForYear.length > 0) {
-            const studentInYear = studentsForYear.find((s: any) => 
-              s.id === studentId || s.username === studentUsername
-            );
-            
-            if (studentInYear) {
-              const isInSameSection = String(studentInYear.sectionId) === String(extractedSectionId);
-              console.log(`🎯 [MÉTODO ALTERNATIVO] Estudiante sectionId: "${studentInYear.sectionId}", extraído: "${extractedSectionId}"`);
-              
-              if (isInSameSection) {
-                console.log(`✅ [MÉTODO ALTERNATIVO] Estudiante está en la misma sección`);
-                return true;
-              }
-            }
-          }
-        }
-        
-        // MÉTODO LEGACY: Obtener información del estudiante de users
+        // Obtener información del estudiante actual
         const usersText = localStorage.getItem('smart-student-users');
         const allUsers: ExtendedUser[] = usersText ? JSON.parse(usersText) : [];
         const studentData = allUsers.find(u => u.id === studentId || u.username === studentUsername);
@@ -1907,30 +1698,31 @@
           return false;
         }
         
-        // Verificar usando el sistema de asignaciones dinámicas (si existe)
+        // Verificar usando el sistema de asignaciones dinámicas
         const studentAssignments = JSON.parse(localStorage.getItem('smart-student-student-assignments') || '[]');
         
-        if (studentAssignments.length > 0) {
-          // 🔧 CORRECCIÓN: Usar función auxiliar en lugar de getAvailableCoursesWithNames()
-          const taskCourseData = getCourseDataFromCombinedId(taskCourseId);
+        // 🔧 CORRECCIÓN: Usar función auxiliar en lugar de getAvailableCoursesWithNames()
+        // Esto resuelve el problema donde getAvailableCoursesWithNames() solo funciona para profesores
+        const taskCourseData = getCourseDataFromCombinedId(taskCourseId);
+        
+        if (taskCourseData) {
+          const { sectionId, courseId: actualCourseId } = taskCourseData;
           
-          if (taskCourseData) {
-            const { sectionId, courseId: actualCourseId } = taskCourseData;
-            
-            // Verificar si el estudiante está asignado al mismo curso Y sección
-            const isAssignedToTaskSection = studentAssignments.some((assignment: any) => 
-              assignment.studentId === studentId && 
-              assignment.sectionId === sectionId && 
-              assignment.courseId === actualCourseId
-            );
-            
-            console.log(`🏫 [LEGACY] Verificando curso ${actualCourseId} sección ${sectionId}`);
-            console.log(`📊 [LEGACY] Estudiante ${studentUsername} asignado a esta sección: ${isAssignedToTaskSection ? '✅' : '❌'}`);
-            
-            if (isAssignedToTaskSection) {
-              return true;
-            }
+          // Verificar si el estudiante está asignado al mismo curso Y sección
+          const isAssignedToTaskSection = studentAssignments.some(assignment => 
+            assignment.studentId === studentId && 
+            assignment.sectionId === sectionId && 
+            assignment.courseId === actualCourseId
+          );
+          
+          console.log(`🏫 [isStudentAssignedToTask] Verificando curso ${actualCourseId} sección ${sectionId}`);
+          console.log(`📊 [isStudentAssignedToTask] Estudiante ${studentUsername} asignado a esta sección: ${isAssignedToTaskSection ? '✅' : '❌'}`);
+          
+          if (isAssignedToTaskSection) {
+            return true;
           }
+        } else {
+          console.log(`❌ [isStudentAssignedToTask] No se pudo obtener datos del curso para: ${taskCourseId}`);
         }
         
         // Fallback: verificar por activeCourses (sistema legacy)
@@ -2361,166 +2153,59 @@
       // 📧 Enviar notificaciones por email a los estudiantes
       try {
         let recipientIds: string[] = [];
-        const currentYear = new Date().getFullYear();
         
         if (formData.assignedTo === 'student' && formData.assignedStudentIds.length > 0) {
           // Tarea asignada a estudiantes específicos
           recipientIds = formData.assignedStudentIds;
-          console.log(`📧 [TAREAS] Tarea asignada a estudiantes específicos:`, recipientIds);
         } else {
           // Tarea asignada a todo el curso/sección
-          // MÉTODO PRINCIPAL: Usar smart-student-students-{year} que tiene sectionId
-          const studentsForYear = JSON.parse(localStorage.getItem(`smart-student-students-${currentYear}`) || '[]');
-          
-          if (studentsForYear.length > 0) {
-            console.log(`📧 [TAREAS] Buscando estudiantes del año ${currentYear}: ${studentsForYear.length} total`);
-            
-            const sectionId = derivedSectionId || selectedCourse?.sectionId;
-            const courseId = actualCourseId;
-            
-            // Buscar por sectionId primero (más preciso)
-            let estudiantesEncontrados = studentsForYear.filter((s: any) => 
-              String(s.sectionId) === String(sectionId)
-            );
-            console.log(`📧 [TAREAS] Estudiantes por sectionId "${sectionId}": ${estudiantesEncontrados.length}`);
-            
-            // Fallback: buscar por courseId
-            if (estudiantesEncontrados.length === 0) {
-              estudiantesEncontrados = studentsForYear.filter((s: any) => 
-                String(s.courseId) === String(courseId)
-              );
-              console.log(`📧 [TAREAS] Fallback por courseId "${courseId}": ${estudiantesEncontrados.length}`);
-            }
-            
-            recipientIds = estudiantesEncontrados.map((s: any) => s.id);
-            console.log(`📧 [TAREAS] Recipients por students-year:`, recipientIds.length);
-          }
-          
-          // MÉTODO LEGACY: Si no hay en students-year, usar asignaciones
-          if (recipientIds.length === 0) {
-            const storedAssignments = localStorage.getItem('smart-student-student-assignments');
-            const storedUsers = localStorage.getItem('smart-student-users');
-            
-            if (storedAssignments && storedUsers) {
-              const allAssignments = JSON.parse(storedAssignments);
-              const allUsers = JSON.parse(storedUsers);
-              
-              // Buscar estudiantes por sectionId en las asignaciones
-              const sectionId = selectedCourse?.sectionId;
-              const courseId = actualCourseId;
-              
-              let studentsInSection = allAssignments
-                .filter((a: any) => String(a.sectionId) === String(sectionId))
-                .map((a: any) => a.studentId);
-              
-              console.log(`📧 [TAREAS] Estudiantes en sección ${sectionId}:`, studentsInSection);
-              
-              // Fallback: buscar por courseId si no hay por sectionId
-              if (studentsInSection.length === 0) {
-                studentsInSection = allAssignments
-                  .filter((a: any) => String(a.courseId) === String(courseId))
-                  .map((a: any) => a.studentId);
-                console.log(`📧 [TAREAS] Fallback por courseId ${courseId}:`, studentsInSection);
-              }
-              
-              // Obtener IDs de usuarios estudiantes que están en esta sección
-              recipientIds = allUsers
-                .filter((u: any) => u.role === 'student' && studentsInSection.includes(u.id))
-                .map((u: any) => u.id);
-              
-              console.log(`📧 [TAREAS] Recipients por asignaciones:`, recipientIds.length);
-              
-              // Segundo fallback: buscar por activeCourses del usuario
-              if (recipientIds.length === 0) {
-                recipientIds = allUsers
-                  .filter((u: any) => 
-                    u.role === 'student' && 
-                    (u.activeCourses?.some((ac: string) => 
-                      ac === courseSectionId || 
-                      ac.includes(actualCourseId) ||
-                      ac.includes(selectedCourse?.name || '')
-                    ) ||
-                    (String(u.courseId) === String(courseId) && String(u.sectionId) === String(sectionId)))
-                  )
-                  .map((u: any) => u.id);
-                console.log(`📧 [TAREAS] Recipients por fallback:`, recipientIds.length);
-              }
-            }
+          const storedUsers = localStorage.getItem('smart-student-users');
+          if (storedUsers) {
+            const allUsers = JSON.parse(storedUsers);
+            recipientIds = allUsers
+              .filter((u: any) => 
+                u.role === 'student' && 
+                u.activeCourses?.some((ac: string) => 
+                  ac === courseSectionId || 
+                  ac.includes(actualCourseId) ||
+                  ac.includes(selectedCourse?.name || '')
+                )
+              )
+              .map((u: any) => u.id);
           }
         }
         
-        // También incluir apoderados - búsqueda multi-método
-        if (recipientIds.length > 0) {
-          let guardianIds: string[] = [];
-          const currentYear = new Date().getFullYear();
-          
-          // Método 1: Buscar en smart-student-guardians-{year}
-          const guardiansForYear = JSON.parse(localStorage.getItem(`smart-student-guardians-${currentYear}`) || '[]');
-          if (guardiansForYear.length > 0) {
-            guardianIds = guardiansForYear
-              .filter((g: any) => g.studentIds?.some((sid: string) => recipientIds.includes(sid)))
-              .map((g: any) => g.id);
-            console.log(`📧 [TAREAS] Apoderados por guardians-year: ${guardianIds.length}`);
-          }
-          
-          // Método 2: Buscar en smart-student-guardian-students (relaciones)
-          if (guardianIds.length === 0) {
-            const guardianRelations = JSON.parse(localStorage.getItem('smart-student-guardian-students') || '[]');
-            if (guardianRelations.length > 0) {
-              const guardianIdsFromRelations = guardianRelations
-                .filter((r: any) => recipientIds.includes(r.studentId))
-                .map((r: any) => r.guardianId);
-              guardianIds = [...new Set(guardianIdsFromRelations)];
-              console.log(`📧 [TAREAS] Apoderados por relaciones: ${guardianIds.length}`);
-            }
-          }
-          
-          // Método 3: Buscar en smart-student-users
-          if (guardianIds.length === 0) {
-            const storedUsers = localStorage.getItem('smart-student-users');
-            if (storedUsers) {
-              const allUsers = JSON.parse(storedUsers);
-              guardianIds = allUsers
-                .filter((u: any) => 
-                  u.role === 'guardian' && 
-                  (u.assignedStudents?.some((studentId: string) => recipientIds.includes(studentId)) ||
-                   u.studentIds?.some((studentId: string) => recipientIds.includes(studentId)) ||
-                   u.children?.some((studentId: string) => recipientIds.includes(studentId)))
-                )
-                .map((u: any) => u.id);
-              console.log(`📧 [TAREAS] Apoderados por users: ${guardianIds.length}`);
-            }
-          }
-          
-          console.log(`📧 [TAREAS] Total apoderados encontrados: ${guardianIds.length}`);
+        // También incluir apoderados
+        const storedUsers = localStorage.getItem('smart-student-users');
+        if (storedUsers) {
+          const allUsers = JSON.parse(storedUsers);
+          const guardianIds = allUsers
+            .filter((u: any) => 
+              u.role === 'guardian' && 
+              u.assignedStudents?.some((studentId: string) => recipientIds.includes(studentId))
+            )
+            .map((u: any) => u.id);
           recipientIds = [...new Set([...recipientIds, ...guardianIds])];
         }
         
-        console.log(`📧 [TAREAS] Total recipients finales:`, recipientIds.length);
-        
         if (recipientIds.length > 0) {
-          // Obtener el nombre de la sección desde selectedCourse
-          const sectionName = selectedCourse?.sectionName || selectedCourse?.name?.split(' Sección ')?.[1] || '';
-          
           // Usar .then/.catch en lugar de await para evitar requerir async
           sendEmailOnNotification(
-            formData.taskType === 'evaluacion' ? 'evaluation_assigned' : 'task_assigned',
+            formData.taskType === 'evaluacion' ? 'task_assigned' : 'task_assigned',
             recipientIds,
             {
               title: formData.taskType === 'evaluacion' ? 'Nueva Evaluación Asignada' : 'Nueva Tarea Asignada',
               content: formData.description || `Se ha asignado ${formData.taskType === 'evaluacion' ? 'una nueva evaluación' : 'una nueva tarea'}: ${formData.title}`,
               taskTitle: formData.title,
               senderName: user?.displayName || user?.username || 'Profesor',
-              courseName: selectedCourse?.originalCourseName || selectedCourse?.name || formData.course,
-              sectionName: sectionName
+              courseName: selectedCourse?.name || formData.course,
+              sectionName: selectedSection?.name
             }
           ).then(() => {
             console.log(`📧 [TAREAS] Email notifications sent to ${recipientIds.length} recipients`);
           }).catch((emailError) => {
             console.warn('⚠️ [TAREAS] Error sending email notifications:', emailError);
           });
-        } else {
-          console.warn(`⚠️ [TAREAS] No se encontraron destinatarios para el email`);
         }
       } catch (emailError) {
         console.warn('⚠️ [TAREAS] Error sending email notifications:', emailError);
@@ -3248,91 +2933,6 @@
       // 🔥 NUEVO: Disparar evento para actualizar tareas pendientes
       window.dispatchEvent(new CustomEvent('pendingTasksUpdated'));
       
-      // 📧 ENVIAR EMAIL AL ESTUDIANTE Y APODERADO cuando el estudiante completa una evaluación tipo tarea
-      try {
-        const currentYear = new Date().getFullYear();
-        const studentId = (user as any)?.id || user?.username;
-        const studentDisplayName = user?.displayName || user?.username || 'Estudiante';
-        
-        // Destinatarios: incluir al estudiante
-        const recipientIds: string[] = [studentId];
-        
-        // Buscar apoderados
-        let guardianIds: string[] = [];
-        
-        // Método 1: Buscar en smart-student-guardians-{year}
-        const guardiansForYear = JSON.parse(localStorage.getItem(`smart-student-guardians-${currentYear}`) || '[]');
-        if (guardiansForYear.length > 0) {
-          guardianIds = guardiansForYear
-            .filter((g: any) => g.studentIds?.includes(studentId))
-            .map((g: any) => g.id);
-          console.log(`📧 [EVALUACIÓN TAREA] Apoderados por guardians-year: ${guardianIds.length}`);
-        }
-        
-        // Método 2: Buscar en smart-student-users (fallback)
-        if (guardianIds.length === 0) {
-          const storedUsers = localStorage.getItem('smart-student-users');
-          if (storedUsers) {
-            const allUsers = JSON.parse(storedUsers);
-            guardianIds = allUsers
-              .filter((u: any) => 
-                u.role === 'guardian' && 
-                (u.assignedStudents?.includes(studentId) ||
-                 u.studentIds?.includes(studentId) ||
-                 u.children?.includes(studentId))
-              )
-              .map((u: any) => u.id);
-            console.log(`📧 [EVALUACIÓN TAREA] Apoderados por users: ${guardianIds.length}`);
-          }
-        }
-        
-        // Agregar apoderados a los destinatarios
-        recipientIds.push(...guardianIds);
-        
-        console.log(`📧 [EVALUACIÓN TAREA] Enviando email a ${recipientIds.length} destinatario(s) (1 estudiante + ${guardianIds.length} apoderados)`);
-        
-        // Obtener nombre legible del curso CON SECCIÓN
-        const courseDisplayName = getCourseAndSectionName(currentEvaluation.task.course);
-        
-        // Generar mensaje motivador basado en el porcentaje
-        let motivationalMessage = '';
-        if (percentage >= 90) {
-          motivationalMessage = '🌟 ¡Excelente trabajo! Has demostrado un dominio sobresaliente del tema. ¡Sigue así!';
-        } else if (percentage >= 80) {
-          motivationalMessage = '🎯 ¡Muy bien! Has logrado un gran resultado. Estás muy cerca de la excelencia.';
-        } else if (percentage >= 70) {
-          motivationalMessage = '👍 ¡Buen trabajo! Has aprobado con un buen resultado. Con un poco más de práctica llegarás aún más lejos.';
-        } else if (percentage >= 60) {
-          motivationalMessage = '✅ ¡Lo lograste! Has aprobado la evaluación. Sigue esforzándote para mejorar.';
-        } else if (percentage >= 50) {
-          motivationalMessage = '💪 Estás cerca de aprobar. Repasa los temas y no te rindas, ¡tú puedes!';
-        } else if (percentage >= 30) {
-          motivationalMessage = '📚 Necesitas repasar algunos temas. No te desanimes, cada intento es una oportunidad de aprender.';
-        } else {
-          motivationalMessage = '🌱 Este es solo el comienzo. Revisa el material y vuelve a intentarlo. ¡El esfuerzo siempre da frutos!';
-        }
-        
-        sendEmailOnNotification(
-          'evaluation_completed',
-          recipientIds,
-          {
-            title: `${studentDisplayName} ha completado una evaluación`,
-            content: `${studentDisplayName} ha completado la evaluación "${currentEvaluation.task.title}" con un resultado de ${correctAnswers}/${totalQuestions} (${percentage}%)`,
-            taskTitle: currentEvaluation.task.title,
-            senderName: 'Smart Student',
-            courseName: courseDisplayName,
-            grade: percentage, // CORREGIDO: Enviar porcentaje, no respuestas correctas
-            feedback: motivationalMessage // CORREGIDO: Mensaje motivador en lugar de solo porcentaje
-          }
-        ).then(() => {
-          console.log(`📧 [EVALUACIÓN TAREA] Email enviado exitosamente a ${recipientIds.length} destinatarios`);
-        }).catch((emailError) => {
-          console.warn('⚠️ [EVALUACIÓN TAREA] Error enviando email:', emailError);
-        });
-      } catch (emailError) {
-        console.warn('⚠️ [EVALUACIÓN TAREA] Error en envío de email:', emailError);
-      }
-      
       console.log('🎯 [handleCompleteEvaluation] Events dispatched: taskNotificationsUpdated, pendingTasksUpdated');
 
       // Si el tiempo se agotó, mostrar modal específico ANTES de cerrar la evaluación
@@ -3977,59 +3577,27 @@
 
         // 📧 Enviar notificación por email al estudiante
         try {
-          const recipientIds: string[] = [submission.studentId];
-          const currentYear = new Date().getFullYear();
+          const recipientIds = [submission.studentId];
           
-          // También notificar al apoderado si existe - búsqueda multi-método
-          let guardianIds: string[] = [];
-          
-          // Método 1: Buscar en smart-student-guardians-{year}
-          const guardiansForYear = JSON.parse(localStorage.getItem(`smart-student-guardians-${currentYear}`) || '[]');
-          if (guardiansForYear.length > 0) {
-            guardianIds = guardiansForYear
-              .filter((g: any) => g.studentIds?.includes(submission.studentId))
-              .map((g: any) => g.id);
+          // También notificar al apoderado si existe
+          const storedUsers = localStorage.getItem('smart-student-users');
+          if (storedUsers) {
+            const allUsers = JSON.parse(storedUsers);
+            const guardianIds = allUsers
+              .filter((u: any) => 
+                u.role === 'guardian' && 
+                u.assignedStudents?.includes(submission.studentId)
+              )
+              .map((u: any) => u.id);
+            recipientIds.push(...guardianIds);
           }
-          
-          // Método 2: Buscar en smart-student-guardian-students (relaciones)
-          if (guardianIds.length === 0) {
-            const guardianRelations = JSON.parse(localStorage.getItem('smart-student-guardian-students') || '[]');
-            if (guardianRelations.length > 0) {
-              const guardianIdsFromRelations = guardianRelations
-                .filter((r: any) => r.studentId === submission.studentId)
-                .map((r: any) => r.guardianId);
-              guardianIds = [...new Set(guardianIdsFromRelations)];
-            }
-          }
-          
-          // Método 3: Buscar en smart-student-users
-          if (guardianIds.length === 0) {
-            const storedUsers = localStorage.getItem('smart-student-users');
-            if (storedUsers) {
-              const allUsers = JSON.parse(storedUsers);
-              guardianIds = allUsers
-                .filter((u: any) => 
-                  u.role === 'guardian' && 
-                  (u.assignedStudents?.includes(submission.studentId) ||
-                   u.studentIds?.includes(submission.studentId) ||
-                   u.children?.includes(submission.studentId))
-                )
-                .map((u: any) => u.id);
-            }
-          }
-          
-          console.log(`📧 [TAREAS] Apoderados encontrados para calificación: ${guardianIds.length}`);
-          recipientIds.push(...guardianIds);
-          
-          // Determinar si es evaluación o tarea para el tipo de email
-          const isEvaluation = selectedTask.taskType === 'evaluacion' || selectedTask.taskType === 'evaluation';
           
           await sendEmailOnNotification(
-            isEvaluation ? 'evaluation_graded' : 'task_graded',
+            'task_graded',
             recipientIds,
             {
-              title: `Tu ${isEvaluation ? 'evaluación' : 'tarea'} "${selectedTask.title}" ha sido calificada`,
-              content: teacherComment || `Tu ${isEvaluation ? 'evaluación' : 'tarea'} ha sido revisada y calificada.`,
+              title: `Tu tarea "${selectedTask.title}" ha sido calificada`,
+              content: teacherComment || `Tu tarea ha sido revisada y calificada.`,
               taskTitle: selectedTask.title,
               senderName: user?.displayName || user?.username || 'Profesor',
               courseName: selectedTask.course,
@@ -4037,7 +3605,7 @@
               feedback: teacherComment
             }
           );
-          console.log(`📧 [TAREAS] Grade notification email sent to student ${submission.studentId} and ${recipientIds.length - 1} guardians`);
+          console.log(`📧 [TAREAS] Grade notification email sent to student ${submission.studentId}`);
         } catch (emailError) {
           console.warn('⚠️ [TAREAS] Error sending grade email notification:', emailError);
         }
@@ -4122,71 +3690,6 @@
       try {
         window.dispatchEvent(new CustomEvent('taskNotificationsUpdated', { detail: { reason: 'gradeSaved' } }));
       } catch {}
-      
-      // 📧 NUEVO: Enviar notificación por email al estudiante y apoderado cuando se califica
-      if (submissionToGrade.studentId && selectedTask) {
-        try {
-          const recipientIds: string[] = [submissionToGrade.studentId];
-          
-          // También notificar al apoderado si existe
-          const storedUsers = localStorage.getItem('smart-student-users');
-          const currentYear = new Date().getFullYear();
-          
-          if (storedUsers) {
-            const allUsers = JSON.parse(storedUsers);
-            
-            // Buscar en smart-student-guardians-{year}
-            const guardiansForYear = JSON.parse(localStorage.getItem(`smart-student-guardians-${currentYear}`) || '[]');
-            let guardianIds: string[] = [];
-            
-            if (guardiansForYear.length > 0) {
-              guardianIds = guardiansForYear
-                .filter((g: any) => g.studentIds?.includes(submissionToGrade.studentId))
-                .map((g: any) => g.id);
-            }
-            
-            // Fallback: buscar en smart-student-users
-            if (guardianIds.length === 0) {
-              guardianIds = allUsers
-                .filter((u: any) => 
-                  u.role === 'guardian' && 
-                  (u.assignedStudents?.includes(submissionToGrade.studentId) ||
-                   u.studentIds?.includes(submissionToGrade.studentId))
-                )
-                .map((u: any) => u.id);
-            }
-            
-            console.log(`📧 [SAVE GRADE] Apoderados encontrados: ${guardianIds.length}`);
-            recipientIds.push(...guardianIds);
-          }
-          
-          // Determinar si es evaluación o tarea para el tipo de email
-          const isEvaluation = selectedTask.taskType === 'evaluacion' || selectedTask.taskType === 'evaluation';
-          
-          // Obtener nombre legible del curso en lugar del ID
-          const courseDisplayName = getCourseAndSectionName(selectedTask.course);
-          
-          sendEmailOnNotification(
-            isEvaluation ? 'evaluation_graded' : 'task_graded',
-            recipientIds,
-            {
-              title: `Tu ${isEvaluation ? 'evaluación' : 'tarea'} "${selectedTask.title}" ha sido calificada`,
-              content: gradeForm.teacherComment.trim() || `Tu ${isEvaluation ? 'evaluación' : 'tarea'} ha sido revisada y calificada.`,
-              taskTitle: selectedTask.title,
-              senderName: user?.displayName || user?.username || 'Profesor',
-              courseName: courseDisplayName,
-              grade: grade,
-              feedback: gradeForm.teacherComment.trim()
-            }
-          ).then(() => {
-            console.log(`📧 [SAVE GRADE] Email enviado a ${recipientIds.length} destinatarios`);
-          }).catch((emailError) => {
-            console.warn('⚠️ [SAVE GRADE] Error enviando email:', emailError);
-          });
-        } catch (emailError) {
-          console.warn('⚠️ [SAVE GRADE] Error en envío de email:', emailError);
-        }
-      }
       
       // Cerrar el diálogo
       setShowGradeDialog(false);
@@ -4434,70 +3937,6 @@
       const existingNotifications = JSON.parse(localStorage.getItem('smart-student-notifications') || '[]');
       const updatedNotifications = [...existingNotifications, notification];
       localStorage.setItem('smart-student-notifications', JSON.stringify(updatedNotifications));
-      
-      // 📧 ENVIAR EMAIL AL ESTUDIANTE Y APODERADO cuando se califica la tarea
-      try {
-        const recipientIds: string[] = [currentReview.studentId];
-        const currentYear = new Date().getFullYear();
-        
-        // Buscar apoderados del estudiante
-        // Método 1: smart-student-guardians-{year}
-        const guardiansForYear = JSON.parse(localStorage.getItem(`smart-student-guardians-${currentYear}`) || '[]');
-        let guardianIds: string[] = [];
-        
-        if (guardiansForYear.length > 0) {
-          guardianIds = guardiansForYear
-            .filter((g: any) => g.studentIds?.includes(currentReview.studentId))
-            .map((g: any) => g.id);
-          console.log(`📧 [TAREA CALIFICADA] Apoderados por guardians-year: ${guardianIds.length}`);
-        }
-        
-        // Método 2: smart-student-users (fallback)
-        if (guardianIds.length === 0) {
-          const storedUsers = localStorage.getItem('smart-student-users');
-          if (storedUsers) {
-            const allUsers = JSON.parse(storedUsers);
-            guardianIds = allUsers
-              .filter((u: any) => 
-                u.role === 'guardian' && 
-                (u.assignedStudents?.includes(currentReview.studentId) ||
-                 u.studentIds?.includes(currentReview.studentId) ||
-                 u.children?.includes(currentReview.studentId))
-              )
-              .map((u: any) => u.id);
-            console.log(`📧 [TAREA CALIFICADA] Apoderados por users: ${guardianIds.length}`);
-          }
-        }
-        
-        recipientIds.push(...guardianIds);
-        
-        console.log(`📧 [TAREA CALIFICADA] Enviando email a ${recipientIds.length} destinatario(s)`);
-        
-        const isEvaluation = selectedTask.taskType === 'evaluacion' || selectedTask.taskType === 'evaluation';
-        
-        // Obtener nombre legible del curso en lugar del ID
-        const courseDisplayName = getCourseAndSectionName(selectedTask.course);
-        
-        sendEmailOnNotification(
-          isEvaluation ? 'evaluation_graded' : 'task_graded',
-          recipientIds,
-          {
-            title: `Tu ${isEvaluation ? 'evaluación' : 'tarea'} "${selectedTask.title}" ha sido calificada`,
-            content: currentReview.feedback || `Tu ${isEvaluation ? 'evaluación' : 'tarea'} ha sido revisada y calificada.`,
-            taskTitle: selectedTask.title,
-            senderName: user?.displayName || user?.username || 'Profesor',
-            courseName: courseDisplayName,
-            grade: currentReview.grade,
-            feedback: currentReview.feedback
-          }
-        ).then(() => {
-          console.log(`📧 [TAREA CALIFICADA] Email enviado exitosamente`);
-        }).catch((emailError) => {
-          console.warn('⚠️ [TAREA CALIFICADA] Error enviando email:', emailError);
-        });
-      } catch (emailError) {
-        console.warn('⚠️ [TAREA CALIFICADA] Error en envío de email:', emailError);
-      }
       
       toast({
         title: 'Tarea Calificada',

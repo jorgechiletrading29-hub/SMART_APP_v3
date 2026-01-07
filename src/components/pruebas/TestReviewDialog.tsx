@@ -67,6 +67,17 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
   // Modal emergente para mensajes de estado (por requerimiento)
   const [statusModal, setStatusModal] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+  // 📝 NUEVO: Calificaciones preliminares del OCR (antes de guardar)
+  const [preliminaryGrades, setPreliminaryGrades] = useState<Array<{
+    studentName: string
+    studentId: string | null
+    studentInfo: any
+    score: number // respuestas correctas
+    pct: number // porcentaje
+    pts: number // puntos
+    saved: boolean // si ya fue guardada
+  }>>([])
+  const [savingGrades, setSavingGrades] = useState(false)
 
   useEffect(() => {
     if (!open) {
@@ -237,12 +248,257 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
     }
   }
 
+  // 📄 NUEVO: Extraer texto de CADA PÁGINA del PDF por separado (para PDFs de curso con múltiples estudiantes)
+  const extractTextPerPage = async (file: File): Promise<Array<{ pageNum: number; text: string }>> => {
+    const pages: Array<{ pageNum: number; text: string }> = []
+    try {
+      const buf = await file.arrayBuffer()
+      const pdfjs: any = await ensurePdfJs()
+      const task = pdfjs.getDocument({ data: buf })
+      const doc = await task.promise
+      const totalPages = doc.numPages
+      
+      for (let p = 1; p <= totalPages; p++) {
+        const page = await doc.getPage(p)
+        let pageText = ''
+        
+        // Intentar extraer texto nativo primero
+        try {
+          const textContent = await page.getTextContent()
+          pageText = (textContent.items || []).map((it: any) => (it.str || '')).join(' ').trim()
+        } catch {}
+        
+        // Si no hay texto nativo, usar OCR
+        if (normalize(pageText).length < 30) {
+          try {
+            const Tesseract = await ensureWorker()
+            const viewport = page.getViewport({ scale: 1.8 })
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              canvas.width = Math.ceil(viewport.width)
+              canvas.height = Math.ceil(viewport.height)
+              await page.render({ canvasContext: ctx, viewport }).promise
+              const { data } = await Tesseract.recognize(canvas, 'spa+eng', {} as any)
+              pageText = (data?.text || '').trim()
+            }
+          } catch {}
+        }
+        
+        pages.push({ pageNum: p, text: pageText })
+      }
+    } catch (e) {
+      console.warn('[TestReview] Error extracting pages:', e)
+    }
+    return pages
+  }
+
   const runOCR = useCallback(async () => {
     if (!file) return
     setProcessing(true)
     setError("")
     try {
       const Tesseract = await ensureWorker()
+      
+      // 📄 DETECTAR SI ES PDF DE CURSO (múltiples estudiantes)
+      const isCursoPDF = file.type === "application/pdf" && 
+        (file.name.toLowerCase().includes('curso') || file.name.toLowerCase().includes('-curso'))
+      
+      if (isCursoPDF) {
+        // ========== MODO CURSO: Agrupar páginas por estudiante y calificar cada prueba completa ==========
+        console.log('[OCR] 📚 Detectado PDF de CURSO - procesando múltiples estudiantes...')
+        const pages = await extractTextPerPage(file)
+        
+        if (pages.length === 0) {
+          setError('No se pudieron extraer páginas del PDF')
+          return
+        }
+        
+        const qTot = Array.isArray(test?.questions) ? test!.questions.length : 0
+        const totalPts = typeof (test as any)?.totalPoints === 'number' ? (test as any).totalPoints as number : qTot
+        
+        // 🔍 PASO 1: Identificar estudiantes únicos por nombre o RUT en ENCABEZADO de cada página
+        type PageWithStudent = { pageNum: number; text: string; studentName: string; studentRut: string; studentInfo: any }
+        const pagesWithStudents: PageWithStudent[] = []
+        
+        // Función para extraer nombre y RUT del encabezado del PDF
+        const extractFromHeader = (text: string): { name: string; rut: string } => {
+          // Buscar en las primeras 15 líneas (encabezado típico)
+          const lines = text.split('\n').slice(0, 15)
+          const headerText = lines.join('\n')
+          
+          // Buscar RUT con varios formatos: "RUT: 10000000-8", "10.000.000-8", etc.
+          const rutPatterns = [
+            /RUT[:\s]*(\d{1,2}[\.\s]?\d{3}[\.\s]?\d{3}[-\s]?[\dkK])/i,
+            /(\d{1,2}[\.\s]?\d{3}[\.\s]?\d{3}[-\s]?[\dkK])/i
+          ]
+          let detectedRut = ''
+          for (const pattern of rutPatterns) {
+            const match = headerText.match(pattern)
+            if (match) {
+              detectedRut = match[1].replace(/[\.\s]/g, '').toUpperCase()
+              break
+            }
+          }
+          
+          // Buscar nombre después de "NOMBRE DEL ESTUDIANTE:" o similar
+          const namePatterns = [
+            /NOMBRE\s*(?:DEL)?\s*(?:ESTUDIANTE)?[:\s]+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s*_|$|\n)/i,
+            /ESTUDIANTE[:\s]+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s*[-–]|\s*\d|$|\n)/i,
+          ]
+          let detectedName = ''
+          for (const pattern of namePatterns) {
+            const match = headerText.match(pattern)
+            if (match) {
+              detectedName = match[1].trim()
+              // Limpiar caracteres extraños
+              detectedName = detectedName.replace(/[_\-–]+$/, '').trim()
+              if (detectedName.length > 3) break
+            }
+          }
+          
+          return { name: detectedName, rut: detectedRut }
+        }
+        
+        for (const { pageNum, text } of pages) {
+          if (!text || normalize(text).length < 20) continue
+          
+          // Extraer nombre y RUT desde el ENCABEZADO
+          const { name: headerName, rut: headerRut } = extractFromHeader(text)
+          
+          let guessedName = headerName
+          let detectedRut = headerRut
+          
+          // Si no encontramos nombre en el encabezado, usar fallback
+          if (!guessedName || !isLikelyPersonName(guessedName)) {
+            guessedName = guessStudentName(text, students)
+            if (!isLikelyPersonName(guessedName)) {
+              if (Array.isArray(students) && students.length > 0) {
+                let best: { name: string, s: number } | null = null
+                for (const s of students) {
+                  const nm = String(s.displayName || s.username || '').trim()
+                  if (!nm) continue
+                  const sc = similarityByTokens(nm, text)
+                  if (!best || sc > best.s) best = { name: nm, s: sc }
+                }
+                if (best && best.s >= 0.30) guessedName = best.name
+              }
+            }
+          }
+          
+          // Buscar estudiante en la sección (por RUT primero, luego por nombre)
+          let studentInfo: any = null
+          if (detectedRut) {
+            studentInfo = students.find((s: any) => {
+              const sRut = String(s.rut || '').replace(/[\.\s-]/g, '').toUpperCase()
+              const cleanDetectedRut = detectedRut.replace(/[\.\s-]/g, '').toUpperCase()
+              return sRut && cleanDetectedRut && sRut === cleanDetectedRut
+            }) || null
+            if (studentInfo) {
+              guessedName = studentInfo.displayName || studentInfo.username || guessedName
+            }
+          }
+          if (!studentInfo && guessedName) {
+            studentInfo = findStudentInSection(guessedName, test?.courseId, test?.sectionId)
+          }
+          
+          console.log(`[OCR] Página ${pageNum}: Nombre="${guessedName}" RUT="${detectedRut}" ${studentInfo ? '✅ Encontrado' : '❌ No encontrado'}`)
+          
+          pagesWithStudents.push({
+            pageNum,
+            text,
+            studentName: guessedName || '',
+            studentRut: detectedRut,
+            studentInfo
+          })
+        }
+        
+        // 🔍 PASO 2: Agrupar páginas por estudiante (usando RUT o nombre como clave)
+        const studentGroups = new Map<string, { pages: PageWithStudent[]; studentInfo: any; studentName: string }>()
+        
+        for (const page of pagesWithStudents) {
+          // Usar RUT como clave principal, si no hay RUT usar nombre normalizado
+          const key = page.studentRut || normalize(page.studentName)
+          if (!key) continue
+          
+          if (!studentGroups.has(key)) {
+            studentGroups.set(key, {
+              pages: [],
+              studentInfo: page.studentInfo,
+              studentName: page.studentName
+            })
+          }
+          studentGroups.get(key)!.pages.push(page)
+        }
+        
+        const numStudents = studentGroups.size
+        const totalPages = pagesWithStudents.length
+        const pagesPerStudent = numStudents > 0 ? Math.round(totalPages / numStudents) : 0
+        
+        console.log(`[OCR] 📊 Detectados ${numStudents} estudiantes, ${totalPages} páginas total (≈${pagesPerStudent} páginas/estudiante)`)
+        
+        // 🔍 PASO 3: Calificar cada estudiante usando TODAS sus páginas combinadas (PRELIMINAR)
+        let processedCount = 0
+        const preliminaryResults: Array<{
+          studentName: string
+          studentId: string | null
+          studentInfo: any
+          score: number
+          pct: number
+          pts: number
+          saved: boolean
+        }> = []
+        
+        for (const [key, group] of studentGroups) {
+          const { pages: studentPages, studentInfo, studentName } = group
+          
+          // Combinar texto de todas las páginas del estudiante
+          const combinedText = studentPages.map(p => p.text).join('\n\n--- Página siguiente ---\n\n')
+          
+          console.log(`[OCR] 📝 Calificando ${studentName} (${studentPages.length} páginas)...`)
+          
+          // Calificar la prueba completa del estudiante
+          const graded = autoGrade(combinedText, test?.questions || [])
+          const studentCorrect = graded.correct
+          const studentPct = qTot > 0 ? Math.round((Math.max(0, Math.min(studentCorrect, qTot)) / qTot) * 100) : 0
+          const studentPts = qTot > 0 ? Math.round((Math.max(0, Math.min(studentCorrect, qTot)) / qTot) * totalPts) : 0
+          
+          console.log(`[OCR] ✅ ${studentName}: ${studentCorrect}/${qTot} correctas = ${studentPct}% (${studentPts} pts)`)
+          
+          // 📝 GUARDAR COMO PRELIMINAR (no guardar aún en localStorage ni enviar notificaciones)
+          preliminaryResults.push({
+            studentName: studentName || '',
+            studentId: studentInfo?.id || studentInfo?.username || null,
+            studentInfo,
+            score: studentCorrect,
+            pct: studentPct,
+            pts: studentPts,
+            saved: false
+          })
+          
+          processedCount++
+        }
+        
+        // Guardar resultados preliminares en el estado
+        setPreliminaryGrades(preliminaryResults)
+        
+        // Mostrar resumen general (NO mostrar nombre de estudiante individual)
+        if (processedCount > 0) {
+          const resumenTexto = preliminaryResults.map(r => `• ${r.studentName}: ${r.pts} pts (${r.pct}%)`).join('\n')
+          setStudentName('') // No mostrar nombre individual
+          setScore(null)
+          setBreakdown(null)
+          setOcr({ text: `📋 PDF de Curso procesado: ${processedCount} estudiantes detectados.\n\n${resumenTexto}\n\n⚠️ Calificaciones PRELIMINARES. Presiona "Guardar Calificaciones" para confirmar y enviar notificaciones.` })
+          setVerification({ sameDocument: true, coverage: 0.8, studentFound: true, studentId: null })
+          setEditScore(null)
+        } else {
+          setError('No se pudieron procesar estudiantes del PDF. Verifica que el PDF contenga las pruebas respondidas.')
+        }
+        
+        return
+      }
+      
+      // ========== MODO NORMAL: Un solo estudiante ==========
       let text = ""
       if (file.type === "application/pdf") {
         text = await extractTextFromPDF(file)
@@ -368,6 +624,170 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
       setProcessing(false)
     }
   }, [file, ensureWorker, test?.questions, students])
+
+  // 💾 NUEVO: Guardar todas las calificaciones preliminares y enviar notificaciones
+  const saveAllPreliminaryGrades = useCallback(async () => {
+    if (preliminaryGrades.length === 0) return
+    
+    setSavingGrades(true)
+    try {
+      const qTot = Array.isArray(test?.questions) ? test!.questions.length : 0
+      const totalPts = typeof (test as any)?.totalPoints === 'number' ? (test as any).totalPoints as number : qTot
+      const reviewKey = getReviewKey(test?.id || '')
+      let reviewList: ReviewRecord[] = []
+      try { reviewList = JSON.parse(localStorage.getItem(reviewKey) || '[]') } catch {}
+      
+      const baseTimestamp = Date.now()
+      let savedCount = 0
+      
+      for (let i = 0; i < preliminaryGrades.length; i++) {
+        const grade = preliminaryGrades[i]
+        if (grade.saved) continue // Ya guardada
+        
+        const { studentName, studentId, studentInfo, score, pct, pts } = grade
+        
+        // 1) Guardar calificación en localStorage (TestGrades)
+        if (studentInfo || studentId) {
+          try {
+            upsertTestGrade({
+              testId: test?.id || '',
+              studentId: String(studentId || studentInfo?.id || studentInfo?.username || ''),
+              studentName: studentInfo?.displayName || studentInfo?.username || studentName || '',
+              score: pct,
+              courseId: test?.courseId || null,
+              sectionId: test?.sectionId || null,
+              subjectId: test?.subjectId || null,
+              title: test?.title || '',
+            })
+          } catch (e) {
+            console.warn(`[SaveGrades] No se pudo guardar nota de ${studentName}:`, e)
+          }
+        }
+        
+        // 2) Guardar en historial
+        const newRecord: ReviewRecord = {
+          testId: test?.id || '',
+          uploadedAt: baseTimestamp + (i * 1000),
+          studentName: studentName || '',
+          studentId: studentId || null,
+          courseId: test?.courseId || null,
+          sectionId: test?.sectionId || null,
+          subjectId: test?.subjectId || null,
+          subjectName: test?.subjectName || null,
+          topic: test?.topic || '',
+          score: score,
+          totalQuestions: qTot,
+          totalPoints: totalPts,
+          rawPoints: pts,
+          rawPercent: pct,
+          sameDocument: true,
+          coverage: 0.8,
+          studentFound: !!studentInfo,
+        }
+        
+        const normName = normalize(studentName)
+        const idx = reviewList.findIndex(r => 
+          (r.studentId && studentId && r.studentId === studentId) || 
+          normalize(r.studentName || '') === normName
+        )
+        if (idx >= 0) {
+          reviewList[idx] = newRecord
+        } else {
+          reviewList.unshift(newRecord)
+        }
+        
+        // 3) Enviar notificación por email al estudiante y apoderado
+        if (studentId) {
+          try {
+            // Obtener nombre del curso/sección
+            let courseDisplayName = ''
+            try {
+              const savedYear = Number(localStorage.getItem('admin-selected-year') || '')
+              const currentYear = Number.isFinite(savedYear) && savedYear > 0 ? savedYear : new Date().getFullYear()
+              const studentsForYear = JSON.parse(localStorage.getItem(`smart-student-students-${currentYear}`) || '[]')
+              const studentData = studentsForYear.find((s: any) => String(s.id) === String(studentId) || String(s.username) === String(studentId))
+              if (studentData) {
+                courseDisplayName = `${studentData.course || ''} ${studentData.section || ''}`.trim()
+              }
+            } catch {}
+            if (!courseDisplayName) {
+              const sections = JSON.parse(localStorage.getItem('smart-student-sections') || '[]')
+              const courses = JSON.parse(localStorage.getItem('smart-student-courses') || '[]')
+              const sec = sections.find((s: any) => String(s.id) === String(test?.sectionId))
+              const course = courses.find((c: any) => String(c.id) === String(sec?.courseId))
+              courseDisplayName = `${course?.name || ''} ${sec?.name || ''}`.trim()
+            }
+            
+            // Mensaje motivacional
+            let motivationalMsg = ''
+            if (pct >= 90) motivationalMsg = '🌟 ¡Excelente trabajo! Sigue así.'
+            else if (pct >= 70) motivationalMsg = '👍 ¡Buen trabajo! Vas por buen camino.'
+            else if (pct >= 50) motivationalMsg = '💪 ¡Sigue esforzándote! Puedes mejorar.'
+            else motivationalMsg = '📚 No te desanimes, con práctica mejorarás.'
+            
+            const recipientIds: string[] = [studentId]
+            // Buscar apoderados
+            try {
+              const savedYear = Number(localStorage.getItem('admin-selected-year') || '')
+              const currentYear = Number.isFinite(savedYear) && savedYear > 0 ? savedYear : new Date().getFullYear()
+              const guardians = JSON.parse(localStorage.getItem(`smart-student-guardians-${currentYear}`) || '[]')
+              const studentGuardians = guardians.filter((g: any) => 
+                g.studentIds?.includes(studentId) || 
+                g.students?.some((s: any) => String(s.id || s) === String(studentId))
+              )
+              studentGuardians.forEach((g: any) => {
+                if (g.id && !recipientIds.includes(g.id)) recipientIds.push(g.id)
+              })
+            } catch {}
+            
+            // Enviar email a cada destinatario
+            for (const recipientId of recipientIds) {
+              try {
+                await sendEmailOnNotification({
+                  userId: recipientId,
+                  type: 'grade_published',
+                  title: `📊 Nueva calificación: ${test?.title || 'Prueba'}`,
+                  body: `${studentName} obtuvo ${pts} pts (${pct}%) en la prueba "${test?.title || 'Prueba'}" de ${courseDisplayName}. ${motivationalMsg}`,
+                  data: {
+                    testId: test?.id,
+                    studentId,
+                    grade: pct,
+                    feedback: `Puntaje: ${pts}/${totalPts} pts (${pct}%)`,
+                  }
+                })
+              } catch (emailErr) {
+                console.warn(`[SaveGrades] Error enviando email a ${recipientId}:`, emailErr)
+              }
+            }
+          } catch (notifErr) {
+            console.warn(`[SaveGrades] Error con notificaciones de ${studentName}:`, notifErr)
+          }
+        }
+        
+        savedCount++
+      }
+      
+      // Guardar historial actualizado
+      try {
+        localStorage.setItem(reviewKey, JSON.stringify(reviewList))
+        window.dispatchEvent(new StorageEvent('storage', { key: reviewKey, newValue: JSON.stringify(reviewList) }))
+      } catch {}
+      setHistory(reviewList)
+      
+      // Marcar todas como guardadas
+      setPreliminaryGrades(prev => prev.map(g => ({ ...g, saved: true })))
+      
+      // Mostrar mensaje de éxito
+      setOcr({ text: `✅ ${savedCount} calificaciones guardadas y notificaciones enviadas exitosamente.` })
+      setStatusModal({ type: 'success', message: `✅ ${savedCount} calificaciones guardadas.\n📧 Notificaciones enviadas a estudiantes y apoderados.` })
+      
+    } catch (err: any) {
+      console.error('[SaveGrades] Error:', err)
+      setError(err?.message || 'Error al guardar calificaciones')
+    } finally {
+      setSavingGrades(false)
+    }
+  }, [preliminaryGrades, test, students])
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -844,6 +1264,88 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
             </div>
           )}
 
+          {/* 📋 CALIFICACIONES PRELIMINARES DEL PDF DE CURSO */}
+          {preliminaryGrades.length > 0 && (
+            <div className="border-2 border-amber-400 rounded-md p-3 space-y-3 bg-amber-50 dark:bg-amber-950/30">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  📋 Calificaciones Preliminares ({preliminaryGrades.length} estudiantes)
+                </div>
+                <Button 
+                  onClick={saveAllPreliminaryGrades} 
+                  disabled={savingGrades || preliminaryGrades.every(g => g.saved)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {savingGrades ? '⏳ Guardando...' : '💾 Guardar Calificaciones y Notificar'}
+                </Button>
+              </div>
+              <div className="text-xs text-amber-700 dark:text-amber-300">
+                ⚠️ Estas calificaciones aún NO están guardadas. Revisa y presiona "Guardar" para confirmar y enviar notificaciones a estudiantes y apoderados.
+              </div>
+              <table className="w-full text-xs">
+                <thead className="text-muted-foreground">
+                  <tr>
+                    <th className="text-left py-1 pr-2">Estudiante</th>
+                    <th className="text-center py-1 pr-2">Correctas</th>
+                    <th className="text-center py-1 pr-2">Puntos</th>
+                    <th className="text-center py-1 pr-2">Porcentaje</th>
+                    <th className="text-center py-1">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preliminaryGrades.map((g, idx) => {
+                    const totalQuestions = test?.questions?.length || 0
+                    return (
+                    <tr key={idx} className="border-t">
+                      <td className="py-1 pr-2">
+                        <span className={g.studentInfo ? 'text-green-700' : 'text-amber-600'}>
+                          {g.studentInfo ? '✅' : '⚠️'} {g.studentName || 'Sin nombre'}
+                        </span>
+                      </td>
+                      <td className="py-1 pr-2 text-center">
+                        <span className="font-mono">{g.score}/{totalQuestions}</span>
+                      </td>
+                      <td className="py-1 pr-2 text-center">
+                        <Input
+                          type="number"
+                          className="h-6 w-16 text-xs text-center"
+                          value={g.pts}
+                          onChange={(e) => {
+                            const newPts = Math.max(0, Math.min(Number(e.target.value) || 0, 
+                              typeof (test as any)?.totalPoints === 'number' ? (test as any).totalPoints : (test?.questions?.length || 100)
+                            ))
+                            const qTot = test?.questions?.length || 1
+                            const totalPts = typeof (test as any)?.totalPoints === 'number' ? (test as any).totalPoints : qTot
+                            const newPct = totalPts > 0 ? Math.round((newPts / totalPts) * 100) : 0
+                            const newScore = qTot > 0 ? Math.round((newPts / totalPts) * qTot) : 0
+                            setPreliminaryGrades(prev => prev.map((p, i) => 
+                              i === idx ? { ...p, pts: newPts, pct: newPct, score: newScore } : p
+                            ))
+                          }}
+                          min={0}
+                          disabled={g.saved}
+                        />
+                      </td>
+                      <td className="py-1 pr-2 text-center">
+                        <span className={`px-2 py-0.5 rounded ${g.pct >= 60 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {g.pct}%
+                        </span>
+                      </td>
+                      <td className="py-1 text-center">
+                        {g.saved ? (
+                          <span className="text-green-600">✅ Guardado</span>
+                        ) : (
+                          <span className="text-amber-600">⏳ Pendiente</span>
+                        )}
+                      </td>
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* Historial de revisión */}
           <div className="border rounded-md p-3 space-y-2">
             <div className="text-sm font-medium">{translate('testsReviewHistoryTitle') || 'Historial de revisión'}</div>
@@ -1266,6 +1768,14 @@ type AutoGradeResult = {
     des: { correct: number; total: number }
   }
   evidence: number
+  // Detalles por pregunta para debug
+  details?: Array<{
+    questionNum: number
+    type: string
+    detected: string | null
+    correct: string
+    isCorrect: boolean
+  }>
 }
 
 function autoGrade(text: string, questions: AnyQuestion[]): AutoGradeResult {
@@ -1282,76 +1792,107 @@ function autoGrade(text: string, questions: AnyQuestion[]): AutoGradeResult {
   const norm = normalize(text)
   const lines = raw.split(/\n+/)
   
-  // Conjunto de símbolos que suelen representar marcas de selección (incluye cuadrados, rayas y trazos comunes)
+  // 🔍 DETECCIÓN MEJORADA DE MARCAS
+  // Las marcas pueden ser: X, cruz, círculo, raya, tachadura encima de la letra
+  // El OCR puede interpretar estas marcas de diferentes formas
+  
+  // Símbolos que representan marcas de selección
   const MARK_CHARS = 'xX✓✔●◉•■□▪▢◻◆▲☑☒✗✘╳'
-  // Conjunto extendido para trazos que el estudiante puede dibujar encima (rayas, subrayados, etc.)
-  const MARK_SCRIBBLE = MARK_CHARS + '-_/=|~'
-  // Patrones mejorados para detectar marcas seleccionadas
-  const isSelectedMark = (s: string) => {
-    if (!s) return false
-    // Escapar símbolos para uso seguro en clases de caracteres
-  const escaped = MARK_SCRIBBLE.replace(/[-\\^$.*+?()[\]{}|]/g, '\\$&')
-    const charClass = `[${escaped}]`
-    const patterns = [
-      new RegExp(`\\(\\s*${charClass}\\s*\\)`),  // (x)
-      new RegExp(`\\[\\s*${charClass}\\s*\\]`),  // [x]
-      new RegExp(`\\{\\s*${charClass}\\s*\\}`),  // {x}
-      new RegExp(`\\*\\s*${charClass}\\s*\\*`),  // *x*
-      new RegExp(`${charClass}`),                      // símbolo suelto (fallback)
+  const MARK_SCRIBBLE = MARK_CHARS + '-_/=|~*@#'
+  const escapedMarks = MARK_SCRIBBLE.replace(/[-\\^$.*+?()[\]{}|]/g, '\\$&')
+  const markClass = `[${escapedMarks}]`
+  
+  // 📌 NUEVA FUNCIÓN: Detectar qué alternativa tiene marca en una línea
+  // Busca patrones como: (X) A, A (X), [X] A, A [X], (A) con X encima, etc.
+  const detectMarkedOption = (line: string): string | null => {
+    if (!line) return null
+    const upper = line.toUpperCase()
+    
+    // Patrones para detectar marca + letra de opción
+    // 1. Marca dentro de paréntesis seguido de letra: (X) A, [X] A
+    const markBeforeLetter = upper.match(new RegExp(`[\\(\\[]\\s*${markClass}+\\s*[\\)\\]]\\s*([A-D])`, 'i'))
+    if (markBeforeLetter) return markBeforeLetter[1]
+    
+    // 2. Letra seguida de marca en paréntesis: A (X), A [X]
+    const letterBeforeMark = upper.match(new RegExp(`([A-D])\\s*[\\(\\[]\\s*${markClass}+\\s*[\\)\\]]`, 'i'))
+    if (letterBeforeMark) return letterBeforeMark[1]
+    
+    // 3. Letra con marca directamente: A X, XA, A-X (el estudiante tachó la letra)
+    const letterWithMark = upper.match(new RegExp(`([A-D])\\s*${markClass}+`, 'i'))
+    if (letterWithMark) return letterWithMark[1]
+    
+    // 4. Marca seguida de letra: X A, XA
+    const markWithLetter = upper.match(new RegExp(`${markClass}+\\s*([A-D])(?![A-Z])`, 'i'))
+    if (markWithLetter) return markWithLetter[1]
+    
+    // 5. Letra dentro de paréntesis con marca cercana: (A) X o X (A)
+    const letterInParenWithMark = upper.match(/\(\s*([A-D])\s*\)/i)
+    if (letterInParenWithMark && new RegExp(markClass, 'i').test(upper)) {
+      return letterInParenWithMark[1]
+    }
+    
+    return null
+  }
+  
+  // 📌 NUEVA FUNCIÓN: Detectar V o F marcado
+  const detectMarkedTF = (line: string): 'V' | 'F' | null => {
+    if (!line) return null
+    const upper = line.toUpperCase()
+    
+    // Patrones para V marcado
+    const vPatterns = [
+      new RegExp(`V\\s*[\\(\\[]\\s*${markClass}+\\s*[\\)\\]]`, 'i'), // V (X), V [X]
+      new RegExp(`[\\(\\[]\\s*${markClass}+\\s*[\\)\\]]\\s*V`, 'i'), // (X) V, [X] V
+      new RegExp(`V\\s*${markClass}+`, 'i'), // V X (marca al lado)
+      new RegExp(`${markClass}+\\s*V(?!ERD)`, 'i'), // X V (marca antes)
     ]
-    const matched = patterns.filter((re) => re.test(s)).length
-    return matched > 0 && matched <= 3
+    
+    // Patrones para F marcado
+    const fPatterns = [
+      new RegExp(`F\\s*[\\(\\[]\\s*${markClass}+\\s*[\\)\\]]`, 'i'), // F (X), F [X]
+      new RegExp(`[\\(\\[]\\s*${markClass}+\\s*[\\)\\]]\\s*F`, 'i'), // (X) F, [X] F
+      new RegExp(`F\\s*${markClass}+`, 'i'), // F X (marca al lado)
+      new RegExp(`${markClass}+\\s*F(?!ALS)`, 'i'), // X F (marca antes)
+    ]
+    
+    const vMarked = vPatterns.some(p => p.test(upper))
+    const fMarked = fPatterns.some(p => p.test(upper))
+    
+    // Si ambos están marcados (error del OCR), no podemos determinar
+    if (vMarked && fMarked) return null
+    if (vMarked) return 'V'
+    if (fMarked) return 'F'
+    return null
+  }
+  
+  // 📌 BUSCAR PREGUNTAS POR NÚMERO
+  // Crear un mapa de líneas que contienen números de pregunta
+  const questionLineMap = new Map<number, string[]>()
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    // Buscar números de pregunta: "1.", "1)", "1-", "Pregunta 1", etc.
+    const numMatch = line.match(/^\s*(\d{1,2})\s*[\.\)\-:\s]/)
+    if (numMatch) {
+      const qNum = parseInt(numMatch[1], 10)
+      if (qNum > 0 && qNum <= questions.length) {
+        // Capturar esta línea y las siguientes 5 como contexto de la pregunta
+        const context = lines.slice(i, Math.min(i + 6, lines.length))
+        questionLineMap.set(qNum, context)
+      }
+    }
   }
   
   const optionLabel = (idx: number) => String.fromCharCode(65 + idx) // A, B, C, D...
-  
-  // Detector mejorado de letras de opción
-  const hasOptionLabel = (line: string, label: string) => {
-    if (!line || !label) return false
-    const upper = line.toUpperCase()
-    const lower = line.toLowerCase()
-    const L = label.toUpperCase()
-    const l = label.toLowerCase()
-    
-    // Patrones múltiples para encontrar etiquetas
-    const patterns = [
-      new RegExp(`\\b${L}\\s*[\\)\\]\\.]`,'g'), // A) A] A.
-      new RegExp(`\\(${L}\\)`,'g'),                 // (A)
-      new RegExp(`\\[${L}\\]`,'g'),                 // [A]
-      new RegExp(`^\\s*${L}\\s*[\\-:]`,'g'),      // A- A:
-      new RegExp(`\\b${L}\\b`,'g'),                // A
-      // versiones minúsculas
-      new RegExp(`\\b${l}\\s*[\\)\\]\\.]`,'g'),
-      new RegExp(`\\(${l}\\)`,'g'),
-      new RegExp(`\\[${l}\\]`,'g'),
-      new RegExp(`^\\s*${l}\\s*[\\-:]`,'g'),
-      new RegExp(`\\b${l}\\b`,'g'),
-    ]
-    return patterns.some(p => p.test(upper) || p.test(lower))
-  }
-  
-  // Función para buscar texto de opción en contexto
-  const findOptionInContext = (optionText: string, searchRadius = 3) => {
-    const normalizedOption = normalize(optionText)
-    if (normalizedOption.length < 5) return false
-    
-    // Buscar el texto de la opción y verificar marcas cercanas
-    for (let i = 0; i < lines.length; i++) {
-      const currentLine = normalize(lines[i])
-      if (currentLine.includes(normalizedOption.slice(0, Math.min(20, normalizedOption.length)))) {
-        // Buscar marcas en líneas cercanas
-        for (let j = Math.max(0, i - searchRadius); j <= Math.min(lines.length - 1, i + searchRadius); j++) {
-          if (isSelectedMark(lines[j])) {
-            return true
-          }
-        }
-      }
-    }
-    return false
-  }
 
   let correct = 0
   let evidence = 0 // cuenta líneas/marcas que respaldan detecciones
+  const details: Array<{
+    questionNum: number
+    type: string
+    detected: string | null
+    correct: string
+    isCorrect: boolean
+  }> = []
   const bd = {
     tf: { correct: 0, total: 0 },
     mc: { correct: 0, total: 0 },
@@ -1359,77 +1900,77 @@ function autoGrade(text: string, questions: AnyQuestion[]): AutoGradeResult {
     des: { correct: 0, total: 0 },
   }
   
-  for (const q of questions) {
+  // Procesar preguntas una por una
+  for (let qIdx = 0; qIdx < questions.length; qIdx++) {
+    const q = questions[qIdx]
+    const qNum = qIdx + 1 // Número de pregunta (1-indexed)
+    
+    // Obtener las líneas relevantes para esta pregunta
+    const questionContext = questionLineMap.get(qNum) || []
+    const contextText = questionContext.join('\n')
+    
     if ((q as any).type === 'tf') {
       bd.tf.total++
       const tf = q as QuestionTF
-      // Heurística de ventana: buscar V y F con paréntesis marcados en la misma línea o en un bloque pequeño
-  const windowSize = 3
-      let vSelected = false
-      let fSelected = false
-  const escaped = MARK_SCRIBBLE.replace(/[-\\^$.*+?()[\]{}|]/g, '\\$&')
-  const markClass = `[${escaped}]`
-  const vLineRegex = new RegExp(`v(?:erdadero)?\\s*[\\n\\r\\s]*[\\(\\[]\\s*${markClass}?\\s*[\\)\\]]`, 'i')
-  const fLineRegex = new RegExp(`f(?:also)?\\s*[\\n\\r\\s]*[\\(\\[]\\s*${markClass}?\\s*[\\)\\]]`, 'i')
-  const bothSameLine = new RegExp(`v(?:erdadero)?\\s*[\\(\\[]\\s*(${markClass}?)\\s*[\\)\\]][^\\n\\r]{0,20}f(?:also)?\\s*[\\(\\[]\\s*(${markClass}?)\\s*[\\)\\]]`, 'i')
-  const bothSameLineRev = new RegExp(`f(?:also)?\\s*[\\(\\[]\\s*(${markClass}?)\\s*[\\)\\]][^\\n\\r]{0,20}v(?:erdadero)?\\s*[\\(\\[]\\s*(${markClass}?)\\s*[\\)\\]]`, 'i')
-
-      // 1) Intento en la misma línea
-      for (const line of lines) {
-        const m1 = line.match(bothSameLine)
-        if (m1) {
-          const vm = m1[1]; const fm = m1[2]
-          vSelected = !!vm && new RegExp(markClass).test(vm)
-          fSelected = !!fm && new RegExp(markClass).test(fm)
-          if (vSelected || fSelected) { evidence++; }
-          break
-        }
-        const m2 = line.match(bothSameLineRev)
-        if (m2) {
-          const fm = m2[1]; const vm = m2[2]
-          vSelected = !!vm && new RegExp(markClass).test(vm)
-          fSelected = !!fm && new RegExp(markClass).test(fm)
-          if (vSelected || fSelected) { evidence++; }
+      const correctAnswer = tf.answer ? 'V' : 'F'
+      
+      // 🔍 NUEVO: Buscar en el contexto de la pregunta específica primero
+      let detected: 'V' | 'F' | null = null
+      
+      // 1) Buscar en el contexto específico de la pregunta
+      for (const line of questionContext) {
+        detected = detectMarkedTF(line)
+        if (detected) {
+          evidence++
           break
         }
       }
-      // 2) Si no quedó claro, buscar en ventana de líneas consecutivas
-      if (!vSelected && !fSelected) {
-        for (let i = 0; i < lines.length; i++) {
-          const chunk = lines.slice(i, i + windowSize).join(' ')
-          if (!chunk) continue
-          const hasV = vLineRegex.test(chunk)
-          const hasF = fLineRegex.test(chunk)
-          if (hasV || hasF) {
-            // Determinar cuál está marcado
-            const vHasMark = new RegExp(`v(?:erdadero)?\\s*[\\(\\[]\\s*${markClass}\\s*[\\)\\]]`, 'i').test(chunk)
-            const fHasMark = new RegExp(`f(?:also)?\\s*[\\(\\[]\\s*${markClass}\\s*[\\)\\]]`, 'i').test(chunk)
-            vSelected = vHasMark && !fHasMark
-            fSelected = fHasMark && !vHasMark
-            if (vSelected || fSelected) { evidence++ }
+      
+      // 2) Si no se encontró, buscar en todas las líneas que mencionan el número de pregunta
+      if (!detected) {
+        for (const line of lines) {
+          // Verificar si la línea contiene el número de pregunta
+          const numPattern = new RegExp(`^\\s*${qNum}\\s*[\\.\\)\\-:\\s]`, 'i')
+          if (numPattern.test(line)) {
+            detected = detectMarkedTF(line)
+            if (detected) {
+              evidence++
+              break
+            }
+            // También buscar en las siguientes líneas
+            const lineIdx = lines.indexOf(line)
+            for (let j = lineIdx; j < Math.min(lineIdx + 4, lines.length); j++) {
+              detected = detectMarkedTF(lines[j])
+              if (detected) {
+                evidence++
+                break
+              }
+            }
+            if (detected) break
+          }
+        }
+      }
+      
+      // 3) Fallback: buscar cualquier V o F marcado
+      if (!detected) {
+        for (const line of lines) {
+          detected = detectMarkedTF(line)
+          if (detected) {
+            evidence++
             break
           }
         }
       }
-      // 3) Fallback: patrones simples (menos confiables)
-      if (!vSelected && !fSelected) {
-  const fallbackMark = `[${MARK_SCRIBBLE.replace(/[-\\^$.*+?()[\]{}|]/g, '\\$&')}]`
-        const vFallback = new RegExp(`v\\s*\\(\\s*${fallbackMark}+`, 'i')
-        const fFallback = new RegExp(`f\\s*\\(\\s*${fallbackMark}+`, 'i')
-        const vWordFallback = new RegExp(`(verdadero)\\s*[\\(\\[]\\s*${fallbackMark}+`, 'i')
-        const fWordFallback = new RegExp(`(falso)\\s*[\\(\\[]\\s*${fallbackMark}+`, 'i')
-        for (const line of lines) {
-          if (vFallback.test(line) || vWordFallback.test(line)) { vSelected = true; evidence++ }
-          if (fFallback.test(line) || fWordFallback.test(line)) { fSelected = true; evidence++ }
-        }
-        // Si ambos quedaron verdaderos por ruido, invalidar
-        if (vSelected && fSelected) { vSelected = false; fSelected = false }
+      
+      const isCorrectAnswer = detected === correctAnswer
+      details.push({ questionNum: qNum, type: 'tf', detected, correct: correctAnswer, isCorrect: isCorrectAnswer })
+      
+      console.log(`[TF #${qNum}] Correcta=${correctAnswer}, Detectada=${detected}, ✓=${isCorrectAnswer}`)
+      
+      if (isCorrectAnswer) {
+        correct++
+        bd.tf.correct++
       }
-
-      console.log(`[TF Debug] Pregunta: "${tf.text.slice(0, 50)}...", correcta=${tf.answer ? 'V' : 'F'}, V=${vSelected}, F=${fSelected}`)
-      if ((tf.answer && vSelected && !fSelected) || (!tf.answer && fSelected && !vSelected)) {
-        correct++; bd.tf.correct++; console.log('[TF] ✅')
-      } else { console.log('[TF] ❌/ambigua') }
       continue
     }
     
@@ -1437,61 +1978,57 @@ function autoGrade(text: string, questions: AnyQuestion[]): AutoGradeResult {
       bd.mc.total++
       const mc = q as QuestionMC
       const correctIdx = mc.correctIndex
-      const correctText = mc.options[correctIdx]
-      const label = optionLabel(correctIdx)
+      const correctLabel = optionLabel(correctIdx)
       
-      let isCorrect = false
-      let debugInfo = {
-        foundByLabel: false,
-        foundByContext: false,
-        foundByText: false
+      let detected: string | null = null
+      
+      // 1) Buscar en el contexto específico de la pregunta
+      for (const line of questionContext) {
+        detected = detectMarkedOption(line)
+        if (detected) {
+          evidence++
+          break
+        }
       }
       
-      // 1) Buscar por letra con marca en la misma línea, evitando ambigüedad
-  const inlineMarkRe = new RegExp(`(${label})[^\n]{0,6}[${MARK_SCRIBBLE.replace(/[-\\^$.*+?()[\]{}|]/g, '\\$&')}]{1,3}`,'i')
-      for (const line of lines) {
-        if (hasOptionLabel(line, label) && (isSelectedMark(line) || inlineMarkRe.test(line))) {
-          // Si la línea también contiene otras etiquetas de opción marcadas, la consideramos ambigua
-          const otherLabels = mc.options.map((_, i) => optionLabel(i)).filter(L => L !== label)
-          const otherMarked = otherLabels.some(L => hasOptionLabel(line, L) && isSelectedMark(line))
-          if (!otherMarked) {
-            isCorrect = true
-            evidence++
-            debugInfo.foundByLabel = true
-            break
+      // 2) Si no se encontró, buscar por número de pregunta
+      if (!detected) {
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const numPattern = new RegExp(`^\\s*${qNum}\\s*[\\.\\)\\-:\\s]`, 'i')
+          if (numPattern.test(line)) {
+            // Buscar la opción marcada en las siguientes líneas
+            for (let j = i; j < Math.min(i + 8, lines.length); j++) {
+              detected = detectMarkedOption(lines[j])
+              if (detected) {
+                evidence++
+                break
+              }
+            }
+            if (detected) break
           }
         }
       }
       
-      // 2) Buscar por texto de opción con marca cercana
-      if (!isCorrect) {
-        isCorrect = findOptionInContext(correctText)
-  if (isCorrect) { debugInfo.foundByContext = true; evidence++ }
-      }
-      
-      // 3) Fallback: texto de opción exacto con marca en la misma línea
-      if (!isCorrect) {
-        const escapedText = correctText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const textPattern = new RegExp(escapedText, 'i')
+      // 3) Fallback: buscar cualquier opción marcada
+      if (!detected) {
         for (const line of lines) {
-          if (textPattern.test(line) && isSelectedMark(line)) {
-            isCorrect = true
+          detected = detectMarkedOption(line)
+          if (detected) {
             evidence++
-            debugInfo.foundByText = true
             break
           }
         }
       }
       
-      // Debug logging
-      console.log(`[MC Debug] Pregunta: "${mc.text.slice(0, 50)}...", Opción correcta: ${label} - "${correctText}", Encontrada: ${isCorrect}`, debugInfo)
+      const isCorrectAnswer = detected?.toUpperCase() === correctLabel
+      details.push({ questionNum: qNum, type: 'mc', detected, correct: correctLabel, isCorrect: isCorrectAnswer })
       
-      if (isCorrect) {
+      console.log(`[MC #${qNum}] Correcta=${correctLabel}, Detectada=${detected}, ✓=${isCorrectAnswer}`)
+      
+      if (isCorrectAnswer) {
         correct++
         bd.mc.correct++
-        console.log(`[MC] ✅ Respuesta correcta`)
-      } else {
-        console.log(`[MC] ❌ Respuesta no detectada`)
       }
       continue
     }
@@ -1500,31 +2037,39 @@ function autoGrade(text: string, questions: AnyQuestion[]): AutoGradeResult {
       bd.ms.total++
       const ms = q as QuestionMS
       const correctOptions = ms.options.filter(o => o.correct)
+      const correctLabels = ms.options.map((o, i) => o.correct ? optionLabel(i) : null).filter(Boolean)
       let correctSelections = 0
       let incorrectSelections = 0
+      const detectedOptions: string[] = []
       
-      // Verificar cada opción
+      // Verificar cada opción buscando marcas
       for (let i = 0; i < ms.options.length; i++) {
         const option = ms.options[i]
         const label = optionLabel(i)
         let isSelected = false
         
-        // Buscar por letra con marca
-  const inlineMarkRe = new RegExp(`(${label})[^\n]{0,6}[${MARK_SCRIBBLE.replace(/[-\\^$.*+?()[\]{}|]/g, '\\$&')}]{1,3}`,'i')
-        for (const line of lines) {
-          if (hasOptionLabel(line, label) && (isSelectedMark(line) || inlineMarkRe.test(line))) {
+        // Buscar en el contexto de la pregunta
+        for (const line of questionContext) {
+          const detected = detectMarkedOption(line)
+          if (detected?.toUpperCase() === label) {
             isSelected = true
             break
           }
         }
         
-        // Buscar por texto con marca cercana
+        // Buscar en todas las líneas si no se encontró
         if (!isSelected) {
-          isSelected = findOptionInContext(option.text)
+          for (const line of lines) {
+            const detected = detectMarkedOption(line)
+            if (detected?.toUpperCase() === label) {
+              isSelected = true
+              break
+            }
+          }
         }
         
-        // Contar correctas e incorrectas
         if (isSelected) {
+          detectedOptions.push(label)
           if (option.correct) {
             correctSelections++
           } else {
@@ -1533,8 +2078,11 @@ function autoGrade(text: string, questions: AnyQuestion[]): AutoGradeResult {
         }
       }
       
-  // Otorgar punto solo si todas las correctas están seleccionadas y ninguna incorrecta
-      if (correctSelections === correctOptions.length && incorrectSelections === 0 && correctOptions.length > 0) {
+      // Otorgar punto solo si todas las correctas están seleccionadas y ninguna incorrecta
+      const isCorrectAnswer = correctSelections === correctOptions.length && incorrectSelections === 0 && correctOptions.length > 0
+      details.push({ questionNum: qNum, type: 'ms', detected: detectedOptions.join(',') || null, correct: correctLabels.join(','), isCorrect: isCorrectAnswer })
+      
+      if (isCorrectAnswer) {
         correct++
         bd.ms.correct++
         evidence++
@@ -1545,19 +2093,25 @@ function autoGrade(text: string, questions: AnyQuestion[]): AutoGradeResult {
     // Para preguntas de desarrollo, no auto-calificar (requiere revisión manual)
     if ((q as any).type === 'des') {
       bd.des.total++
+      details.push({ questionNum: qNum, type: 'des', detected: null, correct: 'manual', isCorrect: false })
       // Las preguntas de desarrollo se califican manualmente
       continue
     }
   }
   
+  // Log de detalles de calificación
+  console.log('[AutoGrade] Detalles:', details.map(d => `#${d.questionNum}(${d.type}): ${d.detected || '?'} vs ${d.correct} = ${d.isCorrect ? '✓' : '✗'}`).join(', '))
+  
   // Total auto-calificables
   const autoTotal = bd.tf.total + bd.mc.total + bd.ms.total
-  // Si detectamos 100% pero la evidencia es muy baja, suavizar: devolver como mínimo autoTotal-1 para evitar falsos 100%
+  // Si detectamos 100% pero la evidencia es muy baja, suavizar
   let adjustedCorrect = correct
-  if (autoTotal > 0 && correct === autoTotal && evidence < Math.max(3, Math.ceil(autoTotal * 0.25))) {
+  if (autoTotal > 0 && correct === autoTotal && evidence < Math.max(2, Math.ceil(autoTotal * 0.2))) {
+    // Solo ajustar si realmente no hay evidencia clara
     adjustedCorrect = Math.max(0, autoTotal - 1)
   }
-  return { correct: adjustedCorrect, breakdown: bd, evidence }
+  
+  return { correct: adjustedCorrect, breakdown: bd, evidence, details }
 }
 
 // ===== Utilidades nuevas =====

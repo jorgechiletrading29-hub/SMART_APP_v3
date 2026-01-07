@@ -9,16 +9,13 @@
 
 // Tipos de notificaciones que pueden enviarse por email
 export type NotificationType = 
-  | 'communication'        // Comunicación del profesor
-  | 'task_assigned'        // Nueva tarea asignada
-  | 'evaluation_assigned'  // Nueva evaluación asignada
-  | 'task_graded'          // Tarea calificada
-  | 'evaluation_graded'    // Evaluación calificada
-  | 'task_comment'         // Comentario en tarea
-  | 'grade_published'      // Calificación publicada
-  | 'evaluation_result'    // Resultado de evaluación
-  | 'evaluation_completed' // Estudiante completó evaluación (para apoderados)
-  | 'general';             // Notificación general
+  | 'communication'      // Comunicación del profesor
+  | 'task_assigned'      // Nueva tarea asignada
+  | 'task_graded'        // Tarea calificada
+  | 'task_comment'       // Comentario en tarea
+  | 'grade_published'    // Calificación publicada
+  | 'evaluation_result'  // Resultado de evaluación
+  | 'general';           // Notificación general
 
 export interface EmailNotificationPayload {
   type: NotificationType;
@@ -90,65 +87,17 @@ class EmailNotificationService {
    */
   getUserEmailInfo(userId: string): { email: string; name: string } | null {
     try {
-      // MÉTODO 1: Buscar en smart-student-users
       const storedUsers = localStorage.getItem('smart-student-users');
       if (storedUsers) {
         const users = JSON.parse(storedUsers);
-        console.log(`📧 [EMAIL SERVICE] Buscando usuario ${userId} en ${users.length} usuarios`);
         const user = users.find((u: any) => u.id === userId || u.username === userId);
-        if (user) {
-          console.log(`📧 [EMAIL SERVICE] Usuario encontrado: ${user.displayName || user.username}, email: ${user.email || 'SIN EMAIL'}`);
-          if (user.email) {
-            return {
-              email: user.email,
-              name: user.displayName || user.username || 'Usuario'
-            };
-          } else {
-            console.warn(`⚠️ [EMAIL SERVICE] Usuario ${userId} no tiene email configurado`);
-          }
-        } else {
-          console.warn(`⚠️ [EMAIL SERVICE] Usuario ${userId} NO encontrado en users`);
+        if (user && user.email) {
+          return {
+            email: user.email,
+            name: user.displayName || user.username || 'Usuario'
+          };
         }
       }
-      
-      // MÉTODO 2: Buscar en smart-student-students-{year}
-      const currentYear = new Date().getFullYear();
-      const storedStudents = localStorage.getItem(`smart-student-students-${currentYear}`);
-      if (storedStudents) {
-        const students = JSON.parse(storedStudents);
-        console.log(`📧 [EMAIL SERVICE] Buscando en students-${currentYear}: ${students.length} estudiantes`);
-        const student = students.find((s: any) => s.id === userId || s.username === userId);
-        if (student) {
-          console.log(`📧 [EMAIL SERVICE] Estudiante encontrado: ${student.displayName || student.name}, email: ${student.email || 'SIN EMAIL'}`);
-          if (student.email) {
-            return {
-              email: student.email,
-              name: student.displayName || student.name || student.username || 'Estudiante'
-            };
-          } else {
-            console.warn(`⚠️ [EMAIL SERVICE] Estudiante ${userId} no tiene email configurado`);
-          }
-        }
-      }
-      
-      // MÉTODO 3: Buscar en smart-student-guardians-{year}
-      const storedGuardians = localStorage.getItem(`smart-student-guardians-${currentYear}`);
-      if (storedGuardians) {
-        const guardians = JSON.parse(storedGuardians);
-        console.log(`📧 [EMAIL SERVICE] Buscando en guardians-${currentYear}: ${guardians.length} apoderados`);
-        const guardian = guardians.find((g: any) => g.id === userId || g.username === userId);
-        if (guardian) {
-          console.log(`📧 [EMAIL SERVICE] Apoderado encontrado: ${guardian.displayName || guardian.name}, email: ${guardian.email || 'SIN EMAIL'}`);
-          if (guardian.email) {
-            return {
-              email: guardian.email,
-              name: guardian.displayName || guardian.name || guardian.username || 'Apoderado'
-            };
-          }
-        }
-      }
-      
-      console.warn(`⚠️ [EMAIL SERVICE] Usuario ${userId} no encontrado en ninguna colección`);
     } catch (error) {
       console.warn('⚠️ [EMAIL SERVICE] Error getting user email info:', error);
     }
@@ -241,23 +190,18 @@ class EmailNotificationService {
     let failed = 0;
     let disabled = 0;
 
-    console.log(`📧📧📧 [EMAIL SERVICE] ====================================`);
-    console.log(`📧📧📧 [EMAIL SERVICE] ENVIANDO EMAILS A ${userIds.length} USUARIOS`);
-    console.log(`📧📧📧 [EMAIL SERVICE] IDs:`, userIds);
-    console.log(`📧📧📧 [EMAIL SERVICE] Tipo: ${notificationData.type}`);
-    console.log(`📧📧📧 [EMAIL SERVICE] ====================================`);
+    console.log(`📧 [EMAIL SERVICE] sendBulkEmailNotifications called with ${userIds.length} users:`, userIds);
 
     for (const userId of userIds) {
-      console.log(`📧 [EMAIL SERVICE] Procesando usuario: ${userId}`);
       const userInfo = this.getUserEmailInfo(userId);
       
       if (!userInfo) {
-        console.log(`❌ [EMAIL SERVICE] No email info found for user ${userId}`);
+        console.log(`📧 [EMAIL SERVICE] No email info found for user ${userId}`);
         failed++;
         continue;
       }
 
-      console.log(`✅ [EMAIL SERVICE] Email encontrado para ${userId}: ${userInfo.email} (${userInfo.name})`);
+      console.log(`📧 [EMAIL SERVICE] Found email for ${userId}: ${userInfo.email}`);
 
       const result = await this.sendEmailNotification({
         ...notificationData,
@@ -267,20 +211,15 @@ class EmailNotificationService {
       });
 
       if (result.emailSent) {
-        console.log(`✅✅ [EMAIL SERVICE] Email ENVIADO a ${userInfo.email}`);
         sent++;
       } else if (result.success && !result.emailSent) {
-        console.log(`⏭️ [EMAIL SERVICE] Email DESHABILITADO para ${userId}`);
         disabled++;
       } else {
-        console.log(`❌ [EMAIL SERVICE] Email FALLÓ para ${userInfo.email}: ${result.message}`);
         failed++;
       }
     }
 
-    console.log(`📧📧📧 [EMAIL SERVICE] ====================================`);
-    console.log(`📧📧📧 [EMAIL SERVICE] RESUMEN: ${sent} enviados, ${failed} fallidos, ${disabled} deshabilitados`);
-    console.log(`📧📧📧 [EMAIL SERVICE] ====================================`);
+    console.log(`📧 [EMAIL SERVICE] Bulk send results: ${sent} sent, ${failed} failed, ${disabled} disabled`);
     return { sent, failed, disabled };
   }
 
@@ -300,13 +239,10 @@ class EmailNotificationService {
     const baseSubject = {
       'communication': `📢 Nueva comunicación: ${data.title}`,
       'task_assigned': `📝 Nueva tarea asignada: ${data.taskTitle || data.title}`,
-      'evaluation_assigned': `📋 Nueva evaluación asignada: ${data.taskTitle || data.title}`,
       'task_graded': `✅ Tu tarea ha sido calificada: ${data.taskTitle || data.title}`,
-      'evaluation_graded': `✅ Tu evaluación ha sido calificada: ${data.taskTitle || data.title}`,
       'task_comment': `💬 Nuevo comentario en tu tarea: ${data.taskTitle || data.title}`,
       'grade_published': `📊 Nueva calificación publicada`,
       'evaluation_result': `📋 Resultado de evaluación disponible`,
-      'evaluation_completed': `🎓 Evaluación completada: ${data.taskTitle || data.title}`,
       'general': `🔔 ${data.title}`
     };
 
@@ -337,13 +273,10 @@ class EmailNotificationService {
     const typeLabels: Record<NotificationType, string> = {
       'communication': 'Comunicación',
       'task_assigned': 'Nueva Tarea',
-      'evaluation_assigned': 'Nueva Evaluación',
       'task_graded': 'Tarea Calificada',
-      'evaluation_graded': 'Evaluación Calificada',
       'task_comment': 'Comentario en Tarea',
       'grade_published': 'Calificación Publicada',
       'evaluation_result': 'Resultado de Evaluación',
-      'evaluation_completed': 'Evaluación Completada',
       'general': 'Notificación'
     };
 
