@@ -403,7 +403,7 @@ class EmailNotificationService {
               
               ${data.courseName ? `
               <p style="color: #6b7280; margin: 0 0 15px 0; font-size: 14px;">
-                <strong>Curso:</strong> ${data.courseName}${data.sectionName ? ` - ${data.sectionName}` : ''}
+                <strong>Curso:</strong> ${data.courseName}
               </p>
               ` : ''}
               

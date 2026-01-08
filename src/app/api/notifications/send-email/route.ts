@@ -235,7 +235,7 @@ function generateEmailHtml(data: {
                 ` : ''}
                 ${data.courseName ? `
                 <p style="color: #4a5568; margin: 0; font-size: 14px;">
-                  <span style="color: #718096;">📚 Curso:</span> <strong style="color: #2d3748;">${data.courseName}${data.sectionName ? ` - ${data.sectionName}` : ''}</strong>
+                  <span style="color: #718096;">📚 Curso:</span> <strong style="color: #2d3748;">${data.courseName}</strong>
                 </p>
                 ` : ''}
               </div>
