@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
 
 /**
  * API para enviar notificaciones por email
@@ -7,35 +6,22 @@ import nodemailer from 'nodemailer';
  * 
  * Correo de envío: notificaciones@smartstudent.online
  * 
- * Usando SMTP de Zoho Mail
+ * Usando API de Mailrelay
  */
 
-// Configuración SMTP de Zoho
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.zoho.com';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
-const SMTP_USER = process.env.SMTP_USER || 'notificaciones@smartstudent.online';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const FROM_EMAIL = process.env.SMTP_USER || 'notificaciones@smartstudent.online';
-
-/**
- * Crea el transportador de Nodemailer
- */
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
-};
+// Configuración de Mailrelay
+const MAILRELAY_API_KEY = process.env.MAILRELAY_API_KEY || '';
+// La URL de Mailrelay usa tu subdominio: https://TU-SUBDOMINIO.ipzmarketing.com/api/v1/
+// O el formato alternativo: https://TU-CUENTA.api.mailrelay.com/v1/
+const MAILRELAY_ACCOUNT = process.env.MAILRELAY_ACCOUNT || 'smartstudent';
+const MAILRELAY_API_URL = process.env.MAILRELAY_API_URL || `https://${MAILRELAY_ACCOUNT}.ipzmarketing.com/api/v1/send_emails`;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'notificaciones@smartstudent.online';
+const FROM_NAME = process.env.FROM_NAME || 'Smart Student';
 
 /**
- * Envía un email usando SMTP
+ * Envía un email usando la API de Mailrelay
  */
-const sendWithSMTP = async (emailData: {
+const sendWithMailrelay = async (emailData: {
   from: string;
   fromName: string;
   to: string;
@@ -44,24 +30,69 @@ const sendWithSMTP = async (emailData: {
   html: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   try {
-    console.log('📧 [SMTP] Sending to:', emailData.to);
+    console.log('📧 [MAILRELAY] Sending to:', emailData.to);
+    console.log('📧 [MAILRELAY] API URL:', MAILRELAY_API_URL);
+    console.log('📧 [MAILRELAY] API Key present:', !!MAILRELAY_API_KEY);
+    console.log('📧 [MAILRELAY] From:', emailData.from);
     
-    const transporter = createTransporter();
-    
-    const info = await transporter.sendMail({
-      from: `"${emailData.fromName}" <${emailData.from}>`,
-      to: `"${emailData.toName}" <${emailData.to}>`,
+    if (!MAILRELAY_API_KEY) {
+      console.error('❌ [MAILRELAY] API Key not configured');
+      return { 
+        success: false, 
+        error: 'MAILRELAY_API_KEY not configured' 
+      };
+    }
+
+    // Formato de la API de Mailrelay
+    const payload = {
+      from: {
+        email: emailData.from,
+        name: emailData.fromName
+      },
+      to: [{
+        email: emailData.to,
+        name: emailData.toName
+      }],
       subject: emailData.subject,
-      html: emailData.html,
+      html_part: emailData.html
+    };
+
+    console.log('📧 [MAILRELAY] Payload:', JSON.stringify(payload, null, 2));
+
+    const response = await fetch(MAILRELAY_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-Token': MAILRELAY_API_KEY,
+      },
+      body: JSON.stringify(payload),
     });
 
-    console.log('✅ [SMTP] Email sent successfully:', info.messageId);
-    return { 
-      success: true, 
-      messageId: info.messageId 
-    };
+    const responseText = await response.text();
+    console.log('📧 [MAILRELAY] Response status:', response.status);
+    console.log('📧 [MAILRELAY] Response:', responseText);
+
+    if (response.ok || response.status === 200 || response.status === 201) {
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = { id: 'sent' };
+      }
+      console.log('✅ [MAILRELAY] Email sent successfully');
+      return { 
+        success: true, 
+        messageId: data.id || data.message_id || 'sent'
+      };
+    } else {
+      console.error('❌ [MAILRELAY] Failed:', responseText);
+      return { 
+        success: false, 
+        error: `Mailrelay error: ${response.status} - ${responseText}` 
+      };
+    }
   } catch (error) {
-    console.error('❌ [SMTP] Exception:', error);
+    console.error('❌ [MAILRELAY] Exception:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 
@@ -103,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     const senderEmail = FROM_EMAIL;
 
-    console.log('📧 [SMTP] Processing email request:', {
+    console.log('📧 [MAILRELAY] Processing email request:', {
       from: senderEmail,
       to,
       subject,
@@ -123,10 +154,10 @@ export async function POST(request: NextRequest) {
       feedback: metadata?.feedback
     });
 
-    // Enviar con SMTP (Zoho)
-    const result = await sendWithSMTP({
+    // Enviar con Mailrelay
+    const result = await sendWithMailrelay({
       from: senderEmail,
-      fromName: 'Smart Student',
+      fromName: FROM_NAME,
       to: to,
       toName: toName || 'Usuario',
       subject: subject,
@@ -134,18 +165,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (result.success) {
-      console.log('✅ [SMTP] Email sent successfully:', result.messageId);
+      console.log('✅ [MAILRELAY] Email sent successfully:', result.messageId);
       return NextResponse.json({
         success: true,
-        message: 'Email sent successfully via SMTP',
+        message: 'Email sent successfully via Mailrelay',
         messageId: result.messageId
       });
     } else {
-      console.error('❌ [SMTP] Failed to send email:', result.error);
+      console.error('❌ [MAILRELAY] Failed to send email:', result.error);
       return NextResponse.json(
         { 
           success: false,
-          error: 'Failed to send email via SMTP', 
+          error: 'Failed to send email via Mailrelay', 
           details: result.error
         },
         { status: 500 }
