@@ -69,9 +69,41 @@ ${questionsContext}
 ## 📋 TIPOS DE PREGUNTAS A DETECTAR:
 
 ### TIPO 1: VERDADERO/FALSO (V/F)
-Formato: "V ( ) F ( )" o "Verdadero ( ) Falso ( )"
-- Marca en V → val = "V", type = "tf"
-- Marca en F → val = "F", type = "tf"
+Formatos comunes (CON O SIN espacios):
+- "V ( ) F ( )" o "V() F()" o "V( ) F( )"
+- "V(X) F( )" o "V (X) F ( )" o "V( X ) F( )"
+- "Verdadero ( ) Falso ( )"
+
+🔴 MÉTODO OBLIGATORIO PARA V/F - LEE CON CUIDADO:
+
+⚠️ REGLA FUNDAMENTAL: En cada línea V/F, hay DOS paréntesis:
+- El PRIMER paréntesis está asociado a la letra V (Verdadero)
+- El SEGUNDO paréntesis está asociado a la letra F (Falso)
+
+PASO A PASO:
+1. Localiza "V" seguido de su paréntesis (el PRIMERO que aparece)
+2. Localiza "F" seguido de su paréntesis (el SEGUNDO que aparece)
+3. Determina cuál paréntesis contiene la marca (X, ✓, etc.):
+   - Si la marca está en el PRIMER paréntesis (junto a V) → val = "V"
+   - Si la marca está en el SEGUNDO paréntesis (junto a F) → val = "F"
+   - Si ambos están vacíos → val = null
+
+🔴 EJEMPLOS VISUALES - MEMORIZA ESTOS PATRONES:
+"V(X)  F( )"   → Marca en PRIMER paréntesis → val = "V"
+"V (X) F ( )"  → Marca en PRIMER paréntesis → val = "V"
+"V( X ) F()"   → Marca en PRIMER paréntesis → val = "V"
+"V() F(X)"     → Marca en SEGUNDO paréntesis → val = "F"
+"V ( ) F (X)"  → Marca en SEGUNDO paréntesis → val = "F"
+"V( ) F( X )"  → Marca en SEGUNDO paréntesis → val = "F"
+"V( ) F( )"    → Ambos vacíos → val = null
+
+⚠️ ERROR COMÚN A EVITAR: NO confundas el orden de los paréntesis.
+- El paréntesis de V SIEMPRE aparece ANTES que el de F en la línea
+- Si ves "V(X) F( )" la X está en V, no en F
+
+⚠️ CRÍTICO: Reporta CADA pregunta V/F individualmente, del 1 al último número.
+- Marca en V (primer paréntesis) → val = "V", type = "tf"
+- Marca en F (segundo paréntesis) → val = "F", type = "tf"
 
 ### TIPO 2: ALTERNATIVAS / OPCIÓN MÚLTIPLE (A, B, C, D)
 FORMATOS COMUNES (todos válidos):
@@ -82,24 +114,38 @@ FORMATOS COMUNES (todos válidos):
 
 ⚠️ REGLA CRÍTICA PARA DETECTAR LA OPCIÓN MARCADA:
 
-🔴 MÉTODO OBLIGATORIO - CUENTA LAS LÍNEAS:
-1. Las opciones SIEMPRE van en orden: A es la PRIMERA línea, B es la SEGUNDA, C es la TERCERA, D es la CUARTA
-2. NO te confundas por el símbolo al inicio - mira el CONTENIDO de cada opción
-3. Busca la MARCA (X, ✓, círculo, relleno) - puede estar DENTRO del paréntesis
-4. Identifica en QUÉ LÍNEA (1ª, 2ª, 3ª, 4ª) está la marca
-5. Esa línea te dice la letra: 1ª=A, 2ª=B, 3ª=C, 4ª=D
+🔴 FORMATO CHILENO COMÚN - PARÉNTESIS CON LETRA:
+En formato "(A) texto, (B) texto, (C) texto, (D) texto":
+- Cuando el estudiante marca, la X REEMPLAZA la letra dentro del paréntesis
+- "(X) 12" en la PRIMERA línea = opción A marcada → val = "A"
+- "(X) 8" en la SEGUNDA línea = opción B marcada → val = "B"
+- La clave es la POSICIÓN (línea), NO el símbolo que ves
 
-🔴 EJEMPLO CONCRETO:
-Si ves esto:
-  (A) Confiar en el primer resultado      ← Línea 1 = opción A
-  (⊗) Realizar la operación inversa       ← Línea 2 = opción B (TIENE LA X)
-  (C) No verificar                         ← Línea 3 = opción C  
-  (D) Preguntar a un compañero            ← Línea 4 = opción D
-→ La marca X está en la LÍNEA 2 → val = "B"
+🔴 MÉTODO OBLIGATORIO - USA LA POSICIÓN:
+1. Las opciones SIEMPRE van en orden vertical: 1ª línea=A, 2ª línea=B, 3ª línea=C, 4ª línea=D
+2. Busca cuál línea tiene la marca (X, ✓, tachado, relleno)
+3. Si la marca está en la 1ª línea de opciones → val = "A"
+4. Si la marca está en la 2ª línea de opciones → val = "B"
+5. Si la marca está en la 3ª línea de opciones → val = "C"
+6. Si la marca está en la 4ª línea de opciones → val = "D"
+
+🔴 EJEMPLOS CONCRETOS:
+Ejemplo 1 - Pregunta "¿Cuál es el resultado de 7+5?":
+  (X) 12    ← PRIMERA línea tiene X → val = "A" (CORRECTO: 7+5=12)
+  (B) 10
+  (C) 14
+  (D) 11
+
+Ejemplo 2 - Pregunta "¿Qué número resulta de 15-6?":
+  (A) 9
+  (X) 8     ← SEGUNDA línea tiene X → val = "B" (INCORRECTO: 15-6=9)
+  (C) 7
+  (D) 10
 
 🔴 ERROR COMÚN A EVITAR:
-- NO reportes la letra que ves al lado de la marca
-- SÍ reporta según la POSICIÓN (línea 1,2,3,4 = A,B,C,D)
+- La letra original puede estar tachada o reemplazada por X
+- NO busques la letra "A" o "B" - busca la MARCA (X, tachado)
+- SÍ reporta según la POSICIÓN VERTICAL (línea 1,2,3,4 = A,B,C,D)
 
 Reglas de detección:
 - Marca en 1ª opción → val = "A", type = "mc"
@@ -109,23 +155,25 @@ Reglas de detección:
 
 ### TIPO 3: SELECCIÓN MÚLTIPLE (varias correctas)
 ⚠️ CRÍTICO: Revisa CADA opción individualmente para detectar TODAS las marcas.
-Formatos de marca válidos:
-- Checkbox relleno: ☑, ■, ▪, █, ✓ dentro de cuadro
-- X dentro de cuadro: ☒, [X], (X)
-- Cuadro con cualquier contenido visible vs cuadro vacío: □, ☐
 
-🔴 MÉTODO OBLIGATORIO PARA SELECCIÓN MÚLTIPLE:
-1. Examina CADA opción (A, B, C, D) una por una
-2. Para cada opción, verifica si el checkbox/cuadro tiene marca o está relleno
-3. Compara checkbox vacío (□) vs checkbox marcado (■, ☑, ☒)
-4. Reporta TODAS las letras que tienen marca, separadas por coma
+🔴 DIFERENCIA VISUAL CRÍTICA - APRENDE A DISTINGUIR:
+- Checkbox VACÍO: □ ☐ - Es un cuadro con el INTERIOR BLANCO/LIMPIO, sin nada dentro
+- Checkbox MARCADO: ☒ ☑ ■ - Tiene una X, check o relleno DENTRO del cuadro
 
-EJEMPLOS:
-- □ A) texto  □ B) texto  ■ C) texto  ■ D) texto → val = "C,D", type = "ms"
-- ☐ (A)  ☐ (B)  ☑ (C)  ☑ (D) → val = "C,D", type = "ms"
-- Marcas en A y C → val = "A,C", type = "ms"
-- Marcas en B, C y D → val = "B,C,D", type = "ms"
-- Solo una marca en C → val = "C", type = "ms"
+🔴 REGLA DE ORO: Mira el INTERIOR del cuadro, no el borde:
+- Si el interior está LIMPIO/BLANCO → NO marcado → NO incluir esa letra
+- Si el interior tiene X, /, ✓, o está relleno → MARCADO → SÍ incluir esa letra
+
+🔴 EJEMPLO CONCRETO DE LA IMAGEN:
+□ (A) texto  → Interior LIMPIO → A NO marcada
+☒ (B) texto  → Interior con X → B SÍ marcada  
+☒ (C) texto  → Interior con X → C SÍ marcada
+☒ (D) texto  → Interior con X → D SÍ marcada
+Resultado: val = "B,C,D", type = "ms"
+
+⚠️ ERROR COMÚN: Confundir □ (vacío) con ☒ (marcado)
+- □ tiene el interior BLANCO → NO está marcado
+- ☒ tiene una X DENTRO → SÍ está marcado
 
 ### TIPO 4: DESARROLLO / PROBLEMA (Respuesta escrita)
 Formato: Pregunta con espacio para escribir respuesta (líneas, cuadro, espacio en blanco)
@@ -156,8 +204,15 @@ Formato: Pregunta con espacio para escribir respuesta (líneas, cuadro, espacio 
 4. REPORTA la LETRA de la opción que tiene la marca, NO la posición visual
 
 **Si es V/F:**
-- Localiza V ( ) y F ( )
-- ¿Cuál tiene marca? → val = "V" o "F"
+- Localiza "V (" y "F (" en la misma línea
+- REGLA: V siempre aparece PRIMERO, F siempre aparece DESPUÉS
+- Examina el contenido DENTRO de cada paréntesis:
+  - V ( X ) F ( ) → La X está en el paréntesis de V → val = "V"
+  - V ( ) F ( X ) → La X está en el paréntesis de F → val = "F"
+  - V ( ) F ( ) → Ambos vacíos → val = null
+- ⚠️ NO CONFUNDAS: Si ves "V(X) F( )" la marca está en V, NO en F
+- La marca puede ser X, ✓, /, cualquier símbolo visible
+- ¿Cuál tiene la marca DENTRO del paréntesis? → val = "V" o "F"
 
 **Si es ALTERNATIVAS:**
 - Lee CADA línea de opción de arriba a abajo
@@ -212,11 +267,24 @@ Ejemplo: Si C=SÍ y D=SÍ → val = "C,D"
 
 ## ⚠️ CHECKLIST ANTES DE RESPONDER:
 1. ¿Incluí TODAS las preguntas del 1 al ${totalQuestions > 0 ? totalQuestions : 'último'}? ✓
+   ⚠️ NO OMITAS NINGUNA PREGUNTA - Si ves pregunta 1, 2 y 3, DEBES reportar las 3
 2. ¿Identifiqué el TIPO correcto (tf/mc/ms/des)? ✓
 3. ¿Las alternativas están en MAYÚSCULA (A, B, C, D)? ✓
 4. ¿Las preguntas sin marca/respuesta tienen val = null? ✓
 5. ¿La letra reportada corresponde a la OPCIÓN con marca, no a la posición visual? ✓
 6. ¿Extraje el TEXTO COMPLETO de las respuestas de desarrollo? ✓
+7. Para V/F: ¿Verifiqué cuál paréntesis (V o F) tiene la X/marca dentro? ✓
+
+⚠️ REGLA DE ORO PARA V/F:
+- Si ves "V(X)" o "V (X)" o "V ( X )" → val = "V", evidence = "STRONG_X en V"
+- Si ves "F(X)" o "F (X)" o "F ( X )" → val = "F", evidence = "STRONG_X en F"
+- Si ves marca en V (cualquier símbolo visible) → val = "V"
+- Si ves marca en F (cualquier símbolo visible) → val = "F"
+- Si ambos están vacíos V() F() → val = null, evidence = "EMPTY - ambos paréntesis vacíos"
+- ⚠️ NUNCA uses evidence="EMPTY" si hay una marca en V o F
+- NUNCA omitas una pregunta V/F solo porque no estás seguro
+
+🔴 SI TIENES DUDA EN V/F: Reporta lo que ves (V o F) con evidence="MARCA VISIBLE en V/F"
 
 Devuelve SOLO JSON válido.
 `;

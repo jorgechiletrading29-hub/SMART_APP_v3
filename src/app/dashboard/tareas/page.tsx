@@ -4288,6 +4288,87 @@
       const updatedNotifications = [...existingNotifications, notification];
       localStorage.setItem('smart-student-notifications', JSON.stringify(updatedNotifications));
       
+      // 📧 Enviar email al estudiante y apoderado sobre la calificación
+      if (currentReview.studentId && selectedTask) {
+        try {
+          const recipientIds: string[] = [currentReview.studentId];
+          const currentYear = new Date().getFullYear();
+          let guardianIds: string[] = [];
+          
+          // Obtener el nombre formateado del curso
+          const courseIdToUse = selectedTask.courseSectionId || selectedTask.course;
+          const formattedCourseName = getCourseAndSectionName(courseIdToUse);
+          console.log(`📧 [REVIEW_GRADE] Task: ${selectedTask.title}, Course ID: ${courseIdToUse}, Nombre formateado: ${formattedCourseName}`);
+          
+          // Método 1: guardian-student-relations
+          const relationsKey = `smart-student-guardian-student-relations-${currentYear}`;
+          const relations = JSON.parse(localStorage.getItem(relationsKey) || '[]');
+          if (relations.length > 0) {
+            const foundGuardians = relations
+              .filter((r: any) => r.studentId === currentReview.studentId)
+              .map((r: any) => r.guardianId);
+            guardianIds.push(...foundGuardians);
+            console.log(`📧 [REVIEW_GRADE] Apoderados desde relations: ${foundGuardians.length}`);
+          }
+          
+          // Método 2: guardians-{year}
+          if (guardianIds.length === 0) {
+            const guardiansForYear = JSON.parse(localStorage.getItem(`smart-student-guardians-${currentYear}`) || '[]');
+            const foundGuardians = guardiansForYear
+              .filter((g: any) => 
+                g.studentIds?.includes(currentReview.studentId) ||
+                g.children?.includes(currentReview.studentId)
+              )
+              .map((g: any) => g.id);
+            guardianIds.push(...foundGuardians);
+            console.log(`📧 [REVIEW_GRADE] Apoderados desde guardians-year: ${foundGuardians.length}`);
+          }
+          
+          // Método 3: smart-student-users
+          if (guardianIds.length === 0) {
+            const storedUsers = localStorage.getItem('smart-student-users');
+            if (storedUsers) {
+              const allUsers = JSON.parse(storedUsers);
+              const foundGuardians = allUsers
+                .filter((u: any) => 
+                  u.role === 'guardian' && 
+                  (u.assignedStudents?.includes(currentReview.studentId) ||
+                   u.studentIds?.includes(currentReview.studentId) ||
+                   u.children?.includes(currentReview.studentId))
+                )
+                .map((u: any) => u.id);
+              guardianIds.push(...foundGuardians);
+              console.log(`📧 [REVIEW_GRADE] Apoderados desde users: ${foundGuardians.length}`);
+            }
+          }
+          
+          recipientIds.push(...guardianIds);
+          console.log(`📧 [REVIEW_GRADE] Total destinatarios: ${recipientIds.length} (1 estudiante + ${guardianIds.length} apoderados)`);
+          
+          sendEmailOnNotification(
+            'task_graded',
+            recipientIds,
+            {
+              title: `Tu tarea "${selectedTask.title}" ha sido calificada`,
+              content: currentReview.feedback || `Tu tarea ha sido revisada y calificada.`,
+              taskTitle: selectedTask.title,
+              senderName: user?.displayName || user?.username || 'Profesor',
+              courseName: formattedCourseName,
+              grade: currentReview.grade,
+              feedback: currentReview.feedback
+            }
+          ).then(() => {
+            console.log(`📧 [REVIEW_GRADE] Email enviado exitosamente a ${recipientIds.length} destinatarios`);
+          }).catch((emailError) => {
+            console.warn('⚠️ [REVIEW_GRADE] Error enviando email:', emailError);
+          });
+        } catch (emailError) {
+          console.warn('⚠️ [REVIEW_GRADE] Error en envío de email:', emailError);
+        }
+      } else {
+        console.warn('⚠️ [REVIEW_GRADE] Faltan datos para enviar email: studentId o selectedTask');
+      }
+      
       toast({
         title: 'Tarea Calificada',
         description: `La tarea ha sido calificada con ${currentReview.grade}/100.`,

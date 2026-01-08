@@ -586,8 +586,9 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                   const qn = Number(a?.questionNum)
                   if (!Number.isFinite(qn) || qn <= 0) continue
                   
-                  // 🆕 VALIDACIÓN ANTI-ALUCINACIÓN: Solo si la evidencia CLARAMENTE indica vacío
+                  // 🆕 VALIDACIÓN ANTI-ALUCINACIÓN MEJORADA: Más permisiva para V/F
                   const evidence = (a?.evidence || '').toUpperCase()
+                  const type = a?.type || 'unknown'
                   // Solo considerar vacío si:
                   // - Empieza con EMPTY
                   // - Contiene "SIN MARCA" o "SIN RESPUESTA"
@@ -600,8 +601,11 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                   
                   let detected = a?.detected === null || a?.detected === undefined ? null : String(a.detected)
                   
-                  // Si la evidencia dice vacío, forzar null
-                  if (isEmptyEvidence && detected !== null) {
+                  // 🆕 Para V/F: Si la IA dice V o F, confiar en el valor
+                  const isVFWithValue = type === 'tf' && (detected === 'V' || detected === 'F')
+                  
+                  // Si la evidencia dice vacío y NO es V/F con valor, forzar null
+                  if (isEmptyEvidence && detected !== null && !isVFWithValue) {
                     console.warn(`[OMR/Vision] ⚠️ P${qn}: Evidencia="${a?.evidence}" indica VACÍO pero detected="${detected}" → FORZANDO null`)
                     detected = null
                   }
@@ -631,9 +635,47 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
               const has1 = answerByQuestion.has(1)
               const has2 = answerByQuestion.has(2)
               const has3 = answerByQuestion.has(3)
+              const val3 = answerByQuestion.get(3)
               const has4 = answerByQuestion.has(4)
+              const missing3 = !has3 || val3 === null
               const missing5 = !answerByQuestion.has(5) || answerByQuestion.get(5) === null
               const shouldHave5 = (qTot && qTot >= 5) || (docQuestionsFound && docQuestionsFound >= 5)
+              const shouldHave3 = (qTot && qTot >= 3) || (docQuestionsFound && docQuestionsFound >= 3)
+
+              // 🆕 Re-chequeo para pregunta 3 si falta
+              if (has1 && has2 && missing3 && shouldHave3) {
+                try {
+                  const firstImg = Array.isArray(studentImages) && studentImages.length > 0 ? studentImages[0] : null
+                  if (firstImg?.dataUrl) {
+                    console.log(`[OCR/Vision] 🔁 Re-chequeo focalizado P3 para ${studentName}...`)
+                    const base64Data = String(firstImg.dataUrl).split(',')[1] || ''
+                    const recheckResp = await fetch('/api/analyze-ocr', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        imageBase64: base64Data,
+                        questions: test?.questions || [],
+                        pageNumber: firstImg.pageNum,
+                        focusQuestionNums: [3],
+                      }),
+                    })
+                    const recheckData = await recheckResp.json()
+                    const reAnswers = recheckData?.analysis?.answers || recheckData?.answers || []
+                    const hit = Array.isArray(reAnswers)
+                      ? reAnswers.find((x: any) => Number(x?.q ?? x?.questionNum) === 3)
+                      : null
+                    const val = hit?.val ?? hit?.detected ?? null
+                    if (val !== null && val !== undefined && String(val).trim() !== '') {
+                      console.log(`[OCR/Vision] ✅ Re-chequeo P3: val="${val}" evidence="${hit?.evidence || ''}"`)
+                      answerByQuestion.set(3, String(val))
+                    } else {
+                      console.log(`[OCR/Vision] ⬜ Re-chequeo P3: sigue sin respuesta (evidence="${hit?.evidence || ''}")`)
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[OCR/Vision] ⚠️ Falló re-chequeo focalizado P3:', e)
+                }
+              }
 
               if (has1 && has2 && has3 && has4 && missing5 && shouldHave5) {
                 try {
@@ -1020,22 +1062,34 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                 answers.forEach((ans: any, idx: number) => {
                   const qNum = ans.q ?? ans.questionNum ?? idx + 1
                   const val = ans.val ?? ans.detected ?? null
+                  const type = ans.type || 'unknown'
                   const evidence = (ans.evidence || ans.visualEvidence || 'sin evidencia').toUpperCase()
                   
-                  // 🆕 VALIDACIÓN: Solo si la evidencia CLARAMENTE indica vacío
+                  // 🆕 VALIDACIÓN MEJORADA: Más permisiva para V/F cuando hay valor detectado
                   const isEmptyEvidence = evidence.startsWith('EMPTY') || 
                                           evidence.includes('SIN MARCA') ||
                                           evidence.includes('SIN RESPUESTA') ||
                                           evidence.includes('AMBOS VACÍOS') ||
                                           evidence.includes('AMBOS PARENTESIS VACIOS')
                   
-                  if (isEmptyEvidence && val !== null) {
+                  // 🆕 REGLA ESPECIAL V/F: Si la IA reporta V o F con evidencia de marca, CONFIAR
+                  const isVFWithValue = type === 'tf' && (val === 'V' || val === 'F')
+                  const hasPositiveEvidence = evidence.includes('STRONG_X') || 
+                                              evidence.includes('CHECK') ||
+                                              evidence.includes('MARCA') ||
+                                              evidence.includes('EN V') ||
+                                              evidence.includes('EN F')
+                  
+                  // Solo anular si: evidencia vacía Y (no es V/F con valor O no tiene evidencia positiva)
+                  const shouldNullify = isEmptyEvidence && !isVFWithValue && !hasPositiveEvidence
+                  
+                  if (shouldNullify && val !== null) {
                     console.warn(`[OMR] ⚠️ P${qNum}: Evidencia indica VACÍO pero val="${val}" - CORRIGIENDO a null`)
                   }
                   
-                  const finalVal = isEmptyEvidence ? null : val
+                  const finalVal = shouldNullify ? null : val
                   const status = finalVal ? '✏️ RESPONDIDA' : '⬜ EN BLANCO'
-                  console.log(`[OMR]   → P${qNum}: ${status} | Evidencia: "${ans.evidence || 'sin evidencia'}" | val="${finalVal || 'null'}"`)
+                  console.log(`[OMR]   → P${qNum}: ${status} | type=${type} | Evidencia: "${ans.evidence || 'sin evidencia'}" | val="${finalVal || 'null'}"`)
                   
                   // Actualizar el valor en el array original para que el conteo sea correcto
                   if (ans.val !== undefined) ans.val = finalVal
@@ -1045,14 +1099,17 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                 // Determinar si tiene respuestas en esta página (usando valores corregidos)
                 const answersWithResponse = answers.filter((a: any) => {
                   const val = a.val ?? a.detected ?? null
+                  const type = a.type || 'unknown'
                   const evidence = (a.evidence || a.visualEvidence || '').toUpperCase()
                   const isEmptyEvidence = evidence.startsWith('EMPTY') || 
                                           evidence.includes('SIN MARCA') ||
                                           evidence.includes('SIN RESPUESTA') ||
                                           evidence.includes('AMBOS VACÍOS') ||
                                           evidence.includes('AMBOS PARENTESIS VACIOS')
-                  // Si la evidencia dice vacío, NO contar como respondida
-                  if (isEmptyEvidence) return false
+                  // 🆕 Más permisivo para V/F: Si tiene valor V o F, confiar
+                  const isVFWithValue = type === 'tf' && (val === 'V' || val === 'F')
+                  // Si la evidencia dice vacío y NO es V/F con valor, NO contar como respondida
+                  if (isEmptyEvidence && !isVFWithValue) return false
                   return val !== null && val !== undefined && val !== ''
                 })
                 if (answersWithResponse.length > 0) {
@@ -1071,14 +1128,17 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                     
                     if (qNum === 0) continue
                     
-                    // 🆕 VALIDACIÓN ANTI-ALUCINACIÓN: Solo si la evidencia CLARAMENTE indica vacío
+                    // 🆕 VALIDACIÓN ANTI-ALUCINACIÓN MEJORADA: Más permisiva para V/F
                     const evidenceUpper = evidence.toUpperCase()
+                    const type = ans.type || 'unknown'
                     const isEmptyEvidence = evidenceUpper.startsWith('EMPTY') || 
                                             evidenceUpper.includes('SIN MARCA') ||
                                             evidenceUpper.includes('SIN RESPUESTA') ||
                                             evidenceUpper.includes('AMBOS VACÍOS') ||
                                             evidenceUpper.includes('AMBOS PARENTESIS VACIOS')
-                    if (isEmptyEvidence) {
+                    // 🆕 Para V/F: Si la IA dice V o F, confiar en el valor
+                    const isVFWithValue = type === 'tf' && (val === 'V' || val === 'F')
+                    if (isEmptyEvidence && !isVFWithValue) {
                       val = null
                     }
                     
@@ -1099,21 +1159,24 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                 }
                 
                 // Contar respuestas correctas y sumar puntos de esta página
-                // 🆕 Con validación de evidencia anti-alucinación
+                // 🆕 Con validación de evidencia anti-alucinación MEJORADA
                 if (analysis.answers && Array.isArray(analysis.answers)) {
                   for (const rawAnswer of analysis.answers) {
                     const qNum = rawAnswer.q ?? rawAnswer.questionNum ?? 0
                     let val = rawAnswer.val ?? rawAnswer.detected ?? null
                     const evidence = rawAnswer.evidence || rawAnswer.visualEvidence || ''
+                    const type = rawAnswer.type || 'unknown'
                     
-                    // 🆕 VALIDACIÓN: Solo si la evidencia CLARAMENTE indica vacío
+                    // 🆕 VALIDACIÓN MEJORADA: Más permisiva para V/F
                     const evidenceUpper2 = evidence.toUpperCase()
                     const isEmptyEvidence2 = evidenceUpper2.startsWith('EMPTY') || 
                                             evidenceUpper2.includes('SIN MARCA') ||
                                             evidenceUpper2.includes('SIN RESPUESTA') ||
                                             evidenceUpper2.includes('AMBOS VACÍOS') ||
                                             evidenceUpper2.includes('AMBOS PARENTESIS VACIOS')
-                    if (isEmptyEvidence2) {
+                    // 🆕 Para V/F: Si la IA dice V o F, confiar en el valor
+                    const isVFWithValue2 = type === 'tf' && (val === 'V' || val === 'F')
+                    if (isEmptyEvidence2 && !isVFWithValue2) {
                       console.log(`[OMR] 🚫 ${studentName} P${qNum}: Evidencia="${evidence}" → FORZANDO null (anti-alucinación)`)
                       val = null
                     }
@@ -1209,6 +1272,62 @@ export default function TestReviewDialog({ open, onOpenChange, test }: Props) {
                     }
                   }
                 }
+              }
+            }
+            
+            // 🆕 RE-CHEQUEO PARA P3 si falta en el flujo OMR
+            const has1OMR = detectedAnswersList.some(d => d.questionNum === 1)
+            const has2OMR = detectedAnswersList.some(d => d.questionNum === 2)
+            const p3Entry = detectedAnswersList.find(d => d.questionNum === 3)
+            const missing3OMR = !p3Entry || p3Entry.detected === null
+            const totalQ = test?.questions?.length || 0
+            
+            if (has1OMR && has2OMR && missing3OMR && totalQ >= 3) {
+              try {
+                const firstPage = studentPages[0]
+                const firstPdfImage = pdfImages.find(img => img.pageNum === firstPage?.pageNum)
+                if (firstPdfImage?.dataUrl) {
+                  console.log(`[OMR] 🔁 Re-chequeo focalizado P3 para ${studentName}...`)
+                  const base64Data = String(firstPdfImage.dataUrl).split(',')[1] || ''
+                  const recheckResp = await fetch('/api/analyze-ocr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      imageBase64: base64Data,
+                      questions: test?.questions || [],
+                      pageNumber: firstPage.pageNum,
+                      focusQuestionNums: [3],
+                    }),
+                  })
+                  const recheckData = await recheckResp.json()
+                  const reAnswers = recheckData?.analysis?.answers || recheckData?.answers || []
+                  const hit = Array.isArray(reAnswers)
+                    ? reAnswers.find((x: any) => Number(x?.q ?? x?.questionNum) === 3)
+                    : null
+                  const val = hit?.val ?? hit?.detected ?? null
+                  if (val !== null && val !== undefined && String(val).trim() !== '') {
+                    console.log(`[OMR] ✅ Re-chequeo P3: val="${val}" evidence="${hit?.evidence || ''}"`)
+                    // Actualizar o agregar en detectedAnswersList
+                    const existingP3 = detectedAnswersList.find(d => d.questionNum === 3)
+                    if (existingP3) {
+                      existingP3.detected = String(val)
+                    } else {
+                      detectedAnswersList.push({ questionNum: 3, detected: String(val) })
+                    }
+                    // También recalcular si es correcta
+                    const q3 = (test?.questions || [])[2] as any
+                    if (q3 && q3.type === 'tf' && q3.correct === val) {
+                      const pts3 = pointsPerType.tf || (test?.totalPoints || 100) / totalQ
+                      studentCorrect++
+                      studentPts += pts3
+                      console.log(`[OMR] ✅ P3 re-chequeada CORRECTA (+${pts3} pts)`)
+                    }
+                  } else {
+                    console.log(`[OMR] ⬜ Re-chequeo P3: sigue sin respuesta`)
+                  }
+                }
+              } catch (e) {
+                console.warn('[OMR] ⚠️ Falló re-chequeo focalizado P3:', e)
               }
             }
             
