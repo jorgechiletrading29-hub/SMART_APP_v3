@@ -8,6 +8,7 @@ export async function GET(req: Request) {
     const bookTitle = searchParams.get('bookTitle') || ''
     const language = (searchParams.get('language') === 'en' ? 'en' : 'es') as 'es' | 'en'
     const questionCount = Number(searchParams.get('questionCount') || '15') || 15
+    const developmentCount = Number(searchParams.get('developmentCount') || '0') || 0
     const timeLimit = Number(searchParams.get('timeLimit') || '120') || 120
 
     if (!topic || !bookTitle) {
@@ -35,6 +36,7 @@ export async function GET(req: Request) {
             bookTitle,
             language,
             questionCount,
+            developmentCount,
             timeLimit,
           })
         } catch (e: any) {

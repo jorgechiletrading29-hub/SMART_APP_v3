@@ -19,6 +19,7 @@ const GenerateEvaluationInputSchema = z.object({
   bookTitle: z.string().describe('The title of the book to base the evaluation on.'),
   language: z.enum(['es', 'en']).describe('The language for the evaluation content (e.g., "es" for Spanish, "en" for English).'),
   questionCount: z.number().optional().describe('Number of questions to generate (default: 15)'),
+  developmentCount: z.number().optional().describe('Number of development/essay questions to generate (default: 0)'),
   timeLimit: z.number().optional().describe('Time limit in seconds (default: 120)'),
   course: z.string().optional().describe('The course/grade level for age-appropriate content.'),
 });
@@ -66,7 +67,15 @@ const MultipleSelectionQuestionSchema = z.object({
   explanation: z.string().describe('A brief explanation for why those specific answers are correct.'),
 });
 
-const EvaluationQuestionSchema = z.union([TrueFalseQuestionSchema, MultipleChoiceQuestionSchema, MultipleSelectionQuestionSchema]);
+const DevelopmentQuestionSchema = z.object({
+  id: z.string().describe('Unique ID for the question.'),
+  type: z.enum(['DEVELOPMENT']).describe('Question type for open-ended/essay questions.'),
+  questionText: z.string().describe('The full text of the development question including context, case study, or practical problem.'),
+  rubric: z.string().optional().describe('Evaluation criteria or rubric for grading the response.'),
+  expectedPoints: z.array(z.string()).optional().describe('Key points expected in a good answer.'),
+});
+
+const EvaluationQuestionSchema = z.union([TrueFalseQuestionSchema, MultipleChoiceQuestionSchema, MultipleSelectionQuestionSchema, DevelopmentQuestionSchema]);
 export type EvaluationQuestion = z.infer<typeof EvaluationQuestionSchema>;
 
 const GenerateEvaluationOutputSchema = z.object({
@@ -94,6 +103,7 @@ export async function generateEvaluationContent(input: GenerateEvaluationInput):
     const isEs = input.language === 'es';
     const topic = input.topic;
     const topicLower = topic.toLowerCase();
+    const developmentCount = input.developmentCount || 0;
     
     // Obtener contexto de generación basado en el curso
     const courseContext = input.course ? getContentGenerationContext(input.course) : null;
@@ -106,10 +116,113 @@ export async function generateEvaluationContent(input: GenerateEvaluationInput):
           : `\n📋 TOPIC GUIDANCE:\n${input.topicDescription}\nUse this description to focus the questions.`)
       : '';
     
-    // Distribuir tipos de preguntas equitativamente
+    // Distribuir tipos de preguntas equitativamente (excluyendo desarrollo)
     const tfCount = Math.round(questionCount / 3);
     const mcCount = Math.round((questionCount - tfCount) / 2);
     const msCount = questionCount - tfCount - mcCount;
+    
+    // Instrucciones específicas para preguntas de desarrollo según asignatura
+    const bookTitleLower = input.bookTitle.toLowerCase();
+    const getDevelopmentInstructions = () => {
+      if (isEs) {
+        if (/matem[aá]tica|c[aá]lculo|[aá]lgebra|geometr[ií]a/.test(bookTitleLower) || /suma|resta|multiplic|divisi[oó]n|fracci|ecuaci|n[uú]mero/.test(topicLower)) {
+          return `📝 PREGUNTAS DE DESARROLLO (${developmentCount}):
+Genera problemas matemáticos prácticos y contextualizados que requieran:
+- Planteamiento del problema con datos claros
+- Desarrollo paso a paso del procedimiento
+- Cálculos y operaciones
+- Verificación del resultado
+
+EJEMPLO de formato:
+{
+  "id": "dev1", 
+  "type": "DEVELOPMENT", 
+  "questionText": "Problema: María tiene una tienda. El lunes vendió 45 manzanas, el martes vendió 32 y el miércoles le llegaron 78 manzanas nuevas. Si al inicio de la semana tenía 120 manzanas, ¿cuántas manzanas tiene ahora? Muestra el procedimiento completo, identificando los datos, planteando las operaciones y verificando tu respuesta.",
+  "rubric": "Se evalúa: identificación de datos (2pts), planteamiento correcto (3pts), cálculos (3pts), respuesta final (2pts)",
+  "expectedPoints": ["Identificar: inicio=120, vendidas=45+32=77, nuevas=78", "Operación: 120-77+78", "Resultado: 121 manzanas"]
+}`;
+        }
+        if (/lenguaje|espa[ñn]ol|literatura|comunicaci[oó]n|lectura/.test(bookTitleLower)) {
+          return `📝 PREGUNTAS DE DESARROLLO (${developmentCount}):
+Genera preguntas de comprensión lectora y producción de textos que incluyan:
+- Un texto breve (fábula, cuento corto, noticia, poema) como contexto
+- Preguntas de análisis, interpretación o producción escrita
+- Oportunidad para que el estudiante redacte y argumente
+
+EJEMPLO de formato:
+{
+  "id": "dev1", 
+  "type": "DEVELOPMENT", 
+  "questionText": "Lee el siguiente texto:\\n\\n'El zorro hambriento vio unos racimos de uvas colgando de una parra. Quiso alcanzarlos pero no pudo. Al alejarse, dijo: No las quiero, están verdes.'\\n\\n1. ¿Qué enseñanza nos deja esta fábula?\\n2. ¿Has vivido alguna situación similar? Descríbela brevemente.\\n3. Escribe un final alternativo para esta historia.",
+  "rubric": "Se evalúa: comprensión del mensaje (3pts), conexión personal (3pts), creatividad en el final alternativo (4pts)",
+  "expectedPoints": ["Identificar la moraleja sobre justificar fracasos", "Relacionar con experiencia propia", "Crear final coherente y creativo"]
+}`;
+        }
+        if (/ciencia|biolog[ií]a|qu[ií]mica|f[ií]sica|naturaleza/.test(bookTitleLower)) {
+          return `📝 PREGUNTAS DE DESARROLLO (${developmentCount}):
+Genera casos prácticos de ciencias que incluyan:
+- Descripción de un fenómeno, experimento o situación científica
+- Preguntas de análisis, hipótesis o explicación
+- Aplicación del método científico
+
+EJEMPLO de formato:
+{
+  "id": "dev1", 
+  "type": "DEVELOPMENT", 
+  "questionText": "Caso práctico: Juan dejó un vaso con agua en el congelador durante 4 horas.\\n\\n1. ¿Qué cambio de estado ocurrió con el agua? Explica el proceso.\\n2. ¿Qué pasaría si Juan saca el hielo y lo deja al sol? Describe los cambios.\\n3. Diseña un experimento simple para demostrar que el agua puede existir en tres estados.",
+  "rubric": "Se evalúa: conocimiento de cambios de estado (3pts), predicción correcta (3pts), diseño experimental (4pts)",
+  "expectedPoints": ["Solidificación/congelación", "Fusión y evaporación", "Experimento con hielo, agua líquida y vapor"]
+}`;
+        }
+        if (/historia|social|geograf[ií]a|c[ií]vica/.test(bookTitleLower)) {
+          return `📝 PREGUNTAS DE DESARROLLO (${developmentCount}):
+Genera casos de análisis histórico o social que incluyan:
+- Contexto histórico o situación social
+- Preguntas de análisis causa-efecto
+- Reflexión y opinión fundamentada
+
+EJEMPLO de formato:
+{
+  "id": "dev1", 
+  "type": "DEVELOPMENT", 
+  "questionText": "Análisis histórico: Durante la Revolución Industrial, muchos niños trabajaban en fábricas hasta 14 horas diarias.\\n\\n1. ¿Por qué crees que los niños trabajaban en esas condiciones?\\n2. ¿Qué derechos actuales protegen a los niños de esta situación?\\n3. Compara las condiciones de vida de un niño de esa época con la tuya. ¿Qué diferencias encuentras?",
+  "rubric": "Se evalúa: análisis del contexto (3pts), conocimiento de derechos (3pts), comparación reflexiva (4pts)",
+  "expectedPoints": ["Pobreza y necesidad económica familiar", "Derechos del niño, prohibición trabajo infantil", "Comparación educación, tiempo libre, protección"]
+}`;
+        }
+        // Genérico
+        return `📝 PREGUNTAS DE DESARROLLO (${developmentCount}):
+Genera preguntas abiertas que permitan al estudiante:
+- Demostrar comprensión profunda del tema
+- Aplicar conocimientos a situaciones prácticas
+- Redactar y argumentar sus ideas
+
+EJEMPLO de formato:
+{
+  "id": "dev1", 
+  "type": "DEVELOPMENT", 
+  "questionText": "Caso práctico sobre ${topic}:\\n\\n[Describe una situación o problema relacionado con el tema]\\n\\n1. Analiza la situación presentada.\\n2. Propón una solución o explicación.\\n3. Justifica tu respuesta con lo aprendido.",
+  "rubric": "Se evalúa: análisis (3pts), propuesta (3pts), argumentación (4pts)",
+  "expectedPoints": ["Punto clave 1", "Punto clave 2", "Punto clave 3"]
+}`;
+      } else {
+        // English version
+        return `📝 DEVELOPMENT QUESTIONS (${developmentCount}):
+Generate open-ended questions that allow students to:
+- Demonstrate deep understanding of the topic
+- Apply knowledge to practical situations
+- Write and argue their ideas
+
+EXAMPLE format:
+{
+  "id": "dev1", 
+  "type": "DEVELOPMENT", 
+  "questionText": "Practical case about ${topic}:\\n\\n[Describe a situation or problem related to the topic]\\n\\n1. Analyze the presented situation.\\n2. Propose a solution or explanation.\\n3. Justify your answer with what you learned.",
+  "rubric": "Evaluation: analysis (3pts), proposal (3pts), argumentation (4pts)",
+  "expectedPoints": ["Key point 1", "Key point 2", "Key point 3"]
+}`;
+      }
+    };
     
     // =====================================================================
     // PRIORIDAD 1: OpenRouter (más confiable y económico)
@@ -127,16 +240,22 @@ ${adaptationInstructions}`
             : `You are an expert educator. Generate high-quality educational evaluations with varied questions, ADAPTED TO THE STUDENT'S LEVEL.
             
 ${adaptationInstructions}`;
+
+          const totalQuestions = questionCount + developmentCount;
+          const developmentInstructions = developmentCount > 0 ? getDevelopmentInstructions() : '';
           
           const userPrompt = isEs 
             ? `Genera una evaluación educativa sobre "${topic}" del libro "${input.bookTitle}"${input.course ? ` para ${input.course}` : ''}.${topicGuidance}
 
 ${courseContext ? `⚠️ IMPORTANTE: El estudiante tiene aproximadamente ${courseContext.approximateAge} años. Adapta la dificultad y vocabulario de las preguntas a su nivel.` : ''}
 
-Genera exactamente ${questionCount} preguntas distribuidas así:
+Genera exactamente ${totalQuestions} preguntas distribuidas así:
 - ${tfCount} preguntas Verdadero/Falso (type: "TRUE_FALSE")
 - ${mcCount} preguntas de Selección Múltiple con 4 opciones (type: "MULTIPLE_CHOICE")
-- ${msCount} preguntas de Selección Múltiple con varias correctas (type: "MULTIPLE_SELECTION")
+- ${msCount} preguntas de Selección Múltiple con varias correctas (type: "MULTIPLE_SELECTION")${developmentCount > 0 ? `
+- ${developmentCount} preguntas de Desarrollo (type: "DEVELOPMENT")` : ''}
+
+${developmentInstructions}
 
 Responde en JSON con este formato exacto:
 {
@@ -144,23 +263,28 @@ Responde en JSON con este formato exacto:
   "questions": [
     {"id": "1", "type": "TRUE_FALSE", "questionText": "¿Pregunta V/F?", "correctAnswer": true, "explanation": "Explicación..."},
     {"id": "2", "type": "MULTIPLE_CHOICE", "questionText": "¿Pregunta SM?", "options": ["A", "B", "C", "D"], "correctAnswerIndex": 0, "explanation": "Explicación..."},
-    {"id": "3", "type": "MULTIPLE_SELECTION", "questionText": "¿Cuáles son correctas?", "options": ["A", "B", "C", "D"], "correctAnswerIndices": [0, 2], "explanation": "Explicación..."}
+    {"id": "3", "type": "MULTIPLE_SELECTION", "questionText": "¿Cuáles son correctas?", "options": ["A", "B", "C", "D"], "correctAnswerIndices": [0, 2], "explanation": "Explicación..."}${developmentCount > 0 ? `,
+    {"id": "4", "type": "DEVELOPMENT", "questionText": "Caso práctico con contexto y preguntas...", "rubric": "Criterios de evaluación...", "expectedPoints": ["Punto 1", "Punto 2"]}` : ''}
   ]
 }
 
 IMPORTANTE:
 - Las preguntas deben ser específicas sobre el contenido de "${topic}"
 - ADAPTA el vocabulario y dificultad al nivel del estudiante
-- Genera contenido educativo real y variado
+- Genera contenido educativo real y variado${developmentCount > 0 ? `
+- Las preguntas de DESARROLLO deben incluir casos prácticos, textos o problemas contextualizados` : ''}
 - Responde SOLO con JSON válido, sin texto adicional`
             : `Generate an educational evaluation about "${topic}" from the book "${input.bookTitle}"${input.course ? ` for ${input.course}` : ''}.${topicGuidance}
 
 ${courseContext ? `⚠️ IMPORTANT: The student is approximately ${courseContext.approximateAge} years old. Adapt the difficulty and vocabulary of the questions to their level.` : ''}
 
-Generate exactly ${questionCount} questions distributed as:
+Generate exactly ${totalQuestions} questions distributed as:
 - ${tfCount} True/False questions (type: "TRUE_FALSE")
 - ${mcCount} Multiple Choice questions with 4 options (type: "MULTIPLE_CHOICE")
-- ${msCount} Multiple Selection questions with multiple correct answers (type: "MULTIPLE_SELECTION")
+- ${msCount} Multiple Selection questions with multiple correct answers (type: "MULTIPLE_SELECTION")${developmentCount > 0 ? `
+- ${developmentCount} Development questions (type: "DEVELOPMENT")` : ''}
+
+${developmentInstructions}
 
 Respond in JSON with this exact format:
 {
@@ -168,7 +292,8 @@ Respond in JSON with this exact format:
   "questions": [
     {"id": "1", "type": "TRUE_FALSE", "questionText": "T/F Question?", "correctAnswer": true, "explanation": "Explanation..."},
     {"id": "2", "type": "MULTIPLE_CHOICE", "questionText": "MC Question?", "options": ["A", "B", "C", "D"], "correctAnswerIndex": 0, "explanation": "Explanation..."},
-    {"id": "3", "type": "MULTIPLE_SELECTION", "questionText": "Which are correct?", "options": ["A", "B", "C", "D"], "correctAnswerIndices": [0, 2], "explanation": "Explanation..."}
+    {"id": "3", "type": "MULTIPLE_SELECTION", "questionText": "Which are correct?", "options": ["A", "B", "C", "D"], "correctAnswerIndices": [0, 2], "explanation": "Explanation..."}${developmentCount > 0 ? `,
+    {"id": "4", "type": "DEVELOPMENT", "questionText": "Practical case with context and questions...", "rubric": "Evaluation criteria...", "expectedPoints": ["Point 1", "Point 2"]}` : ''}
   ]
 }
 

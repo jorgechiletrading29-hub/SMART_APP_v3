@@ -444,10 +444,18 @@ export default function PruebasPage() {
 			const countTF = Number(builder?.counts?.tf || 0)
 			const countMC = Number(builder?.counts?.mc || 0)
 			const countMS = Number(builder?.counts?.ms || 0)
+			const countDES = Number(builder?.counts?.des || 0)
 			const questionCount = Math.max(1, countTF + countMC + countMS)
 			const bookTitle = subjName || 'General'
 			const topic = String(builder?.topic || title)
-			const params = new URLSearchParams({ topic, bookTitle, language: language === 'en' ? 'en' : 'es', questionCount: String(questionCount), timeLimit: '120' })
+			const params = new URLSearchParams({ 
+				topic, 
+				bookTitle, 
+				language: language === 'en' ? 'en' : 'es', 
+				questionCount: String(questionCount), 
+				developmentCount: String(countDES),
+				timeLimit: '120' 
+			})
 			const es = new EventSource(`/api/tests/generate/stream?${params.toString()}`)
 			es.addEventListener('progress', (evt: MessageEvent) => {
 				try { const data = JSON.parse((evt as any).data); const p = Math.min(100, Number(data?.percent ?? 0)); patchTest(id, { progress: p }) } catch {}
@@ -469,12 +477,19 @@ export default function PruebasPage() {
 							const corrects: number[] = Array.isArray(q.correctAnswerIndices) ? q.correctAnswerIndices : []
 							return { id: makeId('ms'), type: 'ms', text: q.questionText || q.text || '', options: options.map((t, i) => ({ text: String(t), correct: corrects.includes(i) })) }
 						}
+						if (q.type === 'DEVELOPMENT') {
+							// Pregunta de desarrollo generada por IA
+							return { 
+								id: makeId('des'), 
+								type: 'des', 
+								prompt: q.questionText || q.text || '',
+								rubric: q.rubric || '',
+								expectedPoints: q.expectedPoints || []
+							}
+						}
 						return { id: makeId('des'), type: 'des', prompt: q.questionText || q.text || '' }
 					})
-					const desCount = Number(builder?.counts?.des || 0)
-					if (desCount > 0) {
-						mapped.push(...generateLocalQuestions(topic, { tf: 0, mc: 0, ms: 0, des: desCount }, subjName))
-					}
+					// Ya no necesitamos generar localmente las preguntas de desarrollo
 					patchTest(id, { questions: mapped, status: 'ready', progress: 100 })
 				} finally { es.close() }
 			})

@@ -156,24 +156,45 @@ Reglas de detección:
 ### TIPO 3: SELECCIÓN MÚLTIPLE (varias correctas)
 ⚠️ CRÍTICO: Revisa CADA opción individualmente para detectar TODAS las marcas.
 
-🔴 DIFERENCIA VISUAL CRÍTICA - APRENDE A DISTINGUIR:
-- Checkbox VACÍO: □ ☐ - Es un cuadro con el INTERIOR BLANCO/LIMPIO, sin nada dentro
-- Checkbox MARCADO: ☒ ☑ ■ - Tiene una X, check o relleno DENTRO del cuadro
+🔴 PASO 1 - IDENTIFICA VISUALMENTE CADA CHECKBOX:
+- Checkbox VACÍO: □ ☐ - Cuadro con INTERIOR BLANCO/LIMPIO, SIN NADA dentro
+- Checkbox MARCADO: ☒ ☑ ■ ✗ ✓ - Tiene X, check, relleno o tachado DENTRO
 
-🔴 REGLA DE ORO: Mira el INTERIOR del cuadro, no el borde:
-- Si el interior está LIMPIO/BLANCO → NO marcado → NO incluir esa letra
-- Si el interior tiene X, /, ✓, o está relleno → MARCADO → SÍ incluir esa letra
+🔴 PASO 2 - ANALIZA CADA OPCIÓN POR SEPARADO:
+Para CADA línea pregúntate: "¿El cuadro antes de esta letra tiene ALGO dentro?"
+- Si tiene CUALQUIER marca (X, relleno, check) → INCLUIR la letra
+- Si está completamente vacío/blanco → NO incluir
 
-🔴 EJEMPLO CONCRETO DE LA IMAGEN:
-□ (A) texto  → Interior LIMPIO → A NO marcada
-☒ (B) texto  → Interior con X → B SÍ marcada  
-☒ (C) texto  → Interior con X → C SÍ marcada
-☒ (D) texto  → Interior con X → D SÍ marcada
-Resultado: val = "B,C,D", type = "ms"
+🔴 PASO 3 - EJEMPLO DETALLADO (caso típico):
+Pregunta: "¿Cuáles son correctas?"
+Opción A: □ (A) La suma de dos números negativos es positiva
+   → El cuadro □ está VACÍO (interior blanco) → A NO se incluye
+Opción B: ☒ (B) Restar un número negativo es lo mismo que sumar su valor positivo  
+   → El cuadro ☒ tiene una X dentro → B SÍ se incluye
+Opción C: ☒ (C) La suma es conmutativa
+   → El cuadro ☒ tiene una X dentro → C SÍ se incluye
+Opción D: ☒ (D) Restar cero no cambia el número
+   → El cuadro ☒ tiene una X dentro → D SÍ se incluye
+RESULTADO: val = "B,C,D" (NO incluye A porque su checkbox está vacío)
 
-⚠️ ERROR COMÚN: Confundir □ (vacío) con ☒ (marcado)
-- □ tiene el interior BLANCO → NO está marcado
-- ☒ tiene una X DENTRO → SÍ está marcado
+🔴 OTRO EJEMPLO:
+Opción A: ☒ (A) 9 - 4 = 5    → Checkbox con X → INCLUIR A
+Opción B: □ (B) 10 - 5 = 6   → Checkbox vacío → NO incluir B
+Opción C: ☒ (C) 8 - 3 = 5    → Checkbox con X → INCLUIR C
+Opción D: ☒ (D) 12 - 7 = 5   → Checkbox con X → INCLUIR D
+RESULTADO: val = "A,C,D"
+
+🚨 VERIFICACIÓN OBLIGATORIA - ANTES DE RESPONDER:
+1. Cuenta cuántos checkboxes tienen marca visible: ___
+2. Lista las LETRAS de esos checkboxes marcados: ___
+3. Verifica que val contenga EXACTAMENTE esas letras separadas por coma
+4. Si solo 1 checkbox marcado → val = "X" (una sola letra)
+5. Si múltiples marcados → val = "X,Y,Z" (letras en orden alfabético)
+
+⚠️ ERROR MUY COMÚN A EVITAR: 
+- NO asumas que A siempre está marcada
+- NO confundas checkbox vacío □ con marcado ☒
+- Mira DIRECTAMENTE el cuadro de cada opción, no el texto
 
 ### TIPO 4: DESARROLLO / PROBLEMA (Respuesta escrita)
 Formato: Pregunta con espacio para escribir respuesta (líneas, cuadro, espacio en blanco)
