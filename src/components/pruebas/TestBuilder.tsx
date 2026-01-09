@@ -330,7 +330,8 @@ export default function TestBuilder({ value, onChange, onCreate, mode = 'create'
   }
   const sumWeightsAll = weights.tf + weights.mc + weights.ms + weights.des
   const sumWeightsActive = (active.tf ? weights.tf : 0) + (active.mc ? weights.mc : 0) + (active.ms ? weights.ms : 0) + (active.des ? weights.des : 0)
-  const weightsDen = Math.max(1, sumWeightsActive)
+  // Normalizar porcentajes automáticamente si no suman 100
+  const weightsDen = sumWeightsActive > 0 ? sumWeightsActive : 1
   const perTypePoints = {
     tf: Math.round(((active.tf ? weights.tf : 0) / weightsDen) * totalPoints),
     mc: Math.round(((active.mc ? weights.mc : 0) / weightsDen) * totalPoints),
@@ -343,7 +344,8 @@ export default function TestBuilder({ value, onChange, onCreate, mode = 'create'
     ms: counts.ms > 0 ? +(perTypePoints.ms / counts.ms).toFixed(2) : 0,
     des: counts.des > 0 ? +(perTypePoints.des / counts.des).toFixed(2) : 0,
   }
-  const isWeightsOk = sumWeightsActive === 100
+  // Ya no se requiere que sumen 100% - los porcentajes se normalizan automáticamente
+  const isWeightsOk = sumWeightsActive > 0
   const isValid = isValidBase && isWeightsOk
 
   return (
@@ -464,9 +466,8 @@ export default function TestBuilder({ value, onChange, onCreate, mode = 'create'
                 <input
                   type="number"
                   min={0}
-                  max={100}
           value={weights[key]}
-          onChange={(e) => setWeights((w) => ({ ...w, [key]: Math.max(0, Math.min(100, Number(e.target.value || 0))) }))}
+          onChange={(e) => setWeights((w) => ({ ...w, [key]: Math.max(0, Number(e.target.value || 0)) }))}
           className="w-20 rounded border bg-background p-1 text-center text-xs"
           disabled={counts[key] === 0}
                 />
@@ -484,9 +485,10 @@ export default function TestBuilder({ value, onChange, onCreate, mode = 'create'
             TF {(active.tf ? weights.tf : 0)}% · MC {(active.mc ? weights.mc : 0)}% · MS {(active.ms ? weights.ms : 0)}% · DES {(active.des ? weights.des : 0)}%
           </div>
           <div>
-            <span className={isWeightsOk ? '' : 'text-red-500'}>
+            <span className={isWeightsOk ? 'text-green-500' : 'text-yellow-500'}>
               {translate('testsWeightsSum', { sum: String(sumWeightsActive) }) || `Suma: ${sumWeightsActive}%`}
-              {!isWeightsOk && ' - Debe ser 100%'}
+              {sumWeightsActive !== 100 && sumWeightsActive > 0 && ' (se normalizará automáticamente)'}
+              {sumWeightsActive === 0 && ' - Asigna al menos un porcentaje'}
             </span>
           </div>
         </div>

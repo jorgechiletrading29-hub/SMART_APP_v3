@@ -20,6 +20,9 @@ const GenerateEvaluationInputSchema = z.object({
   language: z.enum(['es', 'en']).describe('The language for the evaluation content (e.g., "es" for Spanish, "en" for English).'),
   questionCount: z.number().optional().describe('Number of questions to generate (default: 15)'),
   developmentCount: z.number().optional().describe('Number of development/essay questions to generate (default: 0)'),
+  tfCount: z.number().optional().describe('Number of True/False questions'),
+  mcCount: z.number().optional().describe('Number of Multiple Choice questions'),
+  msCount: z.number().optional().describe('Number of Multiple Selection questions'),
   timeLimit: z.number().optional().describe('Time limit in seconds (default: 120)'),
   course: z.string().optional().describe('The course/grade level for age-appropriate content.'),
 });
@@ -92,6 +95,10 @@ export async function generateEvaluationContent(input: GenerateEvaluationInput):
     console.log('🔍 generateEvaluationContent called with:', {
       questionCount: input.questionCount,
       questionCountUsed: questionCount,
+      tfCount: input.tfCount,
+      mcCount: input.mcCount,
+      msCount: input.msCount,
+      developmentCount: input.developmentCount,
       topic: input.topic,
       bookTitle: input.bookTitle,
       timeLimit: input.timeLimit,
@@ -116,10 +123,18 @@ export async function generateEvaluationContent(input: GenerateEvaluationInput):
           : `\n📋 TOPIC GUIDANCE:\n${input.topicDescription}\nUse this description to focus the questions.`)
       : '';
     
-    // Distribuir tipos de preguntas equitativamente (excluyendo desarrollo)
-    const tfCount = Math.round(questionCount / 3);
-    const mcCount = Math.round((questionCount - tfCount) / 2);
-    const msCount = questionCount - tfCount - mcCount;
+    // Usar cantidades específicas si se proporcionan, sino distribuir equitativamente
+    const tfCount = typeof input.tfCount === 'number' ? input.tfCount : Math.round(questionCount / 3);
+    const mcCount = typeof input.mcCount === 'number' ? input.mcCount : Math.round((questionCount - tfCount) / 2);
+    const msCount = typeof input.msCount === 'number' ? input.msCount : questionCount - tfCount - mcCount;
+    
+    console.log('📊 Question counts to generate:', {
+      tfCount,
+      mcCount, 
+      msCount,
+      developmentCount,
+      total: tfCount + mcCount + msCount + developmentCount
+    });
     
     // Instrucciones específicas para preguntas de desarrollo según asignatura
     const bookTitleLower = input.bookTitle.toLowerCase();
@@ -319,10 +334,98 @@ IMPORTANT:
           const parsed = JSON.parse(jsonStr);
           
           if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
-            console.log('[generateEvaluationContent] ✅ OpenRouter generó', parsed.questions.length, 'preguntas exitosamente');
+            // Contar preguntas por tipo recibidas
+            const receivedCounts = {
+              tf: parsed.questions.filter((q: any) => q.type === 'TRUE_FALSE').length,
+              mc: parsed.questions.filter((q: any) => q.type === 'MULTIPLE_CHOICE').length,
+              ms: parsed.questions.filter((q: any) => q.type === 'MULTIPLE_SELECTION').length,
+              des: parsed.questions.filter((q: any) => q.type === 'DEVELOPMENT').length,
+            };
+            
+            console.log('[generateEvaluationContent] 📊 Preguntas recibidas vs solicitadas:', {
+              received: receivedCounts,
+              requested: { tf: tfCount, mc: mcCount, ms: msCount, des: developmentCount }
+            });
+            
+            // Verificar si faltan preguntas de algún tipo
+            const missingTF = Math.max(0, tfCount - receivedCounts.tf);
+            const missingMC = Math.max(0, mcCount - receivedCounts.mc);
+            const missingMS = Math.max(0, msCount - receivedCounts.ms);
+            const missingDES = Math.max(0, developmentCount - receivedCounts.des);
+            
+            let finalQuestions = [...parsed.questions];
+            
+            // Completar preguntas faltantes si es necesario
+            if (missingTF > 0 || missingMC > 0 || missingMS > 0 || missingDES > 0) {
+              console.log('[generateEvaluationContent] ⚠️ Completando preguntas faltantes:', {
+                missingTF, missingMC, missingMS, missingDES
+              });
+              
+              const nextId = () => (finalQuestions.length + 1).toString();
+              
+              // Agregar preguntas V/F faltantes
+              for (let i = 0; i < missingTF; i++) {
+                finalQuestions.push({
+                  id: nextId(),
+                  type: 'TRUE_FALSE',
+                  questionText: isEs 
+                    ? `En ${topic}, es importante comprender los conceptos fundamentales para aplicarlos correctamente.`
+                    : `In ${topic}, understanding fundamental concepts is important for correct application.`,
+                  correctAnswer: true,
+                  explanation: isEs ? 'Esta es una afirmación correcta.' : 'This is a correct statement.'
+                });
+              }
+              
+              // Agregar preguntas MC faltantes
+              for (let i = 0; i < missingMC; i++) {
+                finalQuestions.push({
+                  id: nextId(),
+                  type: 'MULTIPLE_CHOICE',
+                  questionText: isEs 
+                    ? `¿Cuál es un aspecto importante de ${topic}?`
+                    : `What is an important aspect of ${topic}?`,
+                  options: isEs 
+                    ? ['Comprensión de conceptos', 'Memorización sin entender', 'Ignorar los detalles', 'No practicar']
+                    : ['Understanding concepts', 'Memorizing without understanding', 'Ignoring details', 'Not practicing'],
+                  correctAnswerIndex: 0,
+                  explanation: isEs ? 'La comprensión es fundamental.' : 'Understanding is fundamental.'
+                });
+              }
+              
+              // Agregar preguntas MS faltantes
+              for (let i = 0; i < missingMS; i++) {
+                finalQuestions.push({
+                  id: nextId(),
+                  type: 'MULTIPLE_SELECTION',
+                  questionText: isEs 
+                    ? `¿Cuáles son afirmaciones correctas sobre ${topic}?`
+                    : `Which statements are correct about ${topic}?`,
+                  options: isEs 
+                    ? ['Requiere práctica', 'Es importante estudiarlo', 'No tiene aplicación práctica', 'Solo sirve para exámenes']
+                    : ['Requires practice', 'It is important to study', 'Has no practical application', 'Only useful for exams'],
+                  correctAnswerIndices: [0, 1],
+                  explanation: isEs ? 'Las primeras dos opciones son correctas.' : 'The first two options are correct.'
+                });
+              }
+              
+              // Agregar preguntas de desarrollo faltantes
+              for (let i = 0; i < missingDES; i++) {
+                finalQuestions.push({
+                  id: nextId(),
+                  type: 'DEVELOPMENT',
+                  questionText: isEs 
+                    ? `Problema: Explica con tus propias palabras qué aprendiste sobre ${topic}. Incluye ejemplos prácticos y muestra cómo aplicarías estos conocimientos en la vida real.`
+                    : `Problem: Explain in your own words what you learned about ${topic}. Include practical examples and show how you would apply this knowledge in real life.`,
+                  rubric: isEs ? 'Se evalúa: comprensión (3pts), ejemplos (4pts), aplicación (3pts)' : 'Evaluated: understanding (3pts), examples (4pts), application (3pts)',
+                  expectedPoints: isEs ? ['Explicación clara', 'Ejemplos relevantes', 'Aplicación práctica'] : ['Clear explanation', 'Relevant examples', 'Practical application']
+                });
+              }
+            }
+            
+            console.log('[generateEvaluationContent] ✅ OpenRouter generó', finalQuestions.length, 'preguntas (incluyendo completadas)');
             return {
               evaluationTitle: parsed.evaluationTitle || (isEs ? `Evaluación - ${topic.toUpperCase()}` : `Evaluation - ${topic.toUpperCase()}`),
-              questions: parsed.questions
+              questions: finalQuestions
             };
           }
         } catch (openRouterErr) {

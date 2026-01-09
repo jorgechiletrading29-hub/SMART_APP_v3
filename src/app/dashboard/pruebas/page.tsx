@@ -401,6 +401,36 @@ export default function PruebasPage() {
 		return genericProblems[num % genericProblems.length]
 	}
 
+	// Organizar preguntas: agrupar por tipo, orden aleatorio de grupos, desarrollo al final
+	const organizeQuestions = (questions: any[]) => {
+		// Separar por tipo
+		const tfQuestions = questions.filter(q => q.type === 'tf')
+		const mcQuestions = questions.filter(q => q.type === 'mc')
+		const msQuestions = questions.filter(q => q.type === 'ms')
+		const desQuestions = questions.filter(q => q.type === 'des')
+		
+		// Crear grupos (sin desarrollo)
+		const groups = [
+			{ type: 'tf', questions: tfQuestions },
+			{ type: 'mc', questions: mcQuestions },
+			{ type: 'ms', questions: msQuestions },
+		].filter(g => g.questions.length > 0)
+		
+		// Ordenar grupos aleatoriamente
+		for (let i = groups.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[groups[i], groups[j]] = [groups[j], groups[i]]
+		}
+		
+		// Unir grupos y agregar desarrollo al final
+		const organized = groups.flatMap(g => g.questions)
+		organized.push(...desQuestions)
+		
+		console.log('📋 [Pruebas] Orden de grupos:', groups.map(g => g.type).join(' → ') + (desQuestions.length > 0 ? ' → des' : ''))
+		
+		return organized
+	}
+
 	// Crear prueba: guarda item en estado "generating" y dispara SSE; fallback a generador local.
 	const handleCreate = () => {
 		if (!user) { alert('Usuario no autenticado'); return }
@@ -448,12 +478,23 @@ export default function PruebasPage() {
 			const questionCount = Math.max(1, countTF + countMC + countMS)
 			const bookTitle = subjName || 'General'
 			const topic = String(builder?.topic || title)
+			
+			console.log('📤 [Pruebas] Sending to API:', {
+				countTF, countMC, countMS, countDES,
+				questionCount,
+				topic,
+				bookTitle
+			})
+			
 			const params = new URLSearchParams({ 
 				topic, 
 				bookTitle, 
 				language: language === 'en' ? 'en' : 'es', 
 				questionCount: String(questionCount), 
 				developmentCount: String(countDES),
+				tfCount: String(countTF),
+				mcCount: String(countMC),
+				msCount: String(countMS),
 				timeLimit: '120' 
 			})
 			const es = new EventSource(`/api/tests/generate/stream?${params.toString()}`)
@@ -464,6 +505,19 @@ export default function PruebasPage() {
 				try {
 					const payload = JSON.parse((evt as any).data)
 					const aiOut = payload?.data
+					
+					// Log de las preguntas recibidas
+					const typeCounts = {
+						tf: (aiOut?.questions || []).filter((q: any) => q.type === 'TRUE_FALSE').length,
+						mc: (aiOut?.questions || []).filter((q: any) => q.type === 'MULTIPLE_CHOICE').length,
+						ms: (aiOut?.questions || []).filter((q: any) => q.type === 'MULTIPLE_SELECTION').length,
+						des: (aiOut?.questions || []).filter((q: any) => q.type === 'DEVELOPMENT').length,
+					}
+					console.log('📥 [Pruebas] Received from API:', {
+						totalQuestions: aiOut?.questions?.length,
+						byType: typeCounts
+					})
+					
 					const mapped: any[] = (aiOut?.questions || []).map((q: any, idx: number) => {
 						const makeId = (p: string) => `${p}_${now}_${idx}`
 						if (q.type === 'TRUE_FALSE') return { id: makeId('tf'), type: 'tf', text: q.questionText || q.text || '', answer: !!q.correctAnswer }
@@ -489,19 +543,22 @@ export default function PruebasPage() {
 						}
 						return { id: makeId('des'), type: 'des', prompt: q.questionText || q.text || '' }
 					})
-					// Ya no necesitamos generar localmente las preguntas de desarrollo
-					patchTest(id, { questions: mapped, status: 'ready', progress: 100 })
+					
+					const organizedQuestions = organizeQuestions(mapped)
+					patchTest(id, { questions: organizedQuestions, status: 'ready', progress: 100 })
 				} finally { es.close() }
 			})
 			es.addEventListener('error', () => {
 				es.close()
 				const fallback = generateLocalQuestions(builder?.topic || title, builder?.counts, subjName)
-				patchTest(item.id, { questions: fallback, status: 'ready', progress: 100 })
+				const organizedFallback = organizeQuestions(fallback)
+				patchTest(item.id, { questions: organizedFallback, status: 'ready', progress: 100 })
 			})
 		} catch (e) {
 			console.error('[Pruebas] SSE error, usando generador local:', e)
 			const fallback = generateLocalQuestions(builder?.topic || 'Tema', builder?.counts, builder?.subjectName)
-			patchTest(item.id, { questions: fallback, status: 'ready', progress: 100 })
+			const organizedFallback = organizeQuestions(fallback)
+			patchTest(item.id, { questions: organizedFallback, status: 'ready', progress: 100 })
 		}
 	}
 

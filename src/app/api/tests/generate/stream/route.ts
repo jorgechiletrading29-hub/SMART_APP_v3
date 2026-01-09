@@ -8,8 +8,26 @@ export async function GET(req: Request) {
     const bookTitle = searchParams.get('bookTitle') || ''
     const language = (searchParams.get('language') === 'en' ? 'en' : 'es') as 'es' | 'en'
     const questionCount = Number(searchParams.get('questionCount') || '15') || 15
-    const developmentCount = Number(searchParams.get('developmentCount') || '0') || 0
+    const developmentCount = Number(searchParams.get('developmentCount') || '0')
+    const tfCountStr = searchParams.get('tfCount')
+    const mcCountStr = searchParams.get('mcCount')
+    const msCountStr = searchParams.get('msCount')
+    const tfCount = tfCountStr !== null ? Number(tfCountStr) : undefined
+    const mcCount = mcCountStr !== null ? Number(mcCountStr) : undefined
+    const msCount = msCountStr !== null ? Number(msCountStr) : undefined
     const timeLimit = Number(searchParams.get('timeLimit') || '120') || 120
+
+    console.log('📥 API /tests/generate/stream received:', {
+      topic,
+      bookTitle,
+      language,
+      questionCount,
+      developmentCount,
+      tfCount,
+      mcCount,
+      msCount,
+      timeLimit
+    })
 
     if (!topic || !bookTitle) {
       return new Response('Missing topic or bookTitle', { status: 400 })
@@ -37,6 +55,9 @@ export async function GET(req: Request) {
             language,
             questionCount,
             developmentCount,
+            tfCount,
+            mcCount,
+            msCount,
             timeLimit,
           })
         } catch (e: any) {
