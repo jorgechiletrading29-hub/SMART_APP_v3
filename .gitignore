@@ -60,3 +60,19 @@ firebase-service-account-*.json
 # Secrets folder
 .secrets/
 .secrets/*
+# Capacitor / Android
+android/app/build/
+android/.gradle/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab
+.api-backup/
+android/app/src/main/assets/public/
+android/local.properties
+
+# iOS (para futuro)
+ios/App/App/public/
+ios/App/Pods/
+*.xcworkspace
+*.xcuserdata

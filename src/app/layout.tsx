@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AppProviders } from '@/contexts/app-provider';
@@ -11,6 +11,26 @@ export const metadata: Metadata = {
     shortcut: '/favicon.ico',
     apple: '/favicon.ico',
   },
+  // Configuración para app móvil
+  applicationName: 'Smart Student',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Smart Student',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+// Configuración de viewport para móvil
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#1a1a2e',
 };
 
 export default function RootLayout({

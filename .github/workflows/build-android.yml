@@ -1,0 +1,174 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'capacitor.config.ts'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Permite ejecución manual
+
+env:
+  NODE_VERSION: '20'
+  JAVA_VERSION: '21'
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: ☕ Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+
+    - name: 🤖 Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 📋 Backup API routes
+      run: |
+        mkdir -p .api-backup
+        if [ -d "src/app/api" ]; then
+          cp -r src/app/api .api-backup/
+          mkdir -p src/app/api
+          echo "// APIs removed for static build" > src/app/api/.placeholder
+          find src/app/api -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+        fi
+
+    - name: ⚙️ Configure for static export
+      run: |
+        if [ -f "next.config.mobile.ts" ]; then
+          cp next.config.mobile.ts next.config.ts
+        else
+          sed -i "/const nextConfig: NextConfig = {/a\  output: 'export'," next.config.ts
+        fi
+
+    - name: 🔨 Build Next.js
+      run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: 🔄 Restore API routes
+      run: |
+        if [ -d ".api-backup/api" ]; then
+          rm -rf src/app/api
+          mv .api-backup/api src/app/api
+          rm -rf .api-backup
+        fi
+        git checkout next.config.ts || true
+
+    - name: 📱 Sync Capacitor
+      run: npx cap sync android
+
+    - name: 🏗️ Build Android APK (Debug)
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug
+
+    - name: 📦 Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: smart-student-debug
+        path: android/app/build/outputs/apk/debug/*.apk
+        retention-days: 30
+
+    - name: 🏗️ Build Android APK (Release - unsigned)
+      run: |
+        cd android
+        ./gradlew assembleRelease
+
+    - name: 📦 Upload Release APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: smart-student-release-unsigned
+        path: android/app/build/outputs/apk/release/*.apk
+        retention-days: 30
+
+  # Job opcional para build con firma (necesita secrets configurados)
+  build-signed-release:
+    runs-on: ubuntu-latest
+    needs: build-android
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: ☕ Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+
+    - name: 🤖 Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 📋 Prepare build
+      run: |
+        mkdir -p .api-backup
+        if [ -d "src/app/api" ]; then
+          cp -r src/app/api .api-backup/
+          mkdir -p src/app/api
+          echo "// APIs removed" > src/app/api/.placeholder
+          find src/app/api -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+        fi
+        if [ -f "next.config.mobile.ts" ]; then
+          cp next.config.mobile.ts next.config.ts
+        fi
+
+    - name: 🔨 Build Next.js
+      run: npm run build
+
+    - name: 📱 Sync Capacitor
+      run: npx cap sync android
+
+    - name: 🔐 Decode Keystore
+      if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      run: |
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
+
+    - name: 🏗️ Build Signed APK
+      if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=app/keystore.jks \
+          -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+    - name: 📦 Upload Signed APK
+      if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: smart-student-signed
+        path: android/app/build/outputs/apk/release/*-release.apk
+        retention-days: 90

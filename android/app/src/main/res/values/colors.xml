@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Smart Student Brand Colors -->
+    <color name="colorPrimary">#3b82f6</color>
+    <color name="colorPrimaryDark">#1a1a2e</color>
+    <color name="colorAccent">#8b5cf6</color>
+    
+    <!-- Splash Screen -->
+    <color name="splash_background">#1a1a2e</color>
+    
+    <!-- Status Bar -->
+    <color name="status_bar">#1a1a2e</color>
+    
+    <!-- Navigation Bar -->
+    <color name="navigation_bar">#1a1a2e</color>
+    
+    <!-- Additional Theme Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="background_light">#f8fafc</color>
+    <color name="background_dark">#0f172a</color>
+</resources>

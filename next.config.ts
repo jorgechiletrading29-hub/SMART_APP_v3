@@ -1,21 +1,24 @@
 import type {NextConfig} from 'next';
 
+/**
+ * Configuración de Next.js para desarrollo web normal
+ * Para mobile, usar: npm run mobile:build
+ */
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Configuración de Turbopack para alinear con la personalización de Webpack
-  // Evitamos resolver 'canvas' en el navegador (usado por ramas Node de algunas libs)
+  
+  // Configuración de Turbopack
   turbopack: {
     resolveAlias: {
-  // Apunta a un shim local para reemplazar 'canvas' en el cliente
-  canvas: require.resolve('./shims/canvas.js'),
+      canvas: require.resolve('./shims/canvas.js'),
     },
   },
+  
   experimental: {
     serverActions: {
       allowedOrigins: [
@@ -29,6 +32,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '2mb',
     },
   },
+  
   images: {
     remotePatterns: [
       {
@@ -39,6 +43,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  
   transpilePackages: ['genkit', 'dotprompt'],
 };
 
