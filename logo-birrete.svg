@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fondo blanco/gris claro -->
+  <rect width="512" height="512" fill="#f0f0f0" rx="80"/>
+  
+  <!-- Sombra del birrete -->
+  <ellipse cx="256" cy="380" rx="120" ry="25" fill="rgba(0,0,0,0.15)"/>
+  
+  <!-- Base del birrete (parte inferior cilíndrica) -->
+  <path d="M156 280 Q156 320 176 340 L176 340 Q200 370 256 370 Q312 370 336 340 L336 340 Q356 320 356 280 L356 260 Q356 240 336 230 Q300 210 256 210 Q212 210 176 230 Q156 240 156 260 Z" fill="#1976D2"/>
+  
+  <!-- Parte superior plana del birrete -->
+  <path d="M100 200 L256 130 L412 200 L256 270 Z" fill="#2196F3"/>
+  
+  <!-- Borde/sombra superior -->
+  <path d="M100 200 L256 270 L256 275 L95 202 Z" fill="#1565C0"/>
+  <path d="M412 200 L256 270 L256 275 L417 202 Z" fill="#1565C0"/>
+  
+  <!-- Botón central -->
+  <circle cx="256" cy="200" r="12" fill="#0D47A1"/>
+  
+  <!-- Cordón de la borla -->
+  <path d="M256 200 Q280 220 300 200 Q340 180 360 240 Q370 280 365 320" 
+        stroke="#1A1A1A" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Borla -->
+  <path d="M355 320 Q365 320 370 330 L375 380 Q370 390 360 390 Q350 390 345 380 L350 330 Q355 320 355 320" fill="#1A1A1A"/>
+  <rect x="348" y="315" width="24" height="10" rx="3" fill="#2A2A2A"/>
+  
+  <!-- Hilos de la borla -->
+  <path d="M352 380 L350 400 M356 380 L356 402 M360 380 L362 400 M364 380 L368 398" 
+        stroke="#1A1A1A" stroke-width="2" stroke-linecap="round"/>
+</svg>
