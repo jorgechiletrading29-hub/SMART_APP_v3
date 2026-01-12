@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Comunicaciones - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .message-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .message-card:hover { border-color: var(--accent-blue); }
+    .message-card.unread { border-left: 4px solid var(--accent-blue); }
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .message-title {
+      font-weight: 600;
+      font-size: 15px;
+      flex: 1;
+    }
+    .message-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .message-preview {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .message-meta {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .modal-overlay.active { display: block; }
+    .modal-content {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      max-width: 500px;
+      margin: 0 auto;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .modal-body {
+      padding: 20px;
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .compose-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    .unread-badge {
+      background: var(--accent-red);
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Comunicaciones</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Comunicaciones</span>
+    <span class="header-icon">📢</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('inbox')">📥 Recibidos <span class="unread-badge" id="unread-count">3</span></button>
+      <button class="tab" onclick="switchTab('sent')" id="sent-tab" style="display: none;">📤 Enviados</button>
+    </div>
+    
+    <!-- Lista de mensajes -->
+    <div id="messages-container"></div>
+    
+    <!-- Estado vacío -->
+    <div id="empty-state" style="display: none;">
+      <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <p>No hay comunicaciones</p>
+      </div>
+    </div>
+  </main>
+  
+  <!-- Modal de lectura -->
+  <div class="modal-overlay" id="read-modal">
+    <div class="modal-content" style="position: relative;">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-header">
+        <h3 id="modal-title" style="font-size: 18px; margin-bottom: 8px;"></h3>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span class="badge badge-blue" id="modal-from"></span>
+          <span style="font-size: 12px; color: var(--text-muted);" id="modal-date"></span>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="modal-content" style="line-height: 1.6; white-space: pre-wrap;"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal de composición (solo profesores) -->
+  <div class="modal-overlay" id="compose-modal">
+    <div class="modal-content" style="position: relative;">
+      <button class="modal-close" onclick="closeComposeModal()">✕</button>
+      <div class="modal-header">
+        <h3 style="font-size: 18px;">Nueva Comunicación</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Destinatario</label>
+          <select class="form-select" id="compose-target">
+            <option value="course">Todo el curso</option>
+            <option value="student">Estudiante específico</option>
+          </select>
+        </div>
+        
+        <div class="form-group" id="course-select-group">
+          <label class="form-label">Curso</label>
+          <select class="form-select" id="compose-course">
+            <option value="1a">1° Básico A</option>
+            <option value="1b">1° Básico B</option>
+            <option value="2a">2° Básico A</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Título</label>
+          <input type="text" class="form-input" id="compose-title" placeholder="Asunto de la comunicación">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Mensaje</label>
+          <textarea class="form-textarea" id="compose-content" placeholder="Escribe tu mensaje..." style="min-height: 150px;"></textarea>
+        </div>
+        
+        <button class="btn btn-primary btn-block" onclick="sendMessage()">📤 Enviar Comunicación</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- FAB para componer (solo profesores) -->
+  <button class="compose-fab" id="compose-fab" style="display: none;" onclick="openComposeModal()">✉️</button>
+
+  <script>
+    var userRole = 'student';
+    var currentTab = 'inbox';
+    
+    var demoMessages = [
+      {
+        id: '1',
+        title: 'Reunión de apoderados - Enero 2026',
+        content: 'Estimados padres y apoderados,\n\nLes informamos que el próximo viernes 16 de enero a las 18:00 hrs se realizará la primera reunión de apoderados del año.\n\nTemas a tratar:\n- Presentación del equipo docente\n- Calendario escolar 2026\n- Actividades extracurriculares\n- Preguntas y respuestas\n\nEsperamos contar con su asistencia.\n\nAtentamente,\nDirección',
+        from: 'Dirección',
+        date: '2026-01-10',
+        read: false,
+        type: 'course'
+      },
+      {
+        id: '2',
+        title: 'Tarea de Matemáticas pendiente',
+        content: 'Hola,\n\nTe recordamos que tienes una tarea de Matemáticas pendiente de entrega.\n\nTema: Fracciones equivalentes\nFecha límite: 15 de enero\n\nPor favor, revisa el material en la plataforma y entrega antes de la fecha indicada.\n\nSaludos,\nProf. Jorge',
+        from: 'Prof. Jorge',
+        date: '2026-01-09',
+        read: false,
+        type: 'student'
+      },
+      {
+        id: '3',
+        title: 'Bienvenida al nuevo año escolar',
+        content: 'Querida comunidad educativa,\n\nEs un placer darles la bienvenida al año escolar 2026. Este será un año lleno de aprendizajes, desafíos y logros.\n\nRecuerden:\n- Clases comienzan el 5 de marzo\n- Uniformes disponibles en secretaría\n- Actualizar datos de contacto\n\n¡Les deseamos mucho éxito!\n\nDirección Smart Student',
+        from: 'Dirección',
+        date: '2026-01-05',
+        read: true,
+        type: 'course'
+      },
+      {
+        id: '4',
+        title: 'Excelente desempeño en evaluación',
+        content: 'Hola,\n\nQueríamos felicitarte por tu excelente desempeño en la última evaluación de Ciencias Naturales.\n\nObtuviste un 6.8, demostrando gran dominio del tema \"La célula y sus partes\".\n\n¡Sigue así!\n\nProf. María',
+        from: 'Prof. María',
+        date: '2026-01-03',
+        read: false,
+        type: 'student'
+      }
+    ];
+    
+    var sentMessages = [
+      {
+        id: 's1',
+        title: 'Aviso importante: Evaluación',
+        content: 'Se informa que la evaluación de Matemáticas será el próximo lunes.',
+        to: '1° Básico A',
+        date: '2026-01-08'
+      }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      try {
+        var session = JSON.parse(localStorage.getItem('smartstudent_session') || '{}');
+        userRole = session.role || 'student';
+      } catch(e) {}
+      
+      // Mostrar opciones de profesor/admin
+      if (userRole === 'teacher' || userRole === 'admin') {
+        document.getElementById('sent-tab').style.display = 'inline-block';
+        document.getElementById('compose-fab').style.display = 'block';
+      }
+      
+      renderMessages();
+      updateUnreadCount();
+    }
+    
+    function switchTab(tab) {
+      currentTab = tab;
+      var tabs = document.querySelectorAll('.tab');
+      tabs.forEach(function(t, i) {
+        t.classList.toggle('active', (tab === 'inbox' && i === 0) || (tab === 'sent' && i === 1));
+      });
+      renderMessages();
+    }
+    
+    function renderMessages() {
+      var container = document.getElementById('messages-container');
+      var messages = currentTab === 'inbox' ? demoMessages : sentMessages;
+      
+      if (messages.length === 0) {
+        container.innerHTML = '';
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+      }
+      
+      document.getElementById('empty-state').style.display = 'none';
+      var html = '';
+      
+      messages.forEach(function(msg) {
+        var unreadClass = currentTab === 'inbox' && !msg.read ? 'unread' : '';
+        html += '<div class="message-card ' + unreadClass + '" onclick="openMessage(\'' + msg.id + '\')">';
+        html += '<div class="message-header">';
+        html += '<div class="message-title">' + escapeHtml(msg.title) + '</div>';
+        html += '<div class="message-date">' + formatDate(msg.date) + '</div>';
+        html += '</div>';
+        html += '<div class="message-preview">' + escapeHtml(msg.content.substring(0, 100)) + '...</div>';
+        html += '<div class="message-meta">';
+        html += '<span class="badge badge-blue">' + (msg.from || 'Para: ' + msg.to) + '</span>';
+        if (msg.type === 'student') {
+          html += '<span class="badge badge-purple">Personal</span>';
+        }
+        html += '</div></div>';
+      });
+      
+      container.innerHTML = html;
+    }
+    
+    function openMessage(id) {
+      var msg = demoMessages.find(function(m) { return m.id === id; });
+      if (!msg) msg = sentMessages.find(function(m) { return m.id === id; });
+      if (!msg) return;
+      
+      // Marcar como leído
+      msg.read = true;
+      updateUnreadCount();
+      renderMessages();
+      
+      document.getElementById('modal-title').textContent = msg.title;
+      document.getElementById('modal-from').textContent = msg.from || 'Para: ' + msg.to;
+      document.getElementById('modal-date').textContent = formatDate(msg.date);
+      document.getElementById('modal-content').textContent = msg.content;
+      document.getElementById('read-modal').classList.add('active');
+    }
+    
+    function closeModal() {
+      document.getElementById('read-modal').classList.remove('active');
+    }
+    
+    function openComposeModal() {
+      document.getElementById('compose-modal').classList.add('active');
+    }
+    
+    function closeComposeModal() {
+      document.getElementById('compose-modal').classList.remove('active');
+    }
+    
+    function sendMessage() {
+      var title = document.getElementById('compose-title').value.trim();
+      var content = document.getElementById('compose-content').value.trim();
+      
+      if (!title || !content) {
+        alert('Completa todos los campos');
+        return;
+      }
+      
+      sentMessages.unshift({
+        id: 's' + Date.now(),
+        title: title,
+        content: content,
+        to: document.getElementById('compose-course').selectedOptions[0].text,
+        date: new Date().toISOString().split('T')[0]
+      });
+      
+      alert('✅ Comunicación enviada correctamente');
+      closeComposeModal();
+      document.getElementById('compose-title').value = '';
+      document.getElementById('compose-content').value = '';
+    }
+    
+    function updateUnreadCount() {
+      var count = demoMessages.filter(function(m) { return !m.read; }).length;
+      document.getElementById('unread-count').textContent = count;
+      document.getElementById('unread-count').style.display = count > 0 ? 'inline' : 'none';
+    }
+    
+    function formatDate(dateStr) {
+      var d = new Date(dateStr);
+      return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+    }
+    
+    function escapeHtml(t) {
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+    
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('read-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+    document.getElementById('compose-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeComposeModal();
+    });
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

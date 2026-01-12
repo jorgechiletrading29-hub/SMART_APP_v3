@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Estadísticas - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .period-selector {
+      display: flex;
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+    .period-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .period-btn.active {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+    }
+    
+    .big-stat {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .big-stat-value {
+      font-size: 48px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #22c55e, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .big-stat-label {
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    
+    .chart-container {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .chart-title {
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .bar-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .bar-label {
+      width: 80px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .bar-track {
+      flex: 1;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 8px;
+      font-size: 11px;
+      font-weight: 500;
+      min-width: 40px;
+    }
+    .bar-fill.excellent { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .bar-fill.good { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+    .bar-fill.average { background: linear-gradient(90deg, #eab308, #ca8a04); }
+    .bar-fill.low { background: linear-gradient(90deg, #ef4444, #dc2626); }
+    
+    .pie-chart {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .pie {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      position: relative;
+    }
+    .pie-center {
+      position: absolute;
+      inset: 20px;
+      background: var(--bg-card);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .pie-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .pie-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .pie-legend {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    
+    .ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ranking-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+    }
+    .ranking-pos {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .ranking-pos.gold { background: linear-gradient(135deg, #fcd34d, #f59e0b); color: #111; }
+    .ranking-pos.silver { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #111; }
+    .ranking-pos.bronze { background: linear-gradient(135deg, #fbbf24, #d97706); color: #111; }
+    .ranking-pos.normal { background: rgba(255, 255, 255, 0.1); }
+    .ranking-info {
+      flex: 1;
+    }
+    .ranking-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .ranking-detail {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .ranking-score {
+      font-weight: 600;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Estadísticas</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Estadísticas</span>
+    <span class="header-icon">📊</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="period-selector">
+      <button class="period-btn active" onclick="selectPeriod(this)">Semana</button>
+      <button class="period-btn" onclick="selectPeriod(this)">Mes</button>
+      <button class="period-btn" onclick="selectPeriod(this)">Semestre</button>
+      <button class="period-btn" onclick="selectPeriod(this)">Año</button>
+    </div>
+    
+    <div class="big-stat">
+      <div class="big-stat-value" id="main-stat">6.2</div>
+      <div class="big-stat-label" id="main-stat-label">Promedio General</div>
+    </div>
+    
+    <div id="stats-content"></div>
+  </main>
+
+  <script>
+    var role = 'student';
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      var session = localStorage.getItem('smartstudent_session');
+      if (session) {
+        var s = JSON.parse(session);
+        role = s.role || 'student';
+      }
+      renderStats();
+    }
+    
+    function selectPeriod(btn) {
+      document.querySelectorAll('.period-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+    }
+    
+    function renderStats() {
+      if (role === 'teacher' || role === 'admin') {
+        renderTeacherStats();
+      } else if (role === 'guardian') {
+        renderGuardianStats();
+      } else {
+        renderStudentStats();
+      }
+    }
+    
+    function renderStudentStats() {
+      document.getElementById('main-stat').textContent = '6.2';
+      document.getElementById('main-stat-label').textContent = 'Promedio General';
+      
+      var html = '';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">📈 Rendimiento por Asignatura</div>';
+      html += '<div class="bar-chart">';
+      html += renderBar('Matemáticas', 6.5, 'excellent');
+      html += renderBar('Lenguaje', 6.0, 'good');
+      html += renderBar('Historia', 5.8, 'good');
+      html += renderBar('Ciencias', 6.3, 'excellent');
+      html += renderBar('Inglés', 5.5, 'average');
+      html += renderBar('Arte', 6.8, 'excellent');
+      html += '</div></div>';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">📅 Asistencia</div>';
+      html += '<div class="pie-chart"><div class="pie" style="background: conic-gradient(#22c55e 0% 92%, #ef4444 92% 95%, #eab308 95% 100%);">';
+      html += '<div class="pie-center"><div class="pie-value">92%</div><div class="pie-label">Asistencia</div></div>';
+      html += '</div></div>';
+      html += '<div class="pie-legend">';
+      html += '<div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span> Presente (92%)</div>';
+      html += '<div class="legend-item"><span class="legend-dot" style="background: #ef4444;"></span> Ausente (3%)</div>';
+      html += '<div class="legend-item"><span class="legend-dot" style="background: #eab308;"></span> Justificado (5%)</div>';
+      html += '</div></div>';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">🎯 Actividades Completadas</div>';
+      html += '<div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #22c55e;">15</div><div class="stat-label">Tareas</div></div>';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #3b82f6;">8</div><div class="stat-label">Evaluaciones</div></div>';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #8b5cf6;">23</div><div class="stat-label">Cuestionarios</div></div>';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #eab308;">12</div><div class="stat-label">Resúmenes IA</div></div>';
+      html += '</div></div>';
+      
+      document.getElementById('stats-content').innerHTML = html;
+    }
+    
+    function renderTeacherStats() {
+      document.getElementById('main-stat').textContent = '5.8';
+      document.getElementById('main-stat-label').textContent = 'Promedio de mis Cursos';
+      
+      var html = '';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">📈 Rendimiento por Curso</div>';
+      html += '<div class="bar-chart">';
+      html += renderBar('1° Básico A', 6.2, 'excellent');
+      html += renderBar('2° Básico A', 5.8, 'good');
+      html += renderBar('3° Básico A', 5.5, 'average');
+      html += renderBar('4° Básico A', 6.0, 'good');
+      html += '</div></div>';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">🏆 Mejores Estudiantes</div>';
+      html += '<div class="ranking-list">';
+      html += renderRankingItem(1, 'María García', '1° Básico A', 6.9);
+      html += renderRankingItem(2, 'Pedro López', '2° Básico A', 6.8);
+      html += renderRankingItem(3, 'Ana Martínez', '1° Básico A', 6.7);
+      html += renderRankingItem(4, 'Carlos Soto', '3° Básico A', 6.6);
+      html += renderRankingItem(5, 'Laura Díaz', '4° Básico A', 6.5);
+      html += '</div></div>';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">📊 Resumen General</div>';
+      html += '<div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #22c55e;">128</div><div class="stat-label">Estudiantes</div></div>';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #3b82f6;">4</div><div class="stat-label">Cursos</div></div>';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #8b5cf6;">45</div><div class="stat-label">Evaluaciones</div></div>';
+      html += '<div class="stat-card"><div class="stat-value" style="color: #eab308;">89%</div><div class="stat-label">Asistencia</div></div>';
+      html += '</div></div>';
+      
+      document.getElementById('stats-content').innerHTML = html;
+    }
+    
+    function renderGuardianStats() {
+      document.getElementById('main-stat').textContent = '6.2';
+      document.getElementById('main-stat-label').textContent = 'Promedio del Estudiante';
+      
+      var html = '';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">👨‍👩‍👧 Estudiante: María Apoderado</div>';
+      html += '<div class="bar-chart">';
+      html += renderBar('Matemáticas', 6.5, 'excellent');
+      html += renderBar('Lenguaje', 6.0, 'good');
+      html += renderBar('Historia', 5.8, 'good');
+      html += renderBar('Ciencias', 6.3, 'excellent');
+      html += '</div></div>';
+      
+      html += '<div class="chart-container">';
+      html += '<div class="chart-title">📅 Asistencia del Mes</div>';
+      html += '<div class="pie-chart"><div class="pie" style="background: conic-gradient(#22c55e 0% 95%, #ef4444 95% 100%);">';
+      html += '<div class="pie-center"><div class="pie-value">95%</div><div class="pie-label">Asistencia</div></div>';
+      html += '</div></div>';
+      html += '<div class="pie-legend">';
+      html += '<div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span> Presente (19 días)</div>';
+      html += '<div class="legend-item"><span class="legend-dot" style="background: #ef4444;"></span> Ausente (1 día)</div>';
+      html += '</div></div>';
+      
+      document.getElementById('stats-content').innerHTML = html;
+    }
+    
+    function renderBar(label, value, level) {
+      var width = (value / 7) * 100;
+      return '<div class="bar-item">' +
+        '<div class="bar-label">' + label + '</div>' +
+        '<div class="bar-track"><div class="bar-fill ' + level + '" style="width: ' + width + '%;">' + value.toFixed(1) + '</div></div>' +
+        '</div>';
+    }
+    
+    function renderRankingItem(pos, name, detail, score) {
+      var posClass = 'normal';
+      if (pos === 1) posClass = 'gold';
+      else if (pos === 2) posClass = 'silver';
+      else if (pos === 3) posClass = 'bronze';
+      
+      return '<div class="ranking-item">' +
+        '<div class="ranking-pos ' + posClass + '">' + pos + '</div>' +
+        '<div class="ranking-info"><div class="ranking-name">' + name + '</div><div class="ranking-detail">' + detail + '</div></div>' +
+        '<div class="ranking-score">' + score.toFixed(1) + '</div>' +
+        '</div>';
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

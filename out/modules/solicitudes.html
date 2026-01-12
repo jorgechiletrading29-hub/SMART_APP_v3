@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Solicitudes de Contraseña - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .request-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .request-card.pending { border-left: 4px solid #eab308; }
+    .request-card.approved { border-left: 4px solid #22c55e; }
+    .request-card.rejected { border-left: 4px solid #ef4444; }
+    .request-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .request-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .user-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .user-info .user-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .user-info .user-email {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .status-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+    .badge-pending { background: rgba(234, 179, 8, 0.2); color: #fde047; }
+    .badge-approved { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .badge-rejected { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .request-details {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .request-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .request-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-approve {
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+    }
+    .btn-reject {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+    .btn-details {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+    }
+    
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 100;
+      align-items: flex-end;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-content {
+      background: var(--bg-primary);
+      width: 100%;
+      max-height: 70vh;
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .new-password-display {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .password-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .password-value {
+      font-size: 24px;
+      font-weight: 700;
+      font-family: monospace;
+      letter-spacing: 2px;
+      color: #86efac;
+      margin-bottom: 12px;
+    }
+    .copy-btn {
+      padding: 10px 24px;
+      border-radius: 20px;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .confirm-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .cancel-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 15px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Solicitudes</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Solicitudes de Contraseña</span>
+    <span class="header-icon">🔑</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" style="color: #eab308;" id="pending-count">4</div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #22c55e;" id="approved-count">12</div>
+        <div class="stat-label">Aprobadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #ef4444;" id="rejected-count">2</div>
+        <div class="stat-label">Rechazadas</div>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('pending')">Pendientes</button>
+      <button class="tab" onclick="switchTab('processed')">Procesadas</button>
+    </div>
+    
+    <div id="requests-container"></div>
+  </main>
+  
+  <div class="modal-overlay" id="approve-modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">✅ Aprobar Solicitud</div>
+        <button class="close-btn" onclick="closeApproveModal()">×</button>
+      </div>
+      <p style="margin-bottom: 16px; color: var(--text-secondary);">
+        Se generará una nueva contraseña temporal para el usuario. 
+        El usuario deberá cambiarla en su primer inicio de sesión.
+      </p>
+      <div class="new-password-display">
+        <div class="password-label">Nueva contraseña temporal:</div>
+        <div class="password-value" id="new-password">Smart2026!</div>
+        <button class="copy-btn" onclick="copyPassword()">📋 Copiar</button>
+      </div>
+      <button class="confirm-btn" onclick="confirmApprove()">Confirmar y Enviar por Email</button>
+      <button class="cancel-btn" onclick="closeApproveModal()">Cancelar</button>
+    </div>
+  </div>
+  
+  <div class="modal-overlay" id="reject-modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">❌ Rechazar Solicitud</div>
+        <button class="close-btn" onclick="closeRejectModal()">×</button>
+      </div>
+      <p style="margin-bottom: 16px; color: var(--text-secondary);">
+        Por favor, indica el motivo del rechazo:
+      </p>
+      <textarea id="reject-reason" placeholder="Motivo del rechazo..." 
+        style="width: 100%; height: 100px; padding: 12px; border-radius: 8px; 
+               background: var(--bg-card); border: 1px solid var(--border-color); 
+               color: var(--text-primary); resize: none; margin-bottom: 16px;"></textarea>
+      <button class="confirm-btn" style="background: linear-gradient(135deg, #ef4444, #dc2626);" 
+              onclick="confirmReject()">Confirmar Rechazo</button>
+      <button class="cancel-btn" onclick="closeRejectModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <script>
+    var currentTab = 'pending';
+    var selectedRequest = null;
+    
+    var requests = [
+      {
+        id: '1',
+        name: 'María González',
+        email: 'maria.gonzalez@colegio.cl',
+        role: 'Estudiante',
+        avatar: '👩‍🎓',
+        requestDate: '2026-01-09T10:30:00',
+        reason: 'Olvidé mi contraseña y no tengo acceso al email de recuperación.',
+        status: 'pending'
+      },
+      {
+        id: '2',
+        name: 'Carlos Pérez',
+        email: 'carlos.perez@colegio.cl',
+        role: 'Apoderado',
+        avatar: '👨',
+        requestDate: '2026-01-09T09:15:00',
+        reason: 'Mi cuenta está bloqueada después de varios intentos fallidos.',
+        status: 'pending'
+      },
+      {
+        id: '3',
+        name: 'Ana Martínez',
+        email: 'ana.martinez@colegio.cl',
+        role: 'Profesora',
+        avatar: '👩‍🏫',
+        requestDate: '2026-01-08T16:45:00',
+        reason: 'Necesito restablecer mi contraseña por motivos de seguridad.',
+        status: 'pending'
+      },
+      {
+        id: '4',
+        name: 'Juan Rodríguez',
+        email: 'juan.rodriguez@colegio.cl',
+        role: 'Estudiante',
+        avatar: '👨‍🎓',
+        requestDate: '2026-01-08T14:20:00',
+        reason: 'No puedo acceder a mi cuenta desde el cambio de semestre.',
+        status: 'pending'
+      },
+      {
+        id: '5',
+        name: 'Laura Soto',
+        email: 'laura.soto@colegio.cl',
+        role: 'Estudiante',
+        avatar: '👩‍🎓',
+        requestDate: '2026-01-07T11:00:00',
+        reason: 'Olvidé mi contraseña.',
+        status: 'approved',
+        processedDate: '2026-01-07T12:30:00'
+      },
+      {
+        id: '6',
+        name: 'Pedro Muñoz',
+        email: 'pedro.munoz@colegio.cl',
+        role: 'Apoderado',
+        avatar: '👨',
+        requestDate: '2026-01-06T09:00:00',
+        reason: 'Solicito nueva contraseña.',
+        status: 'rejected',
+        processedDate: '2026-01-06T10:00:00',
+        rejectReason: 'Por favor contactar directamente a secretaría con documento de identidad.'
+      }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      updateStats();
+      renderRequests();
+    }
+    
+    function switchTab(tab) {
+      currentTab = tab;
+      var tabs = document.querySelectorAll('.tab');
+      tabs.forEach(function(t, i) {
+        t.classList.toggle('active', (tab === 'pending' && i === 0) || (tab === 'processed' && i === 1));
+      });
+      renderRequests();
+    }
+    
+    function updateStats() {
+      var pending = requests.filter(function(r) { return r.status === 'pending'; }).length;
+      var approved = requests.filter(function(r) { return r.status === 'approved'; }).length;
+      var rejected = requests.filter(function(r) { return r.status === 'rejected'; }).length;
+      document.getElementById('pending-count').textContent = pending;
+      document.getElementById('approved-count').textContent = approved;
+      document.getElementById('rejected-count').textContent = rejected;
+    }
+    
+    function renderRequests() {
+      var filtered;
+      if (currentTab === 'pending') {
+        filtered = requests.filter(function(r) { return r.status === 'pending'; });
+      } else {
+        filtered = requests.filter(function(r) { return r.status !== 'pending'; });
+      }
+      
+      if (filtered.length === 0) {
+        document.getElementById('requests-container').innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No hay solicitudes ' + 
+          (currentTab === 'pending' ? 'pendientes' : 'procesadas') + '</p></div>';
+        return;
+      }
+      
+      var html = '';
+      filtered.forEach(function(r) {
+        html += '<div class="request-card ' + r.status + '">';
+        html += '<div class="request-header">';
+        html += '<div class="request-user">';
+        html += '<div class="user-avatar">' + r.avatar + '</div>';
+        html += '<div class="user-info">';
+        html += '<div class="user-name">' + escapeHtml(r.name) + '</div>';
+        html += '<div class="user-email">' + escapeHtml(r.email) + '</div>';
+        html += '</div></div>';
+        
+        var badgeClass = 'badge-' + r.status;
+        var badgeText = r.status === 'pending' ? 'Pendiente' : (r.status === 'approved' ? 'Aprobada' : 'Rechazada');
+        html += '<span class="status-badge ' + badgeClass + '">' + badgeText + '</span>';
+        html += '</div>';
+        
+        html += '<div class="request-details">"' + escapeHtml(r.reason) + '"</div>';
+        
+        html += '<div class="request-meta">';
+        html += '<span>👤 ' + r.role + '</span>';
+        html += '<span>📅 ' + formatDateTime(r.requestDate) + '</span>';
+        html += '</div>';
+        
+        if (r.status === 'pending') {
+          html += '<div class="request-actions">';
+          html += '<button class="action-btn btn-approve" onclick="openApprove(\'' + r.id + '\')">✓ Aprobar</button>';
+          html += '<button class="action-btn btn-reject" onclick="openReject(\'' + r.id + '\')">✗ Rechazar</button>';
+          html += '</div>';
+        } else if (r.status === 'rejected' && r.rejectReason) {
+          html += '<div style="font-size: 12px; color: #fca5a5; padding: 10px; background: rgba(239,68,68,0.1); border-radius: 8px;">';
+          html += '<strong>Motivo:</strong> ' + escapeHtml(r.rejectReason);
+          html += '</div>';
+        }
+        
+        html += '</div>';
+      });
+      
+      document.getElementById('requests-container').innerHTML = html;
+    }
+    
+    function openApprove(id) {
+      selectedRequest = requests.find(function(r) { return r.id === id; });
+      var randomPass = 'Smart' + Math.floor(1000 + Math.random() * 9000) + '!';
+      document.getElementById('new-password').textContent = randomPass;
+      document.getElementById('approve-modal').classList.add('show');
+    }
+    
+    function closeApproveModal() {
+      document.getElementById('approve-modal').classList.remove('show');
+      selectedRequest = null;
+    }
+    
+    function copyPassword() {
+      var pass = document.getElementById('new-password').textContent;
+      navigator.clipboard.writeText(pass).then(function() {
+        alert('Contraseña copiada: ' + pass);
+      });
+    }
+    
+    function confirmApprove() {
+      if (selectedRequest) {
+        selectedRequest.status = 'approved';
+        selectedRequest.processedDate = new Date().toISOString();
+        updateStats();
+        renderRequests();
+        closeApproveModal();
+        alert('Solicitud aprobada. Se ha enviado la nueva contraseña al email del usuario.');
+      }
+    }
+    
+    function openReject(id) {
+      selectedRequest = requests.find(function(r) { return r.id === id; });
+      document.getElementById('reject-reason').value = '';
+      document.getElementById('reject-modal').classList.add('show');
+    }
+    
+    function closeRejectModal() {
+      document.getElementById('reject-modal').classList.remove('show');
+      selectedRequest = null;
+    }
+    
+    function confirmReject() {
+      var reason = document.getElementById('reject-reason').value.trim();
+      if (!reason) {
+        alert('Por favor indica el motivo del rechazo.');
+        return;
+      }
+      if (selectedRequest) {
+        selectedRequest.status = 'rejected';
+        selectedRequest.rejectReason = reason;
+        selectedRequest.processedDate = new Date().toISOString();
+        updateStats();
+        renderRequests();
+        closeRejectModal();
+        alert('Solicitud rechazada.');
+      }
+    }
+    
+    function closeModal(e) {
+      if (e.target.classList.contains('modal-overlay')) {
+        closeApproveModal();
+        closeRejectModal();
+      }
+    }
+    
+    function formatDateTime(dateStr) {
+      var d = new Date(dateStr);
+      var months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      var hours = d.getHours();
+      var mins = String(d.getMinutes()).padStart(2, '0');
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + hours + ':' + mins;
+    }
+    
+    function escapeHtml(t) {
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

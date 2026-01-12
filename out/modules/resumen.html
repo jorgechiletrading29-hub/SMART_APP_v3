@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Resúmenes - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .module-header { text-align: center; padding: 24px 16px; }
+    .module-icon { width: 64px; height: 64px; margin: 0 auto 12px; background: rgba(59, 130, 246, 0.15); border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+    .module-icon svg { width: 32px; height: 32px; }
+    .module-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .module-subtitle { font-size: 13px; color: var(--text-muted); }
+    .selection-container { padding: 0 16px; }
+    .selection-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .selection-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .selection-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .selection-btn { padding: 12px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-secondary); font-size: 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .selection-btn:hover { border-color: #3b82f6; }
+    .selection-btn.active { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #3b82f6; }
+    .selection-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .subject-section { display: none; }
+    .subject-section.visible { display: block; }
+    .generate-btn { width: 100%; margin-top: 16px; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-size: 15px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result-container { display: none; padding: 0 16px; margin-top: 16px; }
+    .result-container.visible { display: block; }
+    .result-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; }
+    .result-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+    .result-content { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+    .loading { display: none; text-align: center; padding: 40px; color: var(--text-muted); }
+    .loading.visible { display: block; }
+    .loading svg { width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()"><svg viewBox="0 0 100 100"><path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/><path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/><path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/><path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/><circle cx="50" cy="40" r="3" fill="#0D47A1"/><path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/><rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/><path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/></svg></div>
+      <span class="page-title" id="nav-title">Resúmenes</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>
+      <button class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg></button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')"><svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" width="18" height="18"><circle cx="12" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 9v3M9 15l-1.5 1.5M15 15l1.5 1.5"/></svg></button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')"><svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 2.83V14"/><circle cx="12" cy="17" r="1" fill="#06b6d4"/></svg></button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')"><svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h4"/></svg></button>
+    </div>
+  </nav>
+
+  <div class="module-header">
+    <div class="module-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg></div>
+    <h1 class="module-title" id="title">Resúmenes Inteligentes</h1>
+    <p class="module-subtitle" id="subtitle">Genera resúmenes de contenido educativo</p>
+  </div>
+
+  <div class="selection-container">
+    <div class="selection-card">
+      <div class="selection-label" id="course-label">Selecciona un Curso</div>
+      <div class="selection-grid" id="course-grid"></div>
+    </div>
+
+    <div class="selection-card subject-section" id="subject-section">
+      <div class="selection-label" id="subject-label">Selecciona una Asignatura</div>
+      <div class="selection-grid" id="subject-grid"></div>
+    </div>
+
+    <button class="generate-btn" id="generate-btn" disabled onclick="generateContent()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span id="generate-text">Generar Resumen</span>
+    </button>
+  </div>
+
+  <div class="loading" id="loading">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
+    <p id="loading-text">Generando resumen...</p>
+  </div>
+
+  <div class="result-container" id="result-container">
+    <div class="result-card">
+      <div class="result-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg>
+        <span id="result-title">Resumen Generado</span>
+      </div>
+      <div class="result-content" id="result-content"></div>
+    </div>
+  </div>
+
+  <script>
+    var lang = localStorage.getItem('smartstudent_lang') || 'es';
+    var selectedCourse = null;
+    var selectedSubject = null;
+    
+    var courses = [
+      '1ro Básico', '2do Básico', '3ro Básico', '4to Básico',
+      '5to Básico', '6to Básico', '7mo Básico', '8vo Básico',
+      '1ro Medio', '2do Medio', '3ro Medio', '4to Medio'
+    ];
+    
+    var basicoSubjects = ['Matemáticas', 'Ciencias Naturales', 'Lenguaje y Comunicación', 'Historia y Ciencias Sociales'];
+    var medioSubjects = ['Matemáticas', 'Biología', 'Física', 'Química', 'Lenguaje y Comunicación', 'Historia y Ciencias Sociales'];
+    
+    var t = {
+      es: {
+        navTitle: 'Resúmenes', title: 'Resúmenes Inteligentes', subtitle: 'Genera resúmenes de contenido educativo',
+        courseLabel: 'Selecciona un Curso', subjectLabel: 'Selecciona una Asignatura',
+        generateBtn: 'Generar Resumen', loadingText: 'Generando resumen...', resultTitle: 'Resumen Generado'
+      },
+      en: {
+        navTitle: 'Summaries', title: 'Smart Summaries', subtitle: 'Generate educational content summaries',
+        courseLabel: 'Select a Course', subjectLabel: 'Select a Subject',
+        generateBtn: 'Generate Summary', loadingText: 'Generating summary...', resultTitle: 'Generated Summary'
+      }
+    };
+    
+    (function(){var th=localStorage.getItem('smartstudent_theme')||'dark';document.documentElement.setAttribute('data-theme',th)})();
+    
+    function goHome(){window.location.href='/dashboard-static.html'}
+    function goToModule(m){window.location.href='/modules/'+m+'.html'}
+    
+    function renderCourses(){
+      var grid = document.getElementById('course-grid');
+      grid.innerHTML = '';
+      courses.forEach(function(c){
+        var btn = document.createElement('button');
+        btn.className = 'selection-btn';
+        btn.textContent = c;
+        btn.onclick = function(){ selectCourse(c, btn); };
+        grid.appendChild(btn);
+      });
+    }
+    
+    function selectCourse(course, btn){
+      selectedCourse = course;
+      selectedSubject = null;
+      document.querySelectorAll('#course-grid .selection-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      renderSubjects();
+      document.getElementById('subject-section').classList.add('visible');
+      updateGenerateBtn();
+    }
+    
+    function renderSubjects(){
+      var grid = document.getElementById('subject-grid');
+      grid.innerHTML = '';
+      var subjects = selectedCourse.includes('Medio') ? medioSubjects : basicoSubjects;
+      subjects.forEach(function(s){
+        var btn = document.createElement('button');
+        btn.className = 'selection-btn';
+        btn.textContent = s;
+        btn.onclick = function(){ selectSubject(s, btn); };
+        grid.appendChild(btn);
+      });
+    }
+    
+    function selectSubject(subject, btn){
+      selectedSubject = subject;
+      document.querySelectorAll('#subject-grid .selection-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      updateGenerateBtn();
+    }
+    
+    function updateGenerateBtn(){
+      document.getElementById('generate-btn').disabled = !(selectedCourse && selectedSubject);
+    }
+    
+    function generateContent(){
+      document.getElementById('loading').classList.add('visible');
+      document.getElementById('result-container').classList.remove('visible');
+      setTimeout(function(){
+        document.getElementById('loading').classList.remove('visible');
+        document.getElementById('result-container').classList.add('visible');
+        var txt = t[lang];
+        document.getElementById('result-content').innerHTML = '<strong>' + selectedCourse + ' - ' + selectedSubject + '</strong><br><br>Este es un resumen de ejemplo generado para la asignatura seleccionada. En la versión completa, aquí aparecerá el contenido educativo resumido utilizando inteligencia artificial.';
+      }, 2000);
+    }
+    
+    function updateTexts(){
+      var txt = t[lang];
+      document.getElementById('nav-title').textContent = txt.navTitle;
+      document.getElementById('title').textContent = txt.title;
+      document.getElementById('subtitle').textContent = txt.subtitle;
+      document.getElementById('course-label').textContent = txt.courseLabel;
+      document.getElementById('subject-label').textContent = txt.subjectLabel;
+      document.getElementById('generate-text').textContent = txt.generateBtn;
+      document.getElementById('loading-text').textContent = txt.loadingText;
+      document.getElementById('result-title').textContent = txt.resultTitle;
+    }
+    
+    renderCourses();
+    updateTexts();
+  </script>
+</body>
+</html>

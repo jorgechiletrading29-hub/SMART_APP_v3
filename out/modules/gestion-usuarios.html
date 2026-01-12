@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gestión de Usuarios - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    .user-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 18px;
+    }
+    .avatar-admin { background: linear-gradient(135deg, #f97316, #ea580c); }
+    .avatar-teacher { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .avatar-student { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .avatar-guardian { background: linear-gradient(135deg, #a855f7, #9333ea); }
+    .user-info { flex: 1; }
+    .user-name { font-weight: 600; font-size: 15px; }
+    .user-email { font-size: 12px; color: var(--text-muted); }
+    .user-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .action-edit { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .action-delete { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .search-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .search-bar input { flex: 1; }
+    .role-filter {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .role-btn {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .role-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Usuarios</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Gestión de Usuarios</span>
+    <span class="header-icon">👥</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="total-users">156</div>
+        <div class="stat-label">Total Usuarios</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #22c55e;" id="active-users">148</div>
+        <div class="stat-label">Activos</div>
+      </div>
+    </div>
+    
+    <div class="search-bar">
+      <input type="text" class="form-input" id="search-input" placeholder="Buscar por nombre o email..." oninput="filterUsers()">
+      <button class="btn btn-primary" onclick="openAddModal()">+ Nuevo</button>
+    </div>
+    
+    <div class="role-filter">
+      <button class="role-btn active" onclick="filterByRole('all')">Todos</button>
+      <button class="role-btn" onclick="filterByRole('admin')">👑 Admin</button>
+      <button class="role-btn" onclick="filterByRole('teacher')">👨‍🏫 Profesores</button>
+      <button class="role-btn" onclick="filterByRole('student')">📚 Estudiantes</button>
+      <button class="role-btn" onclick="filterByRole('guardian')">👨‍👩‍👧 Apoderados</button>
+    </div>
+    
+    <div id="users-list"></div>
+  </main>
+  
+  <!-- Modal Agregar/Editar -->
+  <div class="modal-overlay" id="user-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; padding: 20px; overflow-y: auto;">
+    <div style="background: var(--bg-secondary); border-radius: 16px; max-width: 400px; margin: 0 auto; padding: 24px; position: relative;">
+      <button onclick="closeModal()" style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">✕</button>
+      <h3 style="margin-bottom: 20px;" id="modal-title">Nuevo Usuario</h3>
+      
+      <div class="form-group">
+        <label class="form-label">Nombre completo</label>
+        <input type="text" class="form-input" id="user-name" placeholder="Nombre y apellido">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="user-email" placeholder="correo@ejemplo.com">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Rol</label>
+        <select class="form-select" id="user-role">
+          <option value="student">Estudiante</option>
+          <option value="teacher">Profesor</option>
+          <option value="guardian">Apoderado</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      
+      <div class="form-group" id="course-group">
+        <label class="form-label">Curso asignado</label>
+        <select class="form-select" id="user-course">
+          <option value="1a">1° Básico A</option>
+          <option value="1b">1° Básico B</option>
+          <option value="2a">2° Básico A</option>
+          <option value="3a">3° Básico A</option>
+        </select>
+      </div>
+      
+      <button class="btn btn-success btn-block" onclick="saveUser()">💾 Guardar Usuario</button>
+    </div>
+  </div>
+
+  <script>
+    var currentFilter = 'all';
+    var searchTerm = '';
+    
+    var users = [
+      { id: '1', name: 'Admin Principal', email: 'admin@smart.cl', role: 'admin', course: null },
+      { id: '2', name: 'Prof. Jorge Martínez', email: 'jorge@smart.cl', role: 'teacher', course: '1a,2a' },
+      { id: '3', name: 'Prof. María González', email: 'maria@smart.cl', role: 'teacher', course: '3a' },
+      { id: '4', name: 'Ana García', email: 'ana.garcia@smart.cl', role: 'student', course: '1a' },
+      { id: '5', name: 'Carlos López', email: 'carlos.lopez@smart.cl', role: 'student', course: '1a' },
+      { id: '6', name: 'María Rodríguez', email: 'maria.r@smart.cl', role: 'student', course: '2a' },
+      { id: '7', name: 'Pedro Martínez', email: 'pedro.m@smart.cl', role: 'student', course: '1b' },
+      { id: '8', name: 'Laura Sánchez', email: 'laura.s@smart.cl', role: 'student', course: '3a' },
+      { id: '9', name: 'Rosa García (Apoderada)', email: 'rosa.g@email.com', role: 'guardian', course: '1a' },
+      { id: '10', name: 'Juan López (Apoderado)', email: 'juan.l@email.com', role: 'guardian', course: '2a' }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      renderUsers();
+      updateStats();
+    }
+    
+    function filterByRole(role) {
+      currentFilter = role;
+      var btns = document.querySelectorAll('.role-btn');
+      btns.forEach(function(btn) {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(role) || (role === 'all' && btn.textContent === 'Todos'));
+      });
+      renderUsers();
+    }
+    
+    function filterUsers() {
+      searchTerm = document.getElementById('search-input').value.toLowerCase();
+      renderUsers();
+    }
+    
+    function renderUsers() {
+      var filtered = users.filter(function(u) {
+        var matchRole = currentFilter === 'all' || u.role === currentFilter;
+        var matchSearch = !searchTerm || 
+          u.name.toLowerCase().includes(searchTerm) || 
+          u.email.toLowerCase().includes(searchTerm);
+        return matchRole && matchSearch;
+      });
+      
+      var html = '';
+      filtered.forEach(function(u) {
+        var avatarClass = 'avatar-' + u.role;
+        var roleLabel = { admin: '👑', teacher: '👨‍🏫', student: '📚', guardian: '👨‍👩‍👧' }[u.role] || '';
+        
+        html += '<div class="user-card">';
+        html += '<div class="user-avatar ' + avatarClass + '">' + u.name.charAt(0) + '</div>';
+        html += '<div class="user-info">';
+        html += '<div class="user-name">' + escapeHtml(u.name) + ' ' + roleLabel + '</div>';
+        html += '<div class="user-email">' + escapeHtml(u.email) + '</div>';
+        html += '</div>';
+        html += '<div class="user-actions">';
+        html += '<button class="action-btn action-edit" onclick="editUser(\'' + u.id + '\')">✏️</button>';
+        html += '<button class="action-btn action-delete" onclick="deleteUser(\'' + u.id + '\')">🗑️</button>';
+        html += '</div></div>';
+      });
+      
+      if (filtered.length === 0) {
+        html = '<div class="empty-state"><div class="empty-state-icon">👤</div><p>No se encontraron usuarios</p></div>';
+      }
+      
+      document.getElementById('users-list').innerHTML = html;
+    }
+    
+    function updateStats() {
+      document.getElementById('total-users').textContent = users.length;
+      document.getElementById('active-users').textContent = users.length;
+    }
+    
+    function openAddModal() {
+      document.getElementById('modal-title').textContent = 'Nuevo Usuario';
+      document.getElementById('user-name').value = '';
+      document.getElementById('user-email').value = '';
+      document.getElementById('user-role').value = 'student';
+      document.getElementById('user-modal').style.display = 'block';
+    }
+    
+    function editUser(id) {
+      var user = users.find(function(u) { return u.id === id; });
+      if (!user) return;
+      
+      document.getElementById('modal-title').textContent = 'Editar Usuario';
+      document.getElementById('user-name').value = user.name;
+      document.getElementById('user-email').value = user.email;
+      document.getElementById('user-role').value = user.role;
+      document.getElementById('user-modal').style.display = 'block';
+    }
+    
+    function closeModal() {
+      document.getElementById('user-modal').style.display = 'none';
+    }
+    
+    function saveUser() {
+      var name = document.getElementById('user-name').value.trim();
+      var email = document.getElementById('user-email').value.trim();
+      var role = document.getElementById('user-role').value;
+      
+      if (!name || !email) {
+        alert('Completa todos los campos');
+        return;
+      }
+      
+      users.push({
+        id: String(Date.now()),
+        name: name,
+        email: email,
+        role: role,
+        course: document.getElementById('user-course').value
+      });
+      
+      alert('✅ Usuario guardado correctamente');
+      closeModal();
+      renderUsers();
+      updateStats();
+    }
+    
+    function deleteUser(id) {
+      if (!confirm('¿Eliminar este usuario?')) return;
+      users = users.filter(function(u) { return u.id !== id; });
+      renderUsers();
+      updateStats();
+    }
+    
+    function escapeHtml(t) {
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

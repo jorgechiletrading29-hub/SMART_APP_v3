@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Presentaciones - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .slide-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .slide-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .slide-preview {
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      position: relative;
+    }
+    .slide-preview.math { background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); }
+    .slide-preview.science { background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3)); }
+    .slide-preview.history { background: linear-gradient(135deg, rgba(234, 179, 8, 0.3), rgba(202, 138, 4, 0.3)); }
+    .slide-preview.language { background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.3)); }
+    .slide-preview.english { background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.3)); }
+    .slide-count {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+    }
+    .slide-info {
+      padding: 14px;
+    }
+    .slide-subject {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .slide-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+    .slide-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 100;
+      flex-direction: column;
+    }
+    .modal-overlay.show { display: flex; }
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .viewer-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 28px;
+      color: white;
+      cursor: pointer;
+    }
+    .viewer-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .slide-display {
+      width: 100%;
+      max-width: 600px;
+      aspect-ratio: 16/9;
+      background: linear-gradient(135deg, #1e3a5f, #0f172a);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .slide-display-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+    .slide-display-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .slide-display-content {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .viewer-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .nav-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .slide-indicator {
+      font-size: 14px;
+      min-width: 80px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Presentaciones</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Presentaciones</span>
+    <span class="header-icon">🖼️</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('all')">Todas</button>
+      <button class="tab" onclick="switchTab('recent')">Recientes</button>
+      <button class="tab" onclick="switchTab('favorites')">Favoritas</button>
+    </div>
+    
+    <div class="slide-grid" id="slides-container"></div>
+  </main>
+  
+  <div class="modal-overlay" id="viewer-modal">
+    <div class="viewer-header">
+      <div class="viewer-title" id="viewer-title">Presentación</div>
+      <button class="close-btn" onclick="closeViewer()">×</button>
+    </div>
+    <div class="viewer-content">
+      <div class="slide-display" id="slide-display">
+        <div class="slide-display-icon" id="slide-icon">📐</div>
+        <div class="slide-display-title" id="slide-title-text">Título de la Slide</div>
+        <div class="slide-display-content" id="slide-content-text">Contenido de la slide</div>
+      </div>
+    </div>
+    <div class="viewer-controls">
+      <button class="nav-btn" id="prev-btn" onclick="prevSlide()">‹</button>
+      <div class="slide-indicator" id="slide-indicator">1 / 10</div>
+      <button class="nav-btn" id="next-btn" onclick="nextSlide()">›</button>
+    </div>
+  </div>
+
+  <script>
+    var currentTab = 'all';
+    var currentPresentation = null;
+    var currentSlideIndex = 0;
+    
+    var presentations = [
+      {
+        id: '1',
+        title: 'Fracciones y Decimales',
+        subject: 'Matemáticas',
+        icon: '📐',
+        previewClass: 'math',
+        date: '2026-01-08',
+        favorite: true,
+        slides: [
+          { title: 'Fracciones y Decimales', content: 'Unidad 3 - Matemáticas\nProfesor: Juan Pérez' },
+          { title: '¿Qué es una fracción?', content: 'Una fracción representa una parte de un todo.\nEjemplo: 1/2 es la mitad de algo.' },
+          { title: 'Partes de una fracción', content: 'Numerador: número de arriba\nDenominador: número de abajo' },
+          { title: 'Fracciones equivalentes', content: '1/2 = 2/4 = 4/8\nRepresentan la misma cantidad' },
+          { title: 'Decimales', content: '0.5 = 1/2\n0.25 = 1/4\n0.75 = 3/4' },
+          { title: 'Ejercicios', content: 'Convierte estas fracciones a decimales:\n3/4 = ?\n1/5 = ?' }
+        ]
+      },
+      {
+        id: '2',
+        title: 'La Célula',
+        subject: 'Ciencias Naturales',
+        icon: '🔬',
+        previewClass: 'science',
+        date: '2026-01-05',
+        favorite: false,
+        slides: [
+          { title: 'La Célula', content: 'Unidad básica de la vida' },
+          { title: 'Tipos de células', content: 'Célula animal\nCélula vegetal\nCélula procariota' },
+          { title: 'Partes principales', content: 'Membrana celular\nCitoplasma\nNúcleo' },
+          { title: 'Organelos', content: 'Mitocondrias: energía\nRibosomas: proteínas\nApato de Golgi: transporte' }
+        ]
+      },
+      {
+        id: '3',
+        title: 'Revolución Francesa',
+        subject: 'Historia',
+        icon: '🏰',
+        previewClass: 'history',
+        date: '2026-01-03',
+        favorite: true,
+        slides: [
+          { title: 'Revolución Francesa', content: '1789 - 1799' },
+          { title: 'Causas', content: 'Crisis económica\nDesigualdad social\nIdeas ilustradas' },
+          { title: 'Inicio', content: 'Toma de la Bastilla\n14 de julio de 1789' },
+          { title: 'Consecuencias', content: 'Fin de la monarquía absoluta\nDerechos del Hombre\nNueva organización social' }
+        ]
+      },
+      {
+        id: '4',
+        title: 'El Sustantivo',
+        subject: 'Lenguaje',
+        icon: '📝',
+        previewClass: 'language',
+        date: '2025-12-20',
+        favorite: false,
+        slides: [
+          { title: 'El Sustantivo', content: 'Palabras que nombran personas, animales, cosas o ideas' },
+          { title: 'Tipos', content: 'Comunes: perro, casa\nPropios: Chile, María' },
+          { title: 'Género y Número', content: 'Masculino/Femenino\nSingular/Plural' }
+        ]
+      },
+      {
+        id: '5',
+        title: 'Present Perfect',
+        subject: 'Inglés',
+        icon: '🇬🇧',
+        previewClass: 'english',
+        date: '2025-12-15',
+        favorite: false,
+        slides: [
+          { title: 'Present Perfect', content: 'Have/Has + Past Participle' },
+          { title: 'Uso', content: 'Acciones del pasado con conexión al presente' },
+          { title: 'Ejemplos', content: 'I have visited Paris.\nShe has eaten lunch.' }
+        ]
+      }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      renderPresentations();
+    }
+    
+    function switchTab(tab) {
+      currentTab = tab;
+      var tabs = document.querySelectorAll('.tab');
+      tabs.forEach(function(t, i) {
+        t.classList.remove('active');
+        if ((tab === 'all' && i === 0) || (tab === 'recent' && i === 1) || (tab === 'favorites' && i === 2)) {
+          t.classList.add('active');
+        }
+      });
+      renderPresentations();
+    }
+    
+    function renderPresentations() {
+      var filtered = presentations;
+      
+      if (currentTab === 'favorites') {
+        filtered = presentations.filter(function(p) { return p.favorite; });
+      } else if (currentTab === 'recent') {
+        filtered = presentations.slice().sort(function(a, b) {
+          return new Date(b.date) - new Date(a.date);
+        }).slice(0, 3);
+      }
+      
+      if (filtered.length === 0) {
+        document.getElementById('slides-container').innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">🖼️</div><p>No hay presentaciones</p></div>';
+        return;
+      }
+      
+      var html = '';
+      filtered.forEach(function(p) {
+        html += '<div class="slide-card" onclick="openPresentation(\'' + p.id + '\')">';
+        html += '<div class="slide-preview ' + p.previewClass + '">';
+        html += p.icon;
+        html += '<div class="slide-count">' + p.slides.length + ' slides</div>';
+        html += '</div>';
+        html += '<div class="slide-info">';
+        html += '<div class="slide-subject">' + p.subject + '</div>';
+        html += '<div class="slide-title">' + escapeHtml(p.title) + '</div>';
+        html += '<div class="slide-meta">';
+        html += '<span>' + formatDate(p.date) + '</span>';
+        html += '<span>' + (p.favorite ? '⭐ Favorita' : '') + '</span>';
+        html += '</div></div></div>';
+      });
+      
+      document.getElementById('slides-container').innerHTML = html;
+    }
+    
+    function openPresentation(id) {
+      currentPresentation = presentations.find(function(p) { return p.id === id; });
+      currentSlideIndex = 0;
+      
+      if (!currentPresentation) return;
+      
+      document.getElementById('viewer-title').textContent = currentPresentation.title;
+      renderCurrentSlide();
+      document.getElementById('viewer-modal').classList.add('show');
+    }
+    
+    function renderCurrentSlide() {
+      var slide = currentPresentation.slides[currentSlideIndex];
+      
+      document.getElementById('slide-icon').textContent = currentPresentation.icon;
+      document.getElementById('slide-title-text').textContent = slide.title;
+      document.getElementById('slide-content-text').textContent = slide.content;
+      document.getElementById('slide-indicator').textContent = 
+        (currentSlideIndex + 1) + ' / ' + currentPresentation.slides.length;
+      
+      document.getElementById('prev-btn').disabled = currentSlideIndex === 0;
+      document.getElementById('next-btn').disabled = currentSlideIndex === currentPresentation.slides.length - 1;
+    }
+    
+    function prevSlide() {
+      if (currentSlideIndex > 0) {
+        currentSlideIndex--;
+        renderCurrentSlide();
+      }
+    }
+    
+    function nextSlide() {
+      if (currentSlideIndex < currentPresentation.slides.length - 1) {
+        currentSlideIndex++;
+        renderCurrentSlide();
+      }
+    }
+    
+    function closeViewer() {
+      document.getElementById('viewer-modal').classList.remove('show');
+      currentPresentation = null;
+    }
+    
+    function formatDate(dateStr) {
+      var d = new Date(dateStr);
+      var months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    }
+    
+    function escapeHtml(t) {
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

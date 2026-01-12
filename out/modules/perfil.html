@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Perfil Personal - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    body { padding-bottom: 100px; }
+    .profile-header { text-align: center; padding: 24px 16px; }
+    .profile-icon { width: 64px; height: 64px; margin: 0 auto 12px; background: rgba(99, 102, 241, 0.15); border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+    .profile-icon svg { width: 32px; height: 32px; }
+    .profile-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .profile-subtitle { font-size: 13px; color: var(--text-muted); }
+    
+    .profile-container { padding: 0 16px; }
+    
+    .profile-main { display: flex; flex-direction: column; gap: 16px; }
+    
+    /* Foto y datos personales */
+    .profile-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; }
+    .profile-card-header { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; }
+    
+    .photo-section { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .photo-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 32px; color: white; flex-shrink: 0; }
+    .photo-label { font-size: 14px; color: var(--text-muted); }
+    
+    .form-field { margin-bottom: 12px; }
+    .form-field-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-field-value { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; font-size: 14px; color: var(--text-primary); }
+    
+    .role-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+    .role-badge.admin { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .role-badge.teacher { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .role-badge.student { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .role-badge.guardian { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+    
+    .notification-toggle { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+    .toggle-info { display: flex; align-items: center; gap: 8px; }
+    .toggle-info svg { width: 16px; height: 16px; color: var(--text-muted); }
+    .toggle-label { font-size: 14px; color: var(--text-primary); }
+    .toggle-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    
+    .toggle-switch { width: 44px; height: 24px; background: #4b5563; border-radius: 12px; position: relative; cursor: pointer; transition: background 0.3s; }
+    .toggle-switch.active { background: #22c55e; }
+    .toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: transform 0.3s; }
+    .toggle-switch.active::after { transform: translateX(20px); }
+    
+    /* Datos academicos */
+    .data-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .data-badge { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 500; }
+    .data-badge.blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .data-badge.green { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .data-badge.yellow { background: rgba(234, 179, 8, 0.2); color: #fde047; }
+    .data-badge.purple { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+    
+    .data-note { font-size: 12px; color: var(--text-muted); }
+    
+    /* Acciones */
+    .action-buttons { display: flex; gap: 10px; margin-top: 8px; }
+    .btn-action { flex: 1; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; }
+    .btn-action.blue { background: #3b82f6; color: white; }
+    .btn-action.purple { background: #a855f7; color: white; }
+    
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 8px; text-align: center; }
+    .stat-icon { width: 32px; height: 32px; margin: 0 auto 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .stat-icon.orange { background: rgba(249, 115, 22, 0.15); }
+    .stat-icon.yellow { background: rgba(234, 179, 8, 0.15); }
+    .stat-icon.blue { background: rgba(59, 130, 246, 0.15); }
+    .stat-icon.green { background: rgba(34, 197, 94, 0.15); }
+    .stat-icon.purple { background: rgba(168, 85, 247, 0.15); }
+    .stat-icon svg { width: 18px; height: 18px; }
+    .stat-value { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    
+    /* Learning Stats */
+    .learning-section { margin-top: 16px; }
+    .learning-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+    .learning-header svg { width: 18px; height: 18px; color: #6366f1; }
+    .learning-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    
+    .progress-item { margin-bottom: 12px; }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .progress-label { font-size: 13px; color: var(--text-secondary); }
+    .progress-value { font-size: 12px; color: var(--text-muted); }
+    .progress-bar { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .progress-fill.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .progress-fill.green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+    .progress-fill.orange { background: linear-gradient(90deg, #f97316, #fb923c); }
+    .progress-fill.purple { background: linear-gradient(90deg, #a855f7, #c084fc); }
+    
+    /* History */
+    .history-section { margin-top: 16px; }
+    .history-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+    .history-header svg { width: 18px; height: 18px; color: #6366f1; }
+    .history-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    .history-empty { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
+    .history-empty svg { width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.5; }
+    
+    /* Logout */
+    .logout-btn { width: 100%; margin-top: 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100"><path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/><path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/><path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/><path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/><circle cx="50" cy="40" r="3" fill="#0D47A1"/><path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/><rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/><path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/></svg>
+      </div>
+      <span class="page-title" id="nav-title">Perfil Personal</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>
+      <button class="nav-btn" onclick="goToModule('resumen')"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg></button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')"><svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" width="18" height="18"><circle cx="12" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 9v3M9 15l-1.5 1.5M15 15l1.5 1.5"/></svg></button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')"><svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 2.83V14"/><circle cx="12" cy="17" r="1" fill="#06b6d4"/></svg></button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')"><svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h4"/></svg></button>
+    </div>
+  </nav>
+
+  <div class="profile-header">
+    <div class="profile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></div>
+    <h1 class="profile-title" id="title">Perfil Personal</h1>
+    <p class="profile-subtitle" id="subtitle">Aquí puedes ver tu progreso y gestionar tu cuenta.</p>
+  </div>
+
+  <div class="profile-container">
+    <!-- Row: Photo + Personal Data | Academic Data -->
+    <div class="profile-main">
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 2v4M16 2v4M4 10h16"/></svg>
+          <span id="personal-title">Datos Personales</span>
+        </div>
+        
+        <div class="photo-section">
+          <div class="photo-avatar" id="avatar-letter">A</div>
+          <div>
+            <div class="photo-label" id="photo-label">Foto de Perfil</div>
+          </div>
+        </div>
+        
+        <div class="form-field">
+          <div class="form-field-label" id="name-label">NOMBRE</div>
+          <div class="form-field-value" id="user-name">Administrador</div>
+        </div>
+        
+        <div class="form-field">
+          <div class="form-field-label" id="email-label">CORREO ELECTRÓNICO</div>
+          <div class="form-field-value" id="user-email">admin@smartstudent.com</div>
+        </div>
+        
+        <div class="form-field">
+          <div class="form-field-label" id="role-label">ROL DEL SISTEMA</div>
+          <div><span class="role-badge admin" id="role-badge">★ Administrador</span></div>
+        </div>
+        
+        <div class="notification-toggle">
+          <div class="toggle-info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 2v4M16 2v4M4 10h16"/></svg>
+            <div>
+              <div class="toggle-label" id="notif-label">Notificaciones por Email</div>
+              <div class="toggle-desc" id="notif-status">Desactivadas</div>
+            </div>
+          </div>
+          <div class="toggle-switch" id="notif-toggle" onclick="toggleNotifications()"></div>
+        </div>
+      </div>
+      
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span id="academic-title">Datos Académicos</span>
+        </div>
+        
+        <div class="form-field-label" id="system-label">RESUMEN DEL SISTEMA</div>
+        <div class="data-badges">
+          <span class="data-badge blue" id="courses-badge">📚 Todos los Cursos</span>
+          <span class="data-badge green" id="subjects-badge">📖 Todas las Asignaturas</span>
+          <span class="data-badge yellow" id="sections-badge">🏫 Todas las Secciones</span>
+          <span class="data-badge purple" id="students-badge">👥 Todos los Estudiantes</span>
+        </div>
+        <div class="data-note" id="year-note">Año académico 2026 - Acceso total al sistema</div>
+        
+        <div style="margin-top: 16px;">
+          <div class="form-field-label" id="actions-label">ACCIONES RÁPIDAS</div>
+          <div class="action-buttons">
+            <button class="btn-action blue" id="btn-password">🔑 Cambiar Contraseña</button>
+            <button class="btn-action purple" id="btn-history">📥 Descargar Historial</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+        <div class="stat-value" id="stat-evals">0</div>
+        <div class="stat-label" id="stat-evals-label">Evaluaciones</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+        <div class="stat-value" id="stat-avg">0%</div>
+        <div class="stat-label" id="stat-avg-label">Promedio</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg></div>
+        <div class="stat-value" id="stat-summaries">0</div>
+        <div class="stat-label" id="stat-summaries-label">Resúmenes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><circle cx="12" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 9v3M9 15l-1.5 1.5M15 15l1.5 1.5"/></svg></div>
+        <div class="stat-value" id="stat-maps">0</div>
+        <div class="stat-label" id="stat-maps-label">Mapas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 2.83V14"/><circle cx="12" cy="17" r="1" fill="#a855f7"/></svg></div>
+        <div class="stat-value" id="stat-quizzes">0</div>
+        <div class="stat-label" id="stat-quizzes-label">Cuestionarios</div>
+      </div>
+    </div>
+    
+    <!-- Learning Stats -->
+    <div class="profile-card learning-section">
+      <div class="learning-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 6 5-10"/></svg>
+        <span id="learning-title">Estadística de Aprendizaje</span>
+      </div>
+      <div class="learning-desc" id="learning-desc">Visualiza tu progreso académico por materia</div>
+      
+      <div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">Matemáticas</span>
+          <span class="progress-value">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill blue" style="width: 0%"></div></div>
+      </div>
+      <div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">Ciencias</span>
+          <span class="progress-value">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill green" style="width: 0%"></div></div>
+      </div>
+      <div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">Historia</span>
+          <span class="progress-value">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill orange" style="width: 0%"></div></div>
+      </div>
+      <div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">Lenguaje</span>
+          <span class="progress-value">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill purple" style="width: 0%"></div></div>
+      </div>
+    </div>
+    
+    <!-- History -->
+    <div class="profile-card history-section">
+      <div class="history-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span id="history-title">Historial de Evaluaciones</span>
+      </div>
+      <div class="history-desc" id="history-desc">Revisa todas tus evaluaciones completadas y tu progreso académico</div>
+      
+      <div class="history-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div id="history-empty-text">Aún no has completado evaluaciones<br>Realiza tu primera evaluación para ver tu progreso aquí</div>
+      </div>
+    </div>
+    
+    <button class="logout-btn" onclick="logout()" id="logout-btn">🚪 Cerrar Sesión</button>
+  </div>
+
+  <script>
+    var lang = localStorage.getItem('smartstudent_lang') || 'es';
+    var t = {
+      es: {
+        navTitle: 'Perfil Personal', title: 'Perfil Personal', subtitle: 'Aquí puedes ver tu progreso y gestionar tu cuenta.',
+        personalTitle: 'Datos Personales', photoLabel: 'Foto de Perfil', nameLabel: 'NOMBRE', emailLabel: 'CORREO ELECTRÓNICO',
+        roleLabel: 'ROL DEL SISTEMA', notifLabel: 'Notificaciones por Email', notifOn: 'Activadas', notifOff: 'Desactivadas',
+        academicTitle: 'Datos Académicos', systemLabel: 'RESUMEN DEL SISTEMA', actionsLabel: 'ACCIONES RÁPIDAS',
+        coursesBadge: '📚 Todos los Cursos', subjectsBadge: '📖 Todas las Asignaturas', sectionsBadge: '🏫 Todas las Secciones', studentsBadge: '👥 Todos los Estudiantes',
+        yearNote: 'Año académico 2026 - Acceso total al sistema', btnPassword: '🔑 Cambiar Contraseña', btnHistory: '📥 Descargar Historial',
+        statEvals: 'Evaluaciones', statAvg: 'Promedio', statSummaries: 'Resúmenes', statMaps: 'Mapas', statQuizzes: 'Cuestionarios',
+        learningTitle: 'Estadística de Aprendizaje', learningDesc: 'Visualiza tu progreso académico por materia',
+        historyTitle: 'Historial de Evaluaciones', historyDesc: 'Revisa todas tus evaluaciones completadas y tu progreso académico',
+        historyEmpty: 'Aún no has completado evaluaciones<br>Realiza tu primera evaluación para ver tu progreso aquí',
+        logout: '🚪 Cerrar Sesión',
+        admin: '👑 Administrador', teacher: '🛡️ Profesor', student: '🎓 Estudiante', guardian: '👥 Apoderado'
+      },
+      en: {
+        navTitle: 'Personal Profile', title: 'Personal Profile', subtitle: 'Here you can view your progress and manage your account.',
+        personalTitle: 'Personal Data', photoLabel: 'Profile Photo', nameLabel: 'NAME', emailLabel: 'EMAIL',
+        roleLabel: 'SYSTEM ROLE', notifLabel: 'Email Notifications', notifOn: 'Enabled', notifOff: 'Disabled',
+        academicTitle: 'Academic Data', systemLabel: 'SYSTEM SUMMARY', actionsLabel: 'QUICK ACTIONS',
+        coursesBadge: '📚 All Courses', subjectsBadge: '📖 All Subjects', sectionsBadge: '🏫 All Sections', studentsBadge: '👥 All Students',
+        yearNote: 'Academic year 2026 - Full system access', btnPassword: '🔑 Change Password', btnHistory: '📥 Download History',
+        statEvals: 'Evaluations', statAvg: 'Average', statSummaries: 'Summaries', statMaps: 'Maps', statQuizzes: 'Quizzes',
+        learningTitle: 'Learning Statistics', learningDesc: 'View your academic progress by subject',
+        historyTitle: 'Evaluation History', historyDesc: 'Review all completed evaluations and your academic progress',
+        historyEmpty: 'You haven\'t completed any evaluations yet<br>Complete your first evaluation to see your progress here',
+        logout: '🚪 Log Out',
+        admin: '👑 Administrator', teacher: '🛡️ Teacher', student: '🎓 Student', guardian: '👥 Guardian'
+      }
+    };
+    (function(){var th=localStorage.getItem('smartstudent_theme')||'dark';document.documentElement.setAttribute('data-theme',th)})();
+    
+    var notificationsEnabled = false;
+    
+    function goHome(){window.location.href='/dashboard-static.html'}
+    function goToModule(m){window.location.href='/modules/'+m+'.html'}
+    function logout(){localStorage.removeItem('smartstudent_session');window.location.href='/login-static.html'}
+    
+    function toggleNotifications() {
+      notificationsEnabled = !notificationsEnabled;
+      var toggle = document.getElementById('notif-toggle');
+      var status = document.getElementById('notif-status');
+      var txt = t[lang];
+      toggle.className = notificationsEnabled ? 'toggle-switch active' : 'toggle-switch';
+      status.textContent = notificationsEnabled ? txt.notifOn : txt.notifOff;
+    }
+    
+    function updateTexts(){
+      var txt = t[lang];
+      var session = JSON.parse(localStorage.getItem('smartstudent_session') || '{}');
+      var role = session.role || 'student';
+      
+      document.getElementById('nav-title').textContent = txt.navTitle;
+      document.getElementById('title').textContent = txt.title;
+      document.getElementById('subtitle').textContent = txt.subtitle;
+      document.getElementById('personal-title').textContent = txt.personalTitle;
+      document.getElementById('photo-label').textContent = txt.photoLabel;
+      document.getElementById('name-label').textContent = txt.nameLabel;
+      document.getElementById('email-label').textContent = txt.emailLabel;
+      document.getElementById('role-label').textContent = txt.roleLabel;
+      document.getElementById('notif-label').textContent = txt.notifLabel;
+      document.getElementById('notif-status').textContent = notificationsEnabled ? txt.notifOn : txt.notifOff;
+      document.getElementById('academic-title').textContent = txt.academicTitle;
+      document.getElementById('system-label').textContent = txt.systemLabel;
+      document.getElementById('actions-label').textContent = txt.actionsLabel;
+      document.getElementById('courses-badge').textContent = txt.coursesBadge;
+      document.getElementById('subjects-badge').textContent = txt.subjectsBadge;
+      document.getElementById('sections-badge').textContent = txt.sectionsBadge;
+      document.getElementById('students-badge').textContent = txt.studentsBadge;
+      document.getElementById('year-note').textContent = txt.yearNote;
+      document.getElementById('btn-password').textContent = txt.btnPassword;
+      document.getElementById('btn-history').textContent = txt.btnHistory;
+      document.getElementById('stat-evals-label').textContent = txt.statEvals;
+      document.getElementById('stat-avg-label').textContent = txt.statAvg;
+      document.getElementById('stat-summaries-label').textContent = txt.statSummaries;
+      document.getElementById('stat-maps-label').textContent = txt.statMaps;
+      document.getElementById('stat-quizzes-label').textContent = txt.statQuizzes;
+      document.getElementById('learning-title').textContent = txt.learningTitle;
+      document.getElementById('learning-desc').textContent = txt.learningDesc;
+      document.getElementById('history-title').textContent = txt.historyTitle;
+      document.getElementById('history-desc').textContent = txt.historyDesc;
+      document.getElementById('history-empty-text').innerHTML = txt.historyEmpty;
+      document.getElementById('logout-btn').textContent = txt.logout;
+      
+      // User data
+      document.getElementById('user-name').textContent = session.displayName || 'Usuario';
+      document.getElementById('user-email').textContent = session.email || 'usuario@smartstudent.com';
+      document.getElementById('avatar-letter').textContent = (session.displayName || 'U').charAt(0).toUpperCase();
+      
+      // Role badge
+      var roleBadge = document.getElementById('role-badge');
+      roleBadge.textContent = txt[role] || role;
+      roleBadge.className = 'role-badge ' + role;
+    }
+    
+    updateTexts();
+  </script>
+</body>
+</html>

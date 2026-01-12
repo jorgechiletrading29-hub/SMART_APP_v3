@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>PDF Viewer - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; }
+    .pdf-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #1a1a1a; padding: env(safe-area-inset-top, 24px) 16px 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; }
+    .btn-back { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .btn-open { background: #22c55e; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .pdf-container { position: fixed; top: 70px; left: 0; right: 0; bottom: 0; padding-top: env(safe-area-inset-top, 24px); }
+    .pdf-container iframe { width: 100%; height: 100%; border: none; }
+    .loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="pdf-nav">
+    <button class="btn-back" onclick="goBack()" id="btn-back">← Volver</button>
+    <button class="btn-open" onclick="openExternal()" id="btn-open">Abrir</button>
+  </div>
+  <div class="loading" id="loading">Cargando PDF...</div>
+  <div class="pdf-container">
+    <iframe id="pdf-frame" onload="hideLoading()"></iframe>
+  </div>
+
+  <script>
+    var lang = localStorage.getItem('smartstudent_lang') || 'es';
+    var t = {
+      es: { back: '← Volver', open: 'Abrir', loading: 'Cargando PDF...' },
+      en: { back: '← Back', open: 'Open', loading: 'Loading PDF...' }
+    };
+    (function(){var th=localStorage.getItem('smartstudent_theme')||'dark';document.documentElement.setAttribute('data-theme',th)})();
+
+    function updateTexts(){
+      var txt = t[lang];
+      document.getElementById('btn-back').textContent = txt.back;
+      document.getElementById('btn-open').textContent = txt.open;
+      document.getElementById('loading').textContent = txt.loading;
+    }
+
+    var pdfUrl = '';
+    function init() {
+      updateTexts();
+      var params = new URLSearchParams(window.location.search);
+      pdfUrl = params.get('url') || '';
+      if (pdfUrl) {
+        var embedUrl = pdfUrl.replace('/view', '/preview');
+        document.getElementById('pdf-frame').src = embedUrl;
+      }
+    }
+
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/modules/libros.html';
+      }
+    }
+
+    function openExternal() {
+      if (pdfUrl) window.open(pdfUrl, '_system');
+    }
+
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    init();
+  </script>
+</body>
+</html>

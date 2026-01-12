@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Smart Student - Login</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-primary: #0f172a;
+      --bg-card: rgba(30, 41, 59, 0.9);
+      --text-primary: #ffffff;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #3b82f6;
+      --border-color: rgba(255,255,255,0.1);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      padding-top: calc(20px + var(--safe-top));
+      color: var(--text-primary);
+    }
+    
+    .logo-section {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .logo-ring {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 16px;
+    }
+    
+    .logo-ring::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: #a855f7;
+      border-right-color: #3b82f6;
+    }
+    
+    .logo-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .logo-icon svg {
+      width: 48px;
+      height: 48px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+    }
+    
+    .logo-title {
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    
+    .logo-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    
+    .login-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    
+    .login-title {
+      font-size: 20px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    
+    .input-group {
+      margin-bottom: 16px;
+    }
+    
+    .input-label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    
+    .input-field {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--text-primary);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .input-field:focus {
+      border-color: var(--accent-blue);
+    }
+    
+    .input-field::placeholder {
+      color: #475569;
+    }
+    
+    .login-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: transform 0.1s;
+    }
+    
+    .login-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .error-msg {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      color: #fca5a5;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    
+    .demo-section {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .demo-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    
+    .demo-users {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    
+    .demo-btn {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 10px 8px;
+      color: #93c5fd;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-align: center;
+    }
+    
+    .demo-btn:hover {
+      background: rgba(59, 130, 246, 0.25);
+    }
+    
+    .demo-btn .role {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .version {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 11px;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-section">
+    <div class="logo-ring">
+      <div class="logo-icon">
+        <svg viewBox="0 0 100 100">
+          <!-- Base del birrete -->
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <!-- Parte superior plana -->
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <!-- Sombras -->
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <!-- Botón central -->
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <!-- Cordón -->
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <!-- Borla -->
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+    </div>
+    <h1 class="logo-title">Smart Student</h1>
+    <p class="logo-subtitle">Plataforma Educativa IA</p>
+  </div>
+  
+  <div class="login-card">
+    <h2 class="login-title">Iniciar Sesión</h2>
+    
+    <div class="error-msg" id="error-msg"></div>
+    
+    <form id="login-form">
+      <div class="input-group">
+        <label class="input-label">Correo electrónico</label>
+        <input type="email" class="input-field" id="email" placeholder="usuario@email.com" required>
+      </div>
+      
+      <div class="input-group">
+        <label class="input-label">Contraseña</label>
+        <input type="password" class="input-field" id="password" placeholder="••••••••" required>
+      </div>
+      
+      <button type="submit" class="login-btn">Ingresar</button>
+    </form>
+    
+    <div class="demo-section">
+      <p class="demo-title">🧪 DEMO - Usuarios de prueba</p>
+      <div class="demo-users">
+        <button class="demo-btn" onclick="loginDemo('admin')">
+          <span class="role">👑</span>Admin
+        </button>
+        <button class="demo-btn" onclick="loginDemo('teacher')">
+          <span class="role">👨‍🏫</span>Profesor
+        </button>
+        <button class="demo-btn" onclick="loginDemo('student')">
+          <span class="role">📚</span>Estudiante
+        </button>
+        <button class="demo-btn" onclick="loginDemo('guardian')">
+          <span class="role">👨‍👩‍👧</span>Apoderado
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <p class="version">Smart Student v1.7 - Mobile</p>
+  
+  <script>
+    var DEMO_USERS = {
+      admin: { email: 'admin@smart.cl', displayName: 'Administrador', role: 'admin' },
+      teacher: { email: 'profesor@smart.cl', displayName: 'Prof. Jorge', role: 'teacher' },
+      student: { email: 'estudiante@smart.cl', displayName: 'Felipe', role: 'student' },
+      guardian: { email: 'apoderado@smart.cl', displayName: 'María González', role: 'guardian' }
+    };
+    
+    function showError(msg) {
+      var el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+    
+    function hideError() {
+      document.getElementById('error-msg').style.display = 'none';
+    }
+    
+    function saveSessionAndRedirect(userData) {
+      var session = {
+        isAuthenticated: true,
+        userId: 'demo_' + userData.role + '_' + Date.now(),
+        email: userData.email,
+        displayName: userData.displayName,
+        role: userData.role,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem('smartstudent_session', JSON.stringify(session));
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function loginDemo(type) {
+      hideError();
+      var user = DEMO_USERS[type];
+      if (user) {
+        saveSessionAndRedirect(user);
+      }
+    }
+    
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      hideError();
+      
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      
+      if (!email || !password) {
+        showError('Por favor completa todos los campos');
+        return;
+      }
+      
+      var found = null;
+      for (var key in DEMO_USERS) {
+        if (DEMO_USERS[key].email === email) {
+          found = DEMO_USERS[key];
+          break;
+        }
+      }
+      
+      if (found && password.length >= 3) {
+        saveSessionAndRedirect(found);
+      } else {
+        showError('Credenciales incorrectas. Usa los botones demo para acceder.');
+      }
+    });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        var session = localStorage.getItem('smartstudent_session');
+        if (session) {
+          var data = JSON.parse(session);
+          if (data.isAuthenticated) {
+            window.location.href = '/dashboard-static.html';
+          }
+        }
+      } catch(e) {}
+    });
+  </script>
+</body>
+</html>

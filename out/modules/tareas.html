@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tareas - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .task-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .task-card.overdue { border-left: 4px solid #ef4444; }
+    .task-card.today { border-left: 4px solid #eab308; }
+    .task-card.upcoming { border-left: 4px solid #3b82f6; }
+    .task-card.completed { border-left: 4px solid #22c55e; opacity: 0.7; }
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .task-title {
+      font-weight: 600;
+      font-size: 15px;
+      flex: 1;
+    }
+    .task-subject {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .task-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .task-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .task-due {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .task-due.overdue { color: #fca5a5; }
+    .task-due.today { color: #fde047; }
+    .task-due.upcoming { color: #93c5fd; }
+    .complete-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+    }
+    .priority-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .priority-high { background: #ef4444; }
+    .priority-medium { background: #eab308; }
+    .priority-low { background: #22c55e; }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Tareas</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Tareas</span>
+    <span class="header-icon">✅</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" style="color: #ef4444;" id="pending-count">3</div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #22c55e;" id="completed-count">12</div>
+        <div class="stat-label">Completadas</div>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('pending')">Pendientes</button>
+      <button class="tab" onclick="switchTab('completed')">Completadas</button>
+    </div>
+    
+    <div id="tasks-container"></div>
+  </main>
+
+  <script>
+    var currentTab = 'pending';
+    
+    var tasks = [
+      {
+        id: '1',
+        title: 'Ejercicios de fracciones',
+        subject: '🔢 Matemáticas',
+        description: 'Resolver los ejercicios del libro páginas 45-47. Incluir desarrollo completo.',
+        dueDate: '2026-01-10',
+        priority: 'high',
+        status: 'pending'
+      },
+      {
+        id: '2',
+        title: 'Ensayo sobre la Revolución Francesa',
+        subject: '🌍 Historia',
+        description: 'Escribir un ensayo de 2 páginas sobre las causas y consecuencias de la Revolución Francesa.',
+        dueDate: '2026-01-12',
+        priority: 'medium',
+        status: 'pending'
+      },
+      {
+        id: '3',
+        title: 'Experimento de germinación',
+        subject: '🔬 Ciencias Naturales',
+        description: 'Documentar el proceso de germinación de una semilla durante 1 semana con fotos.',
+        dueDate: '2026-01-15',
+        priority: 'low',
+        status: 'pending'
+      },
+      {
+        id: '4',
+        title: 'Lectura comprensiva',
+        subject: '📚 Lenguaje',
+        description: 'Leer el capítulo 3 del libro "El Principito" y responder las preguntas.',
+        dueDate: '2026-01-08',
+        priority: 'medium',
+        status: 'completed'
+      },
+      {
+        id: '5',
+        title: 'Maqueta del sistema solar',
+        subject: '🔬 Ciencias',
+        description: 'Construir una maqueta del sistema solar con materiales reciclados.',
+        dueDate: '2026-01-05',
+        priority: 'high',
+        status: 'completed'
+      }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      updateStats();
+      renderTasks();
+    }
+    
+    function switchTab(tab) {
+      currentTab = tab;
+      var tabs = document.querySelectorAll('.tab');
+      tabs.forEach(function(t, i) {
+        t.classList.toggle('active', (tab === 'pending' && i === 0) || (tab === 'completed' && i === 1));
+      });
+      renderTasks();
+    }
+    
+    function updateStats() {
+      var pending = tasks.filter(function(t) { return t.status === 'pending'; }).length;
+      var completed = tasks.filter(function(t) { return t.status === 'completed'; }).length;
+      document.getElementById('pending-count').textContent = pending;
+      document.getElementById('completed-count').textContent = completed;
+    }
+    
+    function renderTasks() {
+      var filtered = tasks.filter(function(t) { return t.status === currentTab; });
+      
+      if (filtered.length === 0) {
+        document.getElementById('tasks-container').innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No hay tareas ' + 
+          (currentTab === 'pending' ? 'pendientes' : 'completadas') + '</p></div>';
+        return;
+      }
+      
+      var html = '';
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      filtered.forEach(function(t) {
+        var dueDate = new Date(t.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        var diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+        
+        var cardClass = 'task-card';
+        var dueClass = '';
+        var dueText = '';
+        
+        if (t.status === 'completed') {
+          cardClass += ' completed';
+          dueText = '✓ Completada';
+          dueClass = '';
+        } else if (diffDays < 0) {
+          cardClass += ' overdue';
+          dueClass = 'overdue';
+          dueText = '⚠️ Vencida hace ' + Math.abs(diffDays) + ' día(s)';
+        } else if (diffDays === 0) {
+          cardClass += ' today';
+          dueClass = 'today';
+          dueText = '⏰ Vence hoy';
+        } else if (diffDays <= 3) {
+          cardClass += ' upcoming';
+          dueClass = 'upcoming';
+          dueText = '📅 Vence en ' + diffDays + ' día(s)';
+        } else {
+          cardClass += ' upcoming';
+          dueClass = 'upcoming';
+          dueText = '📅 ' + formatDate(t.dueDate);
+        }
+        
+        html += '<div class="' + cardClass + '">';
+        html += '<div class="task-header">';
+        html += '<div class="task-title">' + escapeHtml(t.title) + '</div>';
+        html += '<span class="priority-dot priority-' + t.priority + '" title="Prioridad ' + t.priority + '"></span>';
+        html += '</div>';
+        html += '<div class="task-subject">' + t.subject + '</div>';
+        html += '<div class="task-desc">' + escapeHtml(t.description) + '</div>';
+        html += '<div class="task-footer">';
+        html += '<div class="task-due ' + dueClass + '">' + dueText + '</div>';
+        
+        if (t.status === 'pending') {
+          html += '<button class="complete-btn" onclick="completeTask(\'' + t.id + '\')">✓ Completar</button>';
+        }
+        
+        html += '</div></div>';
+      });
+      
+      document.getElementById('tasks-container').innerHTML = html;
+    }
+    
+    function completeTask(id) {
+      var task = tasks.find(function(t) { return t.id === id; });
+      if (task) {
+        task.status = 'completed';
+        updateStats();
+        renderTasks();
+      }
+    }
+    
+    function formatDate(dateStr) {
+      var d = new Date(dateStr);
+      var months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      return d.getDate() + ' ' + months[d.getMonth()];
+    }
+    
+    function escapeHtml(t) {
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

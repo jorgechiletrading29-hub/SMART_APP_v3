@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pruebas - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .test-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .test-card.upcoming { border-left: 4px solid #3b82f6; }
+    .test-card.completed { border-left: 4px solid #22c55e; }
+    .test-card.missed { border-left: 4px solid #ef4444; }
+    .test-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .test-subject {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .test-title {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .test-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+    .badge-upcoming { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .badge-completed { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .badge-missed { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .test-info {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .test-info-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .test-grade {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      padding: 8px 16px;
+      border-radius: 8px;
+    }
+    .grade-excellent { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .grade-good { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .grade-average { background: rgba(234, 179, 8, 0.2); color: #fde047; }
+    .grade-low { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    
+    .test-topics {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+    .topics-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .topic-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .topic-tag {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: rgba(139, 92, 246, 0.2);
+      color: #c4b5fd;
+    }
+    .study-btn {
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Pruebas</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Pruebas</span>
+    <span class="header-icon">📝</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" style="color: #3b82f6;">3</div>
+        <div class="stat-label">Próximas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #22c55e;">8</div>
+        <div class="stat-label">Completadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #8b5cf6;">6.1</div>
+        <div class="stat-label">Promedio</div>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('upcoming')">Próximas</button>
+      <button class="tab" onclick="switchTab('completed')">Historial</button>
+    </div>
+    
+    <div id="tests-container"></div>
+  </main>
+
+  <script>
+    var currentTab = 'upcoming';
+    
+    var tests = [
+      {
+        id: '1',
+        subject: '🔢 Matemáticas',
+        title: 'Prueba de Fracciones y Decimales',
+        date: '2026-01-10',
+        time: '10:00',
+        duration: 60,
+        topics: ['Fracciones', 'Decimales', 'Operaciones combinadas'],
+        status: 'upcoming',
+        grade: null
+      },
+      {
+        id: '2',
+        subject: '📚 Lenguaje',
+        title: 'Control de Lectura: El Principito',
+        date: '2026-01-15',
+        time: '09:00',
+        duration: 45,
+        topics: ['Comprensión lectora', 'Personajes', 'Mensaje central'],
+        status: 'upcoming',
+        grade: null
+      },
+      {
+        id: '3',
+        subject: '🌍 Historia',
+        title: 'Prueba: Revolución Francesa',
+        date: '2026-01-20',
+        time: '11:00',
+        duration: 60,
+        topics: ['Causas', 'Desarrollo', 'Consecuencias', 'Personajes'],
+        status: 'upcoming',
+        grade: null
+      },
+      {
+        id: '4',
+        subject: '🔬 Ciencias',
+        title: 'Evaluación: Célula y sus partes',
+        date: '2025-12-15',
+        time: '10:00',
+        duration: 50,
+        topics: ['Célula animal', 'Célula vegetal', 'Organelos'],
+        status: 'completed',
+        grade: 6.5
+      },
+      {
+        id: '5',
+        subject: '🔢 Matemáticas',
+        title: 'Prueba de Ecuaciones',
+        date: '2025-12-10',
+        time: '09:00',
+        duration: 60,
+        topics: ['Ecuaciones lineales', 'Resolución de problemas'],
+        status: 'completed',
+        grade: 5.8
+      },
+      {
+        id: '6',
+        subject: '📚 Lenguaje',
+        title: 'Prueba de Gramática',
+        date: '2025-12-05',
+        time: '10:00',
+        duration: 45,
+        topics: ['Verbos', 'Sustantivos', 'Adjetivos', 'Oraciones'],
+        status: 'completed',
+        grade: 6.2
+      },
+      {
+        id: '7',
+        subject: '🇬🇧 Inglés',
+        title: 'Test: Past Tense',
+        date: '2025-11-28',
+        time: '11:00',
+        duration: 40,
+        topics: ['Simple past', 'Irregular verbs'],
+        status: 'completed',
+        grade: 5.5
+      }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      renderTests();
+    }
+    
+    function switchTab(tab) {
+      currentTab = tab;
+      var tabs = document.querySelectorAll('.tab');
+      tabs.forEach(function(t, i) {
+        t.classList.toggle('active', (tab === 'upcoming' && i === 0) || (tab === 'completed' && i === 1));
+      });
+      renderTests();
+    }
+    
+    function renderTests() {
+      var filtered = tests.filter(function(t) {
+        if (currentTab === 'upcoming') return t.status === 'upcoming';
+        return t.status === 'completed' || t.status === 'missed';
+      });
+      
+      if (filtered.length === 0) {
+        document.getElementById('tests-container').innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No hay pruebas ' + 
+          (currentTab === 'upcoming' ? 'próximas' : 'en el historial') + '</p></div>';
+        return;
+      }
+      
+      var html = '';
+      filtered.forEach(function(t) {
+        var cardClass = 'test-card ' + t.status;
+        
+        html += '<div class="' + cardClass + '">';
+        html += '<div class="test-header">';
+        html += '<div><div class="test-subject">' + t.subject + '</div>';
+        html += '<div class="test-title">' + escapeHtml(t.title) + '</div></div>';
+        
+        if (t.status === 'upcoming') {
+          html += '<span class="test-badge badge-upcoming">Próxima</span>';
+        } else if (t.status === 'completed' && t.grade !== null) {
+          var gradeClass = getGradeClass(t.grade);
+          html += '<div class="test-grade ' + gradeClass + '">' + t.grade.toFixed(1) + '</div>';
+        } else if (t.status === 'missed') {
+          html += '<span class="test-badge badge-missed">No rendida</span>';
+        }
+        
+        html += '</div>';
+        
+        html += '<div class="test-info">';
+        html += '<div class="test-info-item">📅 ' + formatDate(t.date) + '</div>';
+        html += '<div class="test-info-item">⏰ ' + t.time + '</div>';
+        html += '<div class="test-info-item">⏱️ ' + t.duration + ' min</div>';
+        html += '</div>';
+        
+        if (t.topics && t.topics.length > 0) {
+          html += '<div class="test-topics">';
+          html += '<div class="topics-title">Contenidos:</div>';
+          html += '<div class="topic-tags">';
+          t.topics.forEach(function(topic) {
+            html += '<span class="topic-tag">' + topic + '</span>';
+          });
+          html += '</div></div>';
+        }
+        
+        if (t.status === 'upcoming') {
+          html += '<button class="study-btn" onclick="studyForTest(\'' + t.id + '\')">📖 Preparar con IA</button>';
+        }
+        
+        html += '</div>';
+      });
+      
+      document.getElementById('tests-container').innerHTML = html;
+    }
+    
+    function getGradeClass(grade) {
+      if (grade >= 6.0) return 'grade-excellent';
+      if (grade >= 5.0) return 'grade-good';
+      if (grade >= 4.0) return 'grade-average';
+      return 'grade-low';
+    }
+    
+    function formatDate(dateStr) {
+      var d = new Date(dateStr);
+      var months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      var days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+    }
+    
+    function studyForTest(id) {
+      var test = tests.find(function(t) { return t.id === id; });
+      if (test) {
+        var topics = test.topics.join(', ');
+        alert('Preparando material de estudio para:\n\n' + test.title + '\n\nTemas: ' + topics + '\n\n(Se generaría un cuestionario con IA basado en estos temas)');
+      }
+    }
+    
+    function escapeHtml(t) {
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

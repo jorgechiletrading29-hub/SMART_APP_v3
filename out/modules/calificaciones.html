@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Calificaciones - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .subject-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .subject-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .subject-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    .subject-avg {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .grades-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .grade-bubble {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .grade-good { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 2px solid #22c55e; }
+    .grade-medium { background: rgba(234, 179, 8, 0.2); color: #fde047; border: 2px solid #eab308; }
+    .grade-bad { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 2px solid #ef4444; }
+    .avg-card {
+      background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .avg-value {
+      font-size: 48px;
+      font-weight: 700;
+    }
+    .avg-label {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .filter-row select {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Calificaciones</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Calificaciones</span>
+    <span class="header-icon">📈</span>
+  </header>
+  
+  <main class="main-content">
+    <div class="tabs" id="role-tabs">
+      <!-- Se genera según rol -->
+    </div>
+    
+    <!-- Vista Estudiante -->
+    <div id="student-view">
+      <div class="avg-card">
+        <div class="avg-value" id="general-avg">6.2</div>
+        <div class="avg-label">Promedio General</div>
+      </div>
+      
+      <div class="filter-row">
+        <select class="form-select" id="semester-filter" onchange="filterGrades()">
+          <option value="all">Todo el año</option>
+          <option value="1">1° Semestre</option>
+          <option value="2">2° Semestre</option>
+        </select>
+      </div>
+      
+      <div id="subjects-container"></div>
+    </div>
+    
+    <!-- Vista Profesor/Admin -->
+    <div id="teacher-view" style="display: none;">
+      <div class="filter-row">
+        <select class="form-select" id="course-filter" onchange="loadCourseGrades()">
+          <option value="">Selecciona curso</option>
+          <option value="1a">1° Básico A</option>
+          <option value="1b">1° Básico B</option>
+          <option value="2a">2° Básico A</option>
+          <option value="3a">3° Básico A</option>
+        </select>
+        <select class="form-select" id="subject-filter" onchange="loadCourseGrades()">
+          <option value="">Asignatura</option>
+          <option value="mat">Matemáticas</option>
+          <option value="len">Lenguaje</option>
+          <option value="cie">Ciencias</option>
+        </select>
+      </div>
+      
+      <div id="course-grades-container">
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <p>Selecciona un curso y asignatura para ver las calificaciones</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    var userRole = 'student';
+    var demoGrades = {
+      'matematicas': { icon: '🔢', name: 'Matemáticas', grades: [6.5, 5.8, 6.2, 7.0, 6.0], avg: 6.3 },
+      'lenguaje': { icon: '📚', name: 'Lenguaje', grades: [6.0, 6.5, 5.5, 6.8], avg: 6.2 },
+      'ciencias': { icon: '🔬', name: 'Ciencias Naturales', grades: [7.0, 6.5, 6.8], avg: 6.8 },
+      'historia': { icon: '🌍', name: 'Historia', grades: [5.5, 6.0, 5.8, 6.2, 5.9], avg: 5.9 },
+      'ingles': { icon: '🇬🇧', name: 'Inglés', grades: [6.2, 6.5, 6.0], avg: 6.2 },
+      'arte': { icon: '🎨', name: 'Artes', grades: [7.0, 6.8], avg: 6.9 }
+    };
+    
+    var courseStudents = [
+      { name: 'Ana García', grades: [6.5, 6.0, 6.8, 6.2], avg: 6.4 },
+      { name: 'Carlos López', grades: [5.5, 6.0, 5.8, 6.0], avg: 5.8 },
+      { name: 'María Rodríguez', grades: [7.0, 6.8, 7.0, 6.5], avg: 6.8 },
+      { name: 'Pedro Martínez', grades: [4.5, 5.0, 5.5, 5.2], avg: 5.1 },
+      { name: 'Laura Sánchez', grades: [6.0, 6.5, 6.2, 6.0], avg: 6.2 }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      try {
+        var session = JSON.parse(localStorage.getItem('smartstudent_session') || '{}');
+        userRole = session.role || 'student';
+      } catch(e) {}
+      
+      renderTabs();
+      
+      if (userRole === 'student' || userRole === 'guardian') {
+        document.getElementById('student-view').style.display = 'block';
+        document.getElementById('teacher-view').style.display = 'none';
+        renderStudentGrades();
+      } else {
+        document.getElementById('student-view').style.display = 'none';
+        document.getElementById('teacher-view').style.display = 'block';
+      }
+    }
+    
+    function renderTabs() {
+      var tabs = document.getElementById('role-tabs');
+      if (userRole === 'admin' || userRole === 'teacher') {
+        tabs.innerHTML = '<button class="tab active" onclick="switchView(\'teacher\')">Por Curso</button>' +
+                         '<button class="tab" onclick="switchView(\'student\')">Mi Vista</button>';
+      } else {
+        tabs.innerHTML = '';
+      }
+    }
+    
+    function switchView(view) {
+      var tabs = document.querySelectorAll('.tab');
+      tabs.forEach(function(t, i) {
+        t.classList.toggle('active', (view === 'teacher' && i === 0) || (view === 'student' && i === 1));
+      });
+      
+      document.getElementById('student-view').style.display = view === 'student' ? 'block' : 'none';
+      document.getElementById('teacher-view').style.display = view === 'teacher' ? 'block' : 'none';
+      
+      if (view === 'student') renderStudentGrades();
+    }
+    
+    function renderStudentGrades() {
+      var container = document.getElementById('subjects-container');
+      var html = '';
+      var totalAvg = 0;
+      var count = 0;
+      
+      for (var key in demoGrades) {
+        var subj = demoGrades[key];
+        totalAvg += subj.avg;
+        count++;
+        
+        html += '<div class="subject-card">';
+        html += '<div class="subject-header">';
+        html += '<div class="subject-name"><span>' + subj.icon + '</span> ' + subj.name + '</div>';
+        html += '<div class="subject-avg" style="color: ' + getGradeColor(subj.avg) + '">' + subj.avg.toFixed(1) + '</div>';
+        html += '</div>';
+        html += '<div class="grades-row">';
+        
+        subj.grades.forEach(function(g, i) {
+          var cls = g >= 6 ? 'grade-good' : g >= 5 ? 'grade-medium' : 'grade-bad';
+          html += '<div class="grade-bubble ' + cls + '" title="Nota ' + (i+1) + '">' + g.toFixed(1) + '</div>';
+        });
+        
+        html += '</div></div>';
+      }
+      
+      container.innerHTML = html;
+      document.getElementById('general-avg').textContent = (totalAvg / count).toFixed(1);
+    }
+    
+    function loadCourseGrades() {
+      var course = document.getElementById('course-filter').value;
+      var subject = document.getElementById('subject-filter').value;
+      
+      if (!course || !subject) {
+        document.getElementById('course-grades-container').innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">📊</div><p>Selecciona curso y asignatura</p></div>';
+        return;
+      }
+      
+      var html = '<table class="table"><thead><tr><th>Estudiante</th><th>N1</th><th>N2</th><th>N3</th><th>N4</th><th>Prom</th></tr></thead><tbody>';
+      
+      courseStudents.forEach(function(st) {
+        html += '<tr><td>' + st.name + '</td>';
+        st.grades.forEach(function(g) {
+          var cls = g >= 6 ? 'grade-good' : g >= 5 ? 'grade-medium' : 'grade-bad';
+          html += '<td><span class="grade-cell ' + cls + '">' + g.toFixed(1) + '</span></td>';
+        });
+        var avgCls = st.avg >= 6 ? 'grade-good' : st.avg >= 5 ? 'grade-medium' : 'grade-bad';
+        html += '<td><span class="grade-cell ' + avgCls + '">' + st.avg.toFixed(1) + '</span></td>';
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      document.getElementById('course-grades-container').innerHTML = html;
+    }
+    
+    function getGradeColor(grade) {
+      if (grade >= 6) return '#22c55e';
+      if (grade >= 5) return '#eab308';
+      return '#ef4444';
+    }
+    
+    function filterGrades() {
+      // En una implementación real, filtraría por semestre
+      renderStudentGrades();
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

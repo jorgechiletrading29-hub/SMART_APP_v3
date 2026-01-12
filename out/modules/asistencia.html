@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Asistencia - Smart Student</title>
+  <link rel="stylesheet" href="shared-styles.css">
+  <style>
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .calendar-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .calendar-nav {
+      display: flex;
+      gap: 8px;
+    }
+    .calendar-nav button {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .calendar-day-header {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 8px 0;
+    }
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      position: relative;
+    }
+    .calendar-day.other-month { color: var(--text-muted); opacity: 0.4; }
+    .calendar-day.today { border: 2px solid var(--accent-blue); }
+    .calendar-day.present { background: rgba(34, 197, 94, 0.3); }
+    .calendar-day.absent { background: rgba(239, 68, 68, 0.3); }
+    .calendar-day.late { background: rgba(234, 179, 8, 0.3); }
+    .calendar-day.excused { background: rgba(59, 130, 246, 0.3); }
+    .attendance-form {
+      margin-top: 16px;
+    }
+    .student-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .student-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .student-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .status-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .status-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .status-btn.active-present { background: #22c55e; border-color: #22c55e; }
+    .status-btn.active-absent { background: #ef4444; border-color: #ef4444; }
+    .status-btn.active-late { background: #eab308; border-color: #eab308; }
+    .status-btn.active-excused { background: #3b82f6; border-color: #3b82f6; }
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="goHome()">
+        <svg viewBox="0 0 100 100">
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <span class="page-title" id="page-title">Asistencia</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="goHome()" title="Inicio">🏠</button>
+      <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen">📝</button>
+      <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental">🧠</button>
+      <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario">❓</button>
+      <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación">📋</button>
+    </div>
+  </nav>
+
+  <header class="header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <span class="header-title">Asistencia</span>
+    <span class="header-icon">✓</span>
+  </header>
+  
+  <main class="main-content">
+    <!-- Vista Estudiante: calendario personal -->
+    <div id="student-view">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" style="color: #22c55e;" id="present-pct">92%</div>
+          <div class="stat-label">Asistencia</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="total-days">46</div>
+          <div class="stat-label">Días de clase</div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="calendar-header">
+          <button class="back-btn" onclick="prevMonth()">←</button>
+          <span class="calendar-title" id="month-title">Enero 2026</span>
+          <button class="back-btn" onclick="nextMonth()">→</button>
+        </div>
+        
+        <div class="calendar-grid" id="calendar-grid">
+          <!-- Se genera dinámicamente -->
+        </div>
+        
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background: #22c55e;"></div> Presente</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #ef4444;"></div> Ausente</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #eab308;"></div> Tarde</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #3b82f6;"></div> Justificado</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Vista Profesor: tomar asistencia -->
+    <div id="teacher-view" style="display: none;">
+      <div class="card">
+        <div class="form-group">
+          <label class="form-label">Curso</label>
+          <select class="form-select" id="course-select" onchange="loadStudents()">
+            <option value="">Selecciona curso</option>
+            <option value="1a">1° Básico A</option>
+            <option value="1b">1° Básico B</option>
+            <option value="2a">2° Básico A</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-input" id="attendance-date" onchange="loadStudents()">
+        </div>
+      </div>
+      
+      <div id="students-list">
+        <div class="empty-state">
+          <div class="empty-state-icon">👥</div>
+          <p>Selecciona un curso para tomar asistencia</p>
+        </div>
+      </div>
+      
+      <button class="btn btn-success btn-block" id="save-btn" style="display: none;" onclick="saveAttendance()">
+        💾 Guardar Asistencia
+      </button>
+    </div>
+  </main>
+
+  <script>
+    var userRole = 'student';
+    var currentMonth = new Date().getMonth();
+    var currentYear = new Date().getFullYear();
+    var attendanceData = {};
+    var students = [
+      { id: '1', name: 'Ana García', status: null },
+      { id: '2', name: 'Carlos López', status: null },
+      { id: '3', name: 'María Rodríguez', status: null },
+      { id: '4', name: 'Pedro Martínez', status: null },
+      { id: '5', name: 'Laura Sánchez', status: null },
+      { id: '6', name: 'Diego Fernández', status: null },
+      { id: '7', name: 'Sofía Torres', status: null },
+      { id: '8', name: 'Mateo Silva', status: null }
+    ];
+    
+    function goBack() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function init() {
+      try {
+        var session = JSON.parse(localStorage.getItem('smartstudent_session') || '{}');
+        userRole = session.role || 'student';
+      } catch(e) {}
+      
+      // Generar datos demo
+      generateDemoAttendance();
+      
+      if (userRole === 'student' || userRole === 'guardian') {
+        document.getElementById('student-view').style.display = 'block';
+        document.getElementById('teacher-view').style.display = 'none';
+        renderCalendar();
+      } else {
+        document.getElementById('student-view').style.display = 'none';
+        document.getElementById('teacher-view').style.display = 'block';
+        document.getElementById('attendance-date').value = formatDate(new Date());
+      }
+    }
+    
+    function generateDemoAttendance() {
+      var today = new Date();
+      var statuses = ['present', 'present', 'present', 'present', 'present', 'late', 'absent', 'excused', 'present', 'present'];
+      
+      for (var i = 1; i <= 50; i++) {
+        var date = new Date(today);
+        date.setDate(date.getDate() - i);
+        if (date.getDay() !== 0 && date.getDay() !== 6) { // Skip weekends
+          var key = formatDate(date);
+          attendanceData[key] = statuses[Math.floor(Math.random() * statuses.length)];
+        }
+      }
+    }
+    
+    function formatDate(date) {
+      return date.getFullYear() + '-' + 
+             String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+             String(date.getDate()).padStart(2, '0');
+    }
+    
+    function renderCalendar() {
+      var months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      document.getElementById('month-title').textContent = months[currentMonth] + ' ' + currentYear;
+      
+      var grid = document.getElementById('calendar-grid');
+      var html = '';
+      
+      // Headers
+      var days = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
+      days.forEach(function(d) {
+        html += '<div class="calendar-day-header">' + d + '</div>';
+      });
+      
+      // Days
+      var firstDay = new Date(currentYear, currentMonth, 1).getDay();
+      var daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      var today = new Date();
+      
+      // Previous month days
+      var prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
+      for (var i = firstDay - 1; i >= 0; i--) {
+        html += '<div class="calendar-day other-month">' + (prevMonthDays - i) + '</div>';
+      }
+      
+      // Current month days
+      for (var day = 1; day <= daysInMonth; day++) {
+        var date = new Date(currentYear, currentMonth, day);
+        var dateStr = formatDate(date);
+        var status = attendanceData[dateStr] || '';
+        var isToday = date.toDateString() === today.toDateString();
+        
+        var classes = 'calendar-day';
+        if (isToday) classes += ' today';
+        if (status) classes += ' ' + status;
+        
+        html += '<div class="' + classes + '">' + day + '</div>';
+      }
+      
+      // Next month days
+      var totalCells = firstDay + daysInMonth;
+      var remaining = 7 - (totalCells % 7);
+      if (remaining < 7) {
+        for (var j = 1; j <= remaining; j++) {
+          html += '<div class="calendar-day other-month">' + j + '</div>';
+        }
+      }
+      
+      grid.innerHTML = html;
+      updateStats();
+    }
+    
+    function updateStats() {
+      var present = 0, total = 0;
+      for (var key in attendanceData) {
+        total++;
+        if (attendanceData[key] === 'present' || attendanceData[key] === 'late') present++;
+      }
+      var pct = total > 0 ? Math.round((present / total) * 100) : 0;
+      document.getElementById('present-pct').textContent = pct + '%';
+      document.getElementById('total-days').textContent = total;
+    }
+    
+    function prevMonth() {
+      currentMonth--;
+      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+      renderCalendar();
+    }
+    
+    function nextMonth() {
+      currentMonth++;
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+      renderCalendar();
+    }
+    
+    function loadStudents() {
+      var course = document.getElementById('course-select').value;
+      if (!course) {
+        document.getElementById('students-list').innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">👥</div><p>Selecciona un curso</p></div>';
+        document.getElementById('save-btn').style.display = 'none';
+        return;
+      }
+      
+      var html = '';
+      students.forEach(function(st) {
+        html += '<div class="student-row" data-id="' + st.id + '">';
+        html += '<div class="student-info">';
+        html += '<div class="student-avatar">' + st.name.charAt(0) + '</div>';
+        html += '<span>' + st.name + '</span>';
+        html += '</div>';
+        html += '<div class="status-buttons">';
+        html += '<button class="status-btn" onclick="setStatus(\'' + st.id + '\', \'present\')" title="Presente">✓</button>';
+        html += '<button class="status-btn" onclick="setStatus(\'' + st.id + '\', \'absent\')" title="Ausente">✗</button>';
+        html += '<button class="status-btn" onclick="setStatus(\'' + st.id + '\', \'late\')" title="Tarde">⏰</button>';
+        html += '<button class="status-btn" onclick="setStatus(\'' + st.id + '\', \'excused\')" title="Justificado">📝</button>';
+        html += '</div></div>';
+      });
+      
+      document.getElementById('students-list').innerHTML = html;
+      document.getElementById('save-btn').style.display = 'block';
+    }
+    
+    function setStatus(studentId, status) {
+      var st = students.find(function(s) { return s.id === studentId; });
+      if (st) st.status = status;
+      
+      var row = document.querySelector('.student-row[data-id="' + studentId + '"]');
+      var buttons = row.querySelectorAll('.status-btn');
+      buttons.forEach(function(btn) {
+        btn.className = 'status-btn';
+      });
+      
+      var idx = { 'present': 0, 'absent': 1, 'late': 2, 'excused': 3 }[status];
+      buttons[idx].classList.add('active-' + status);
+    }
+    
+    function saveAttendance() {
+      var incomplete = students.filter(function(s) { return !s.status; });
+      if (incomplete.length > 0) {
+        alert('Faltan ' + incomplete.length + ' estudiantes por marcar');
+        return;
+      }
+      
+      alert('✅ Asistencia guardada correctamente');
+      // Reset
+      students.forEach(function(s) { s.status = null; });
+      document.getElementById('course-select').value = '';
+      loadStudents();
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    // Initialize theme from localStorage
+    (function() {
+      var theme = localStorage.getItem('smartstudent_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard-static.html';
+      }
+    }
+    
+    function goHome() {
+      window.location.href = '/dashboard-static.html';
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Smart Student - Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-primary: #0f172a;
+      --bg-card: rgba(30, 41, 59, 0.8);
+      --bg-header: #1e293b;
+      --text-primary: #ffffff;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #3b82f6;
+      --accent-green: #22c55e;
+      --accent-yellow: #eab308;
+      --accent-cyan: #06b6d4;
+      --accent-purple: #a855f7;
+      --accent-orange: #f97316;
+      --accent-red: #ef4444;
+      --accent-teal: #14b8a6;
+      --accent-rose: #f43f5e;
+      --accent-indigo: #6366f1;
+      --accent-emerald: #10b981;
+      --accent-fuchsia: #d946ef;
+      --accent-lime: #84cc16;
+      --border-color: rgba(255,255,255,0.1);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    
+    [data-theme="light"] {
+      --bg-primary: #f1f5f9;
+      --bg-card: rgba(255, 255, 255, 0.95);
+      --bg-header: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --border-color: rgba(0,0,0,0.1);
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      background: var(--bg-primary);
+      min-height: 100vh;
+      color: var(--text-primary);
+      padding-top: calc(56px + var(--safe-top));
+      padding-bottom: 70px;
+    }
+    
+    /* Fixed Top Navigation Bar */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: calc(56px + var(--safe-top));
+      padding-top: var(--safe-top);
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-left: 12px;
+      padding-right: 12px;
+      z-index: 1000;
+    }
+    
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .nav-logo {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .nav-logo svg {
+      width: 28px;
+      height: 28px;
+      fill: none;
+      stroke: var(--accent-blue);
+      stroke-width: 2;
+    }
+    
+    .nav-shortcuts {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .nav-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .nav-btn:hover, .nav-btn.active {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+    }
+    
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* Settings buttons */
+    .settings-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .theme-toggle, .lang-toggle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .main-content {
+      padding: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .welcome-card {
+      background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .welcome-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 150px;
+      height: 150px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+    }
+    
+    .welcome-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    
+    .welcome-card h1 {
+      font-size: 20px;
+      margin-bottom: 6px;
+      color: #ffffff;
+    }
+    
+    .welcome-card p {
+      color: rgba(255,255,255,0.8);
+      font-size: 13px;
+    }
+    
+    .role-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 10px;
+    }
+    
+    .role-badge.admin {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .role-badge.teacher {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .role-badge.student {
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .role-badge.guardian {
+      background: rgba(168, 85, 247, 0.2);
+      color: #d8b4fe;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+    
+    [data-theme="light"] .role-badge.admin { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+    [data-theme="light"] .role-badge.teacher { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+    [data-theme="light"] .role-badge.student { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+    [data-theme="light"] .role-badge.guardian { background: rgba(168, 85, 247, 0.15); color: #9333ea; }
+    
+    .user-avatar-big {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #ffffff;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 20px 0 12px;
+      color: var(--text-primary);
+    }
+    
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--text-primary);
+      position: relative;
+    }
+    
+    .card:hover, .card:active {
+      transform: translateY(-2px);
+      border-color: var(--accent-blue);
+    }
+    
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .card-icon svg {
+      width: 32px;
+      height: 32px;
+    }
+    
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .card-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+    
+    .card.green { border-left: 3px solid #22c55e; }
+    .card.blue { border-left: 3px solid #3b82f6; }
+    .card.yellow { border-left: 3px solid #eab308; }
+    .card.cyan { border-left: 3px solid #06b6d4; }
+    .card.purple { border-left: 3px solid #a855f7; }
+    .card.orange { border-left: 3px solid #f97316; }
+    .card.red { border-left: 3px solid #ef4444; }
+    .card.teal { border-left: 3px solid #14b8a6; }
+    .card.rose { border-left: 3px solid #f43f5e; }
+    .card.indigo { border-left: 3px solid #6366f1; }
+    .card.emerald { border-left: 3px solid #10b981; }
+    .card.fuchsia { border-left: 3px solid #d946ef; }
+    .card.lime { border-left: 3px solid #84cc16; }
+    .card.gray { border-left: 3px solid #64748b; }
+    .card.pink { border-left: 3px solid #ec4899; }
+    .card.violet { border-left: 3px solid #8b5cf6; }
+    .card.amber { border-left: 3px solid #f59e0b; }
+
+    .logout-btn {
+      width: 100%;
+      margin-top: 24px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    [data-theme="light"] .logout-btn {
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-logo">
+        <svg viewBox="0 0 100 100">
+          <!-- Base del birrete -->
+          <path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/>
+          <!-- Parte superior plana -->
+          <path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/>
+          <!-- Sombras -->
+          <path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/>
+          <path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/>
+          <!-- Botón central -->
+          <circle cx="50" cy="40" r="3" fill="#0D47A1"/>
+          <!-- Cordón -->
+          <path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+          <!-- Borla -->
+          <rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/>
+          <path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <div class="nav-shortcuts">
+        <button class="nav-btn active" onclick="scrollToTop()" title="Inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>
+        <button class="nav-btn" onclick="goToModule('resumen')" title="Resumen"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg></button>
+        <button class="nav-btn" onclick="goToModule('mapa-mental')" title="Mapa Mental"><svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" width="18" height="18"><circle cx="12" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 9v3M9 15l-1.5 1.5M15 15l1.5 1.5"/></svg></button>
+        <button class="nav-btn" onclick="goToModule('cuestionario')" title="Cuestionario"><svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 2.83V14"/><circle cx="12" cy="17" r="1" fill="#06b6d4"/></svg></button>
+        <button class="nav-btn" onclick="goToModule('evaluacion')" title="Evaluación"><svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h4"/></svg></button>
+      </div>
+    </div>
+    <div class="nav-right">
+      <button class="lang-toggle" onclick="toggleLanguage()" id="lang-btn" title="Cambiar idioma">ES</button>
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Cambiar tema">🌙</button>
+      <button class="nav-btn" onclick="goToProfile()" title="Perfil">👤</button>
+    </div>
+  </nav>
+  
+  <main class="main-content">
+    <div class="welcome-card">
+      <div class="welcome-header">
+        <div>
+          <h1 id="welcome-text">¡Bienvenido!</h1>
+          <p id="welcome-subtitle">Accede a todas las herramientas de Smart Student</p>
+          <span class="role-badge" id="role-badge">Usuario</span>
+        </div>
+        <div class="user-avatar-big" id="user-avatar">?</div>
+      </div>
+    </div>
+    
+    <h2 class="section-title" id="learning-title">Herramientas de Aprendizaje</h2>
+    <div class="cards-grid" id="learning-cards"></div>
+    
+    <div id="role-specific-section"></div>
+    
+    <button class="logout-btn" onclick="logout()" id="logout-text">🚪 Cerrar Sesión</button>
+  </main>
+
+  <script>
+    var currentLang = localStorage.getItem('smartstudent_lang') || 'es';
+    var currentTheme = localStorage.getItem('smartstudent_theme') || 'dark';
+    
+    var translations = {
+      es: {
+        welcome: 'Bienvenido, {name}',
+        welcomeSubtitle: 'Accede a todas las herramientas de Smart Student',
+        learningTools: 'Herramientas de Aprendizaje',
+        admin: 'Administrador',
+        teacher: 'Profesor',
+        student: 'Estudiante',
+        guardian: 'Apoderado',
+        logout: '🚪 Cerrar Sesión',
+        adminSection: 'Administración',
+        teacherSection: 'Herramientas del Profesor',
+        guardianSection: 'Panel del Apoderado',
+        studentSection: 'Mi Información'
+      },
+      en: {
+        welcome: 'Welcome, {name}',
+        welcomeSubtitle: 'Access all Smart Student tools',
+        learningTools: 'Learning Tools',
+        admin: 'Administrator',
+        teacher: 'Teacher',
+        student: 'Student',
+        guardian: 'Guardian',
+        logout: '🚪 Log Out',
+        adminSection: 'Administration',
+        teacherSection: 'Teacher Tools',
+        guardianSection: 'Guardian Panel',
+        studentSection: 'My Information'
+      }
+    };
+    
+    // SVG Icons matching web version - cada uno con color único
+    var icons = {
+      libros: '<svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 6 5-10"/></svg>',
+      resumen: '<svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg>',
+      mapaMental: '<svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><circle cx="12" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 9v3M9 15l-1.5 1.5M15 15l1.5 1.5"/></svg>',
+      cuestionario: '<svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 2.83V14"/><circle cx="12" cy="17" r="1" fill="#eab308"/></svg>',
+      evaluacion: '<svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h4"/></svg>',
+      tareas: '<svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7l2 2 4-4"/><path d="M8 12h8M8 16h6"/></svg>',
+      pruebas: '<svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6l2 2 4-4"/><path d="M8 12h8M8 16h5"/></svg>',
+      slides: '<svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M12 18v4M8 22h8"/></svg>',
+      comunicaciones: '<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M19 9l-7 4-7-4V6l7 4 7-4v3z"/><path d="M5 6v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/></svg>',
+      calificaciones: '<svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M4 20h16"/><rect x="6" y="10" width="3" height="10"/><rect x="11" y="6" width="3" height="14"/><rect x="16" y="12" width="3" height="8"/></svg>',
+      usuarios: '<svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="9" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3h-1"/></svg>',
+      solicitudes: '<svg viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7l2 2 4-4"/><path d="M8 12h8M8 16h6"/></svg>',
+      asistencia: '<svg viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 11l2 2 4-4"/></svg>',
+      calendario: '<svg viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>',
+      estadisticas: '<svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 6 5-10"/></svg>',
+      financiera: '<svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/><path d="M12 18h4"/></svg>'
+    };
+
+    var learningCards = [
+      { icon: icons.libros, title: { es: 'Biblioteca Digital', en: 'Digital Library' }, desc: { es: 'Accede a tus libros digitales', en: 'Access your digital books' }, color: 'green', module: 'libros' },
+      { icon: icons.resumen, title: { es: 'Resúmenes', en: 'Summaries' }, desc: { es: 'Genera resúmenes con IA', en: 'Generate AI summaries' }, color: 'blue', module: 'resumen' },
+      { icon: icons.mapaMental, title: { es: 'Mapas Conceptuales', en: 'Mind Maps' }, desc: { es: 'Visualiza conexiones entre conceptos', en: 'Visualize concept connections' }, color: 'orange', module: 'mapa-mental' },
+      { icon: icons.cuestionario, title: { es: 'Cuestionarios', en: 'Quizzes' }, desc: { es: 'Genera cuestionarios de estudio', en: 'Generate study quizzes' }, color: 'yellow', module: 'cuestionario' },
+      { icon: icons.evaluacion, title: { es: 'Evaluaciones', en: 'Evaluations' }, desc: { es: 'Crea evaluaciones a medida', en: 'Create custom evaluations' }, color: 'purple', module: 'evaluacion' },
+      { icon: icons.tareas, title: { es: 'Tareas', en: 'Tasks' }, desc: { es: 'Organiza tus tareas pendientes', en: 'Organize your pending tasks' }, color: 'pink', module: 'tareas' },
+      { icon: icons.pruebas, title: { es: 'Pruebas', en: 'Tests' }, desc: { es: 'Crea y gestiona pruebas', en: 'Create and manage tests' }, color: 'violet', module: 'pruebas' },
+      { icon: icons.slides, title: { es: 'Presentaciones', en: 'Presentations' }, desc: { es: 'Crea presentaciones PPTX', en: 'Create PPTX presentations' }, color: 'emerald', module: 'slides' }
+    ];
+    
+    var studentCards = [
+      { icon: icons.comunicaciones, title: { es: 'Comunicaciones', en: 'Messages' }, desc: { es: 'Revisa anuncios y comunicados', en: 'Check announcements' }, color: 'red', module: 'comunicaciones' },
+      { icon: icons.calificaciones, title: { es: 'Calificaciones', en: 'Grades' }, desc: { es: 'Consulta calificaciones por curso', en: 'View grades by course' }, color: 'indigo', module: 'calificaciones' }
+    ];
+    
+    var teacherCards = [
+      { icon: icons.asistencia, title: { es: 'Asistencia', en: 'Attendance' }, desc: { es: 'Control de asistencia', en: 'Attendance control' }, color: 'teal', module: 'asistencia' },
+      { icon: icons.estadisticas, title: { es: 'Estadísticas', en: 'Statistics' }, desc: { es: 'Análisis del rendimiento', en: 'Performance analysis' }, color: 'amber', module: 'estadisticas' },
+      { icon: icons.calificaciones, title: { es: 'Calificaciones', en: 'Grades' }, desc: { es: 'Consulta calificaciones', en: 'View grades' }, color: 'indigo', module: 'calificaciones' },
+      { icon: icons.comunicaciones, title: { es: 'Comunicaciones', en: 'Messages' }, desc: { es: 'Crear comunicados', en: 'Create announcements' }, color: 'red', module: 'comunicaciones' }
+    ];
+    
+    var adminCards = [
+      { icon: icons.usuarios, title: { es: 'Usuarios', en: 'Users' }, desc: { es: 'Administra usuarios y permisos', en: 'Manage users and permissions' }, color: 'cyan', module: 'gestion-usuarios' },
+      { icon: icons.solicitudes, title: { es: 'Solicitudes', en: 'Requests' }, desc: { es: 'Gestiona solicitudes de contraseña', en: 'Manage password requests' }, color: 'rose', module: 'solicitudes' },
+      { icon: icons.asistencia, title: { es: 'Asistencia', en: 'Attendance' }, desc: { es: 'Control de asistencia', en: 'Attendance control' }, color: 'teal', module: 'asistencia' },
+      { icon: icons.calendario, title: { es: 'Calendario', en: 'Calendar' }, desc: { es: 'Calendario para gestionar asistencia', en: 'Calendar for attendance' }, color: 'gray', module: 'calendario' },
+      { icon: icons.calificaciones, title: { es: 'Calificaciones', en: 'Grades' }, desc: { es: 'Consulta calificaciones por curso', en: 'View grades by course' }, color: 'indigo', module: 'calificaciones' },
+      { icon: icons.estadisticas, title: { es: 'Estadísticas', en: 'Statistics' }, desc: { es: 'Análisis y métricas', en: 'Analysis and metrics' }, color: 'amber', module: 'estadisticas' },
+      { icon: icons.financiera, title: { es: 'Financiera', en: 'Finance' }, desc: { es: 'Gestión de pagos', en: 'Payment management' }, color: 'green', module: 'financiera' },
+      { icon: icons.comunicaciones, title: { es: 'Comunicaciones', en: 'Messages' }, desc: { es: 'Comunicaciones masivas', en: 'Mass communications' }, color: 'red', module: 'comunicaciones' }
+    ];
+    
+    var guardianCards = [
+      { icon: icons.comunicaciones, title: { es: 'Comunicaciones', en: 'Messages' }, desc: { es: 'Revisa anuncios y comunicados', en: 'Check announcements' }, color: 'red', module: 'comunicaciones' },
+      { icon: icons.calificaciones, title: { es: 'Calificaciones', en: 'Grades' }, desc: { es: 'Consulta calificaciones', en: 'View grades' }, color: 'indigo', module: 'calificaciones' },
+      { icon: icons.financiera, title: { es: 'Financiera', en: 'Finance' }, desc: { es: 'Realiza el pago de mensualidad', en: 'Make monthly payments' }, color: 'green', module: 'financiera' }
+    ];
+    
+    function initTheme() {
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      document.getElementById('theme-btn').textContent = currentTheme === 'dark' ? '🌙' : '☀️';
+    }
+    
+    function toggleTheme() {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('smartstudent_theme', currentTheme);
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      document.getElementById('theme-btn').textContent = currentTheme === 'dark' ? '🌙' : '☀️';
+    }
+    
+    function toggleLanguage() {
+      currentLang = currentLang === 'es' ? 'en' : 'es';
+      localStorage.setItem('smartstudent_lang', currentLang);
+      document.getElementById('lang-btn').textContent = currentLang.toUpperCase();
+      updateTexts();
+    }
+    
+    // Role icons SVG
+    var roleIcons = {
+      admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="margin-right:4px"><path d="M2 20h20M4 20l2-14 4 6 2-8 2 8 4-6 2 14"/><circle cx="12" cy="4" r="1" fill="currentColor"/><circle cx="6" cy="8" r="1" fill="currentColor"/><circle cx="18" cy="8" r="1" fill="currentColor"/></svg>',
+      teacher: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="margin-right:4px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+      student: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="margin-right:4px"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>',
+      guardian: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="margin-right:4px"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="11" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3h-1"/></svg>'
+    };
+
+    function updateTexts() {
+      var t = translations[currentLang];
+      var session = JSON.parse(localStorage.getItem('smartstudent_session') || '{}');
+      
+      document.getElementById('welcome-text').textContent = t.welcome.replace('{name}', session.displayName || 'Usuario');
+      document.getElementById('welcome-subtitle').textContent = t.welcomeSubtitle;
+      document.getElementById('learning-title').textContent = t.learningTools;
+      document.getElementById('logout-text').textContent = t.logout;
+      
+      // Update role badge with class and icon
+      var roleBadge = document.getElementById('role-badge');
+      var role = session.role || 'student';
+      var icon = roleIcons[role] || roleIcons.student;
+      roleBadge.innerHTML = icon + (t[role] || role);
+      roleBadge.className = 'role-badge ' + role;
+      
+      renderCards('learning-cards', learningCards);
+      renderRoleSpecificCards(session.role);
+    }
+    
+    function renderCards(containerId, cards) {
+      var container = document.getElementById(containerId);
+      if (!container) return;
+      
+      container.innerHTML = cards.map(function(card) {
+        var title = typeof card.title === 'object' ? card.title[currentLang] : card.title;
+        var desc = typeof card.desc === 'object' ? card.desc[currentLang] : card.desc;
+        return '<div class="card ' + card.color + '" onclick="goToModule(\'' + card.module + '\')">' +
+          '<div class="card-icon">' + card.icon + '</div>' +
+          '<div class="card-title">' + title + '</div>' +
+          '<div class="card-desc">' + desc + '</div>' +
+        '</div>';
+      }).join('');
+    }
+    
+    function renderRoleSpecificCards(role) {
+      var section = document.getElementById('role-specific-section');
+      var cards = [];
+      var t = translations[currentLang];
+      var title = '';
+      
+      switch(role) {
+        case 'admin': cards = adminCards; title = t.adminSection; break;
+        case 'teacher': cards = teacherCards; title = t.teacherSection; break;
+        case 'guardian': cards = guardianCards; title = t.guardianSection; break;
+        default: cards = studentCards; title = t.studentSection;
+      }
+      
+      if (cards.length > 0) {
+        section.innerHTML = '<h2 class="section-title">' + title + '</h2><div class="cards-grid" id="role-cards"></div>';
+        renderCards('role-cards', cards);
+      }
+    }
+    
+    function goToModule(module) {
+      window.location.href = '/modules/' + module + '.html';
+    }
+    
+    function goToProfile() {
+      window.location.href = '/modules/perfil.html';
+    }
+    
+    function scrollToTop() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    function logout() {
+      localStorage.removeItem('smartstudent_session');
+      window.location.href = '/login-static.html';
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      var session = localStorage.getItem('smartstudent_session');
+      
+      if (!session) {
+        window.location.href = '/login-static.html';
+        return;
+      }
+      
+      try {
+        var data = JSON.parse(session);
+        
+        if (!data.isAuthenticated) {
+          window.location.href = '/login-static.html';
+          return;
+        }
+        
+        document.getElementById('user-avatar').textContent = data.displayName.charAt(0).toUpperCase();
+        document.getElementById('lang-btn').textContent = currentLang.toUpperCase();
+        
+        initTheme();
+        
+        if (data.role === 'guardian') {
+          document.querySelector('.section-title').style.display = 'none';
+          document.getElementById('learning-cards').style.display = 'none';
+        }
+        
+        updateTexts();
+        
+      } catch(e) {
+        console.error('Error:', e);
+        window.location.href = '/login-static.html';
+      }
+    });
+  </script>
+</body>
+</html>
