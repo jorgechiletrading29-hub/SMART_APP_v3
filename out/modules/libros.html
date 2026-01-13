@@ -15,8 +15,18 @@
     .course-section { padding: 0 16px; margin-bottom: 20px; }
     .course-title { font-size: 16px; font-weight: 600; color: #22c55e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     .book-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
-    .book-icon { width: 40px; height: 48px; background: linear-gradient(135deg, #86efac 0%, #22c55e 100%); border-radius: 4px; position: relative; flex-shrink: 0; }
-    .book-icon::before { content: ''; position: absolute; left: 4px; top: 4px; bottom: 4px; width: 3px; background: rgba(255,255,255,0.4); border-radius: 2px; }
+    .book-icon { width: 44px; height: 44px; border-radius: 10px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; text-align: center; line-height: 1.1; }
+    /* Badge colors por asignatura */
+    .book-icon.cnt { background: #bbf7d0; color: #14532d; } /* Ciencias Naturales */
+    .book-icon.his { background: #fef3c7; color: #78350f; } /* Historia */
+    .book-icon.len { background: #fecaca; color: #7f1d1d; } /* Lenguaje */
+    .book-icon.mat { background: #bfdbfe; color: #1e3a8a; } /* Matemáticas */
+    .book-icon.bio { background: #bbf7d0; color: #14532d; } /* Biología */
+    .book-icon.fis { background: #e9d5ff; color: #581c87; } /* Física */
+    .book-icon.qui { background: #fecdd3; color: #831843; } /* Química */
+    .book-icon.cpc { background: #99f6e4; color: #134e4a; } /* Ciencias para la Ciudadanía */
+    .book-icon.edc { background: #c7d2fe; color: #312e81; } /* Educación Ciudadana */
+    .book-icon.fil { background: #e5e7eb; color: #111827; } /* Filosofía */
     .book-info { flex: 1; min-width: 0; }
     .book-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
     .book-grade { font-size: 13px; color: var(--text-muted); }
@@ -140,6 +150,30 @@
     function goToModule(m){window.location.href='/modules/'+m+'.html'}
     function openBook(url){window.location.href='/modules/pdf-viewer.html?url='+encodeURIComponent(url)}
 
+    // Mapeo de asignaturas a clases de badge y abreviaciones
+    var subjectBadges = {
+      'Ciencias Naturales': { cls: 'cnt', abbr: 'CNT' },
+      'Historia': { cls: 'his', abbr: 'HIS' },
+      'Lenguaje': { cls: 'len', abbr: 'LEN' },
+      'Matemáticas': { cls: 'mat', abbr: 'MAT' },
+      'Biología': { cls: 'bio', abbr: 'BIO' },
+      'Física': { cls: 'fis', abbr: 'FIS' },
+      'Química': { cls: 'qui', abbr: 'QUI' },
+      'Ciencias para la Ciudadanía': { cls: 'cpc', abbr: 'CPC' },
+      'Educación Ciudadana': { cls: 'edc', abbr: 'EDC' },
+      'Filosofía': { cls: 'fil', abbr: 'FIL' }
+    };
+    
+    function getSubjectBadge(title) {
+      for (var key in subjectBadges) {
+        if (title.toLowerCase().includes(key.toLowerCase())) {
+          return subjectBadges[key];
+        }
+      }
+      // Default para asignaturas no mapeadas
+      return { cls: 'cnt', abbr: title.substring(0, 3).toUpperCase() };
+    }
+
     function renderBooks(){
       var txt = t[lang];
       var html = '';
@@ -147,8 +181,9 @@
         html += '<div class="course-section">';
         html += '<div class="course-title">🎓 ' + course + '</div>';
         booksByCourse[course].forEach(function(book) {
+          var badge = getSubjectBadge(book.title);
           html += '<div class="book-card">';
-          html += '<div class="book-icon"></div>';
+          html += '<div class="book-icon ' + badge.cls + '">' + badge.abbr + '</div>';
           html += '<div class="book-info"><div class="book-title">' + book.title + '</div><div class="book-grade">' + course + '</div></div>';
           html += '<button class="btn-pdf" onclick="openBook(\'' + book.url + '\')">' + txt.viewPdf + '</button>';
           html += '</div>';

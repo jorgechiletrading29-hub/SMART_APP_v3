@@ -262,6 +262,8 @@ The summary MUST include the following sections (adapted to the student's level)
 
   // Extraer puntos clave si fueron solicitados
   let keyPoints: string[] | undefined;
+  let cleanedResponse = response;
+  
   if (input.includeKeyPoints) {
     const keyPointsMatch = response.match(/##\s*(?:Puntos Clave|Key Points)\s*\n([\s\S]*?)(?=\n##|$)/i);
     if (keyPointsMatch) {
@@ -271,11 +273,20 @@ The summary MUST include the following sections (adapted to the student's level)
         .map(line => line.replace(/^-\s*/, '').trim())
         .filter(point => point.length > 0)
         .slice(0, 10);
+      
+      // Remove the key points section from the summary to avoid duplication
+      cleanedResponse = response.replace(/\n*---*\n*##?\s*(?:Puntos Clave|Key Points|PUNTOS CLAVES?)[:\s]*\n[\s\S]*$/i, '');
+      cleanedResponse = cleanedResponse.replace(/\n*##?\s*(?:Puntos Clave|Key Points|PUNTOS CLAVES?)[:\s]*\n[\s\S]*$/i, '');
     }
   }
+  
+  // Remove malformed key points section with special characters
+  cleanedResponse = cleanedResponse.replace(/\n*---*\n*[^\n]*(?:P\s*U\s*N\s*T\s*O\s*S|PUNTOS)[^\n]*C\s*L\s*A\s*V\s*E\s*S?[^\n]*:[\s\S]*$/i, '');
+  cleanedResponse = cleanedResponse.replace(/[\u00d8=\u00dc\u00cc]+\s*P\s*U\s*N\s*T\s*O\s*S\s*C\s*L\s*A\s*V\s*E\s*S?\s*:[\s\S]*/gi, '');
+  cleanedResponse = cleanedResponse.replace(/\n*---+\s*$/g, '').trim();
 
   return {
-    summary: response,
+    summary: cleanedResponse,
     keyPoints,
     progress: isSpanish 
       ? `Resumen generado exitosamente usando OpenRouter para "${input.topic}".`
@@ -497,12 +508,9 @@ function generateRealSummaryFromContent(topic: string, bookTitle: string, pdfCon
   const sections = parsePdfContentIntoSections(pdfContent);
   
   // Build a real educational summary
+  // NOTE: We don't include the main title (# RESUMEN: topic) because the PDF export already adds it
   if (isSpanish) {
-    let summary = `# RESUMEN: ${topic.toUpperCase()}\n\n`;
-    summary += `## Información General\n`;
-    summary += `**Asignatura:** ${bookTitle}${courseInfo}\n`;
-    summary += `**Tema:** ${topic}\n\n`;
-    summary += `---\n\n`;
+    let summary = '';
     
     // Introduction based on content
     summary += `## Introducción\n\n`;
@@ -549,11 +557,8 @@ function generateRealSummaryFromContent(topic: string, bookTitle: string, pdfCon
     
     return summary;
   } else {
-    let summary = `# SUMMARY: ${topic.toUpperCase()}\n\n`;
-    summary += `## General Information\n`;
-    summary += `**Subject:** ${bookTitle}${courseInfo}\n`;
-    summary += `**Topic:** ${topic}\n\n`;
-    summary += `---\n\n`;
+    // English version - also without the main title
+    let summary = '';
     
     summary += `## Introduction\n\n`;
     if (sections.introduction) {

@@ -5,40 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Resúmenes - Smart Student</title>
   <link rel="stylesheet" href="shared-styles.css">
+  <script src="/capacitor.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     .module-header { text-align: center; padding: 24px 16px; }
     .module-icon { width: 64px; height: 64px; margin: 0 auto 12px; background: rgba(59, 130, 246, 0.15); border-radius: 16px; display: flex; align-items: center; justify-content: center; }
     .module-icon svg { width: 32px; height: 32px; }
     .module-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
     .module-subtitle { font-size: 13px; color: var(--text-muted); }
-    .selection-container { padding: 0 16px; }
+    .selection-container { padding: 0 16px; padding-bottom: 20px; }
     .selection-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-    .selection-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .topic-input-section { display: none; margin-top: 12px; }
+    .topic-input-section.visible { display: block; }
+    .topic-input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px; box-sizing: border-box; }
+    .topic-input:focus { outline: none; border-color: #3b82f6; }
+    .topic-input-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+    .selection-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
     .selection-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .selection-btn { padding: 12px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-secondary); font-size: 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
     .selection-btn:hover { border-color: #3b82f6; }
     .selection-btn.active { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #3b82f6; }
-    .selection-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .subject-section { display: none; }
-    .subject-section.visible { display: block; }
-    .generate-btn { width: 100%; margin-top: 16px; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-size: 15px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .result-container { display: none; padding: 0 16px; margin-top: 16px; }
+    .hidden-section { display: none; }
+    .hidden-section.visible { display: block; }
+    .topic-select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px; cursor: pointer; }
+    .topic-select option { background: var(--bg-card); color: var(--text-primary); }
+    .analyzing { display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; color: #3b82f6; font-size: 13px; }
+    .analyzing svg { width: 18px; height: 18px; animation: spin 1s linear infinite; }
+    .checkbox-container { display: none; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 12px; cursor: pointer; }
+    .checkbox-container.visible { display: flex; }
+    .checkbox-container input { width: 22px; height: 22px; accent-color: #3b82f6; cursor: pointer; flex-shrink: 0; }
+    .checkbox-label { font-size: 14px; color: var(--text-primary); font-weight: 600; }
+    .checkbox-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .generate-btn-container { display: flex; justify-content: center; margin-top: 8px; margin-bottom: 20px; }
+    .generate-btn { width: 70%; max-width: 280px; padding: 14px 20px; border-radius: 25px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-size: 15px; font-weight: 700; border: 2px solid #60a5fa; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); text-transform: uppercase; letter-spacing: 0.5px; min-height: 50px; transition: all 0.3s ease; }
+    .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; background: var(--bg-secondary); border-color: var(--border-color); box-shadow: none; color: var(--text-muted); }
+    .generate-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
+    .generate-btn:not(:disabled):active { transform: scale(0.98); }
+    .generate-btn.loading { pointer-events: none; flex-direction: column; gap: 6px; padding: 12px 20px; }
+    .generate-btn .spinner { display: none; width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .generate-btn.loading .spinner { display: block; }
+    .generate-btn.loading .btn-text { display: none; }
+    .generate-btn.loading .btn-icon { display: none; }
+    .generate-btn .loading-text { display: none; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: normal; }
+    .generate-btn.loading .loading-text { display: block; }
+    .generate-btn .progress-bar { display: none; width: 100%; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+    .generate-btn.loading .progress-bar { display: block; }
+    .generate-btn .progress-fill { height: 100%; background: white; border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+    .result-container { display: none; padding: 0 16px; padding-bottom: 100px; }
     .result-container.visible { display: block; }
-    .result-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; }
-    .result-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
-    .result-content { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
-    .loading { display: none; text-align: center; padding: 40px; color: var(--text-muted); }
-    .loading.visible { display: block; }
-    .loading svg { width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    .result-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; }
+    .result-header-big { text-align: center; padding: 24px 20px; background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.1)); border-radius: 12px; margin-bottom: 24px; }
+    .result-subject { font-size: 14px; color: #60a5fa; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; font-weight: 600; }
+    .result-course { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
+    .result-topic { font-size: 28px; font-weight: 800; color: #3b82f6; line-height: 1.2; }
+    .result-content { font-size: 15px; color: var(--text-secondary); line-height: 1.8; }
+    .result-content h2 { font-size: 20px; color: var(--text-primary); margin: 28px 0 14px 0; padding-bottom: 10px; border-bottom: 2px solid rgba(59,130,246,0.3); }
+    .result-content h3 { font-size: 17px; color: #3b82f6; margin: 22px 0 12px 0; }
+    .result-content h4 { font-size: 15px; color: var(--text-primary); margin: 18px 0 10px 0; font-weight: 600; }
+    .result-content p { margin: 12px 0; }
+    .result-content ul, .result-content ol { margin: 14px 0; padding-left: 24px; }
+    .result-content li { margin-bottom: 10px; }
+    .result-content code { background: rgba(59,130,246,0.15); padding: 3px 8px; border-radius: 4px; font-family: monospace; color: #60a5fa; font-size: 14px; }
+    .result-content .example-box { background: rgba(34,197,94,0.1); border-left: 4px solid #22c55e; padding: 16px 18px; margin: 20px 0; border-radius: 0 10px 10px 0; width: 100%; box-sizing: border-box; display: block; clear: both; }
+    .result-content .example-box strong { color: #22c55e; display: block; margin-bottom: 8px; }
+    .result-content .exercise-box { background: rgba(249,115,22,0.1); border-left: 4px solid #f97316; padding: 16px 18px; margin: 20px 0; border-radius: 0 10px 10px 0; width: 100%; box-sizing: border-box; display: block; clear: both; }
+    .result-content .exercise-box strong { color: #f97316; display: block; margin-bottom: 8px; }
+    .result-content .key-points { background: rgba(168,85,247,0.1); border: 2px solid #a855f7; padding: 18px; margin: 28px 0 20px 0; border-radius: 12px; }
+    .result-content .key-points-title { color: #a855f7; font-size: 18px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .action-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border-color); }
+    .action-btn { padding: 14px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; border: none; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+    .action-btn-red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .action-btn-orange { background: linear-gradient(135deg, #f97316, #ea580c); }
+    .action-btn-cyan { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .action-btn-purple { background: linear-gradient(135deg, #a855f7, #9333ea); }
+    .action-btn:active { transform: scale(0.98); opacity: 0.9; }
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .result-content .formula { background: rgba(59,130,246,0.1); padding: 16px 20px; margin: 16px 0; border-radius: 10px; text-align: center; font-size: 18px; font-family: 'Courier New', monospace; border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; font-weight: 600; width: 100%; box-sizing: border-box; display: block; }
+    .result-content .step-box { background: rgba(59,130,246,0.05); padding: 14px 16px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #3b82f6; width: 100%; box-sizing: border-box; display: block; }
+    .result-content .formula-inline { background: rgba(59,130,246,0.15); padding: 2px 8px; border-radius: 4px; font-family: 'Courier New', monospace; color: #60a5fa; font-size: 14px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Overlay de carga centrado - compacto */
+    .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(6px); }
+    .loading-overlay.visible { display: flex; }
+    .loading-modal { background: linear-gradient(145deg, #1e293b, #0f172a); border: 2px solid #3b82f6; border-radius: 16px; padding: 24px 32px; text-align: center; box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3); max-width: 240px; width: 80%; }
+    .loading-spinner-big { width: 50px; height: 50px; border: 4px solid rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    .loading-title { font-size: 15px; font-weight: 700; color: white; margin-bottom: 4px; }
+    .loading-subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 12px; }
+    .loading-percent { font-size: 36px; font-weight: 800; color: #3b82f6; margin-bottom: 12px; text-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+    .loading-progress-container { width: 100%; height: 6px; background: rgba(59, 130, 246, 0.2); border-radius: 3px; overflow: hidden; }
+    .loading-progress-bar { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6); background-size: 200% 100%; border-radius: 3px; transition: width 0.3s ease; animation: progressShine 1.5s linear infinite; }
+    @keyframes progressShine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .loading-tip { display: none; }
   </style>
 </head>
 <body>
   <nav class="top-nav">
     <div class="nav-left">
       <div class="nav-logo" onclick="goHome()"><svg viewBox="0 0 100 100"><path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/><path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/><path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/><path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/><circle cx="50" cy="40" r="3" fill="#0D47A1"/><path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/><rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/><path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/></svg></div>
-      <span class="page-title" id="nav-title">Resúmenes</span>
+      <span class="page-title">Resúmenes</span>
     </div>
     <div class="nav-right">
       <button class="nav-btn" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>
@@ -49,147 +114,682 @@
     </div>
   </nav>
 
-  <div class="module-header">
+  <div class="module-header" id="module-header">
     <div class="module-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg></div>
-    <h1 class="module-title" id="title">Resúmenes Inteligentes</h1>
-    <p class="module-subtitle" id="subtitle">Genera resúmenes de contenido educativo</p>
+    <h1 class="module-title">Resúmenes Inteligentes</h1>
+    <p class="module-subtitle">Genera resúmenes detallados con IA</p>
   </div>
 
-  <div class="selection-container">
+  <div class="selection-container" id="selection-container">
     <div class="selection-card">
-      <div class="selection-label" id="course-label">Selecciona un Curso</div>
+      <div class="selection-label">📚 Selecciona un Curso</div>
       <div class="selection-grid" id="course-grid"></div>
     </div>
 
-    <div class="selection-card subject-section" id="subject-section">
-      <div class="selection-label" id="subject-label">Selecciona una Asignatura</div>
+    <div class="selection-card hidden-section" id="subject-section">
+      <div class="selection-label">📖 Selecciona una Asignatura</div>
       <div class="selection-grid" id="subject-grid"></div>
     </div>
 
-    <button class="generate-btn" id="generate-btn" disabled onclick="generateContent()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      <span id="generate-text">Generar Resumen</span>
-    </button>
+    <div class="selection-card hidden-section" id="topic-section">
+      <div class="selection-label">🎯 Selecciona un Tema</div>
+      <div class="analyzing" id="analyzing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
+        <span>Analizando PDF y extrayendo temas...</span>
+      </div>
+      <select class="topic-select" id="topic-select" style="display:none;">
+        <option value="">-- Selecciona un tema --</option>
+      </select>
+      <div class="topic-input-section" id="topic-input-section">
+        <div class="topic-input-label">✏️ Tema a analizar (editable)</div>
+        <input type="text" class="topic-input" id="topic-input" placeholder="Escribe o modifica el tema...">
+      </div>
+    </div>
+
+    <label class="checkbox-container" id="checkbox-container">
+      <input type="checkbox" id="key-points-check">
+      <div>
+        <div class="checkbox-label">Incluir Puntos Claves</div>
+        <div class="checkbox-desc">Agrega un punteo con lo más importante al final</div>
+      </div>
+    </label>
+
+    <div class="generate-btn-container">
+      <button class="generate-btn" id="generate-btn" disabled onclick="generateContent()">
+        <div class="spinner"></div>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span class="btn-text">Generar Resumen</span>
+      </button>
+    </div>
   </div>
 
-  <div class="loading" id="loading">
-    <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
-    <p id="loading-text">Generando resumen...</p>
+  <!-- Overlay de carga centrado -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-modal">
+      <div class="loading-spinner-big"></div>
+      <div class="loading-title">Generando Resumen</div>
+      <div class="loading-subtitle" id="loading-subject-info">Procesando con IA...</div>
+      <div class="loading-percent" id="loading-percent">0%</div>
+      <div class="loading-progress-container">
+        <div class="loading-progress-bar" id="loading-progress-bar" style="width: 0%"></div>
+      </div>
+      <div class="loading-tip">💡 La IA está analizando y estructurando el contenido</div>
+    </div>
   </div>
 
   <div class="result-container" id="result-container">
     <div class="result-card">
-      <div class="result-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg>
-        <span id="result-title">Resumen Generado</span>
+      <div class="result-header-big">
+        <div class="result-subject" id="result-subject"></div>
+        <div class="result-course" id="result-course"></div>
+        <div class="result-topic" id="result-topic"></div>
       </div>
       <div class="result-content" id="result-content"></div>
+      
+      <div class="action-buttons">
+        <button class="action-btn" onclick="resetAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Crear Nuevo Resumen
+        </button>
+        <div class="action-row">
+          <button class="action-btn action-btn-red" onclick="downloadPDF()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Compartir PDF
+          </button>
+          <button class="action-btn action-btn-orange" onclick="goToModuleWithData('mapa-mental')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 9v3"/></svg>
+            Mapa Mental
+          </button>
+        </div>
+        <div class="action-row">
+          <button class="action-btn action-btn-cyan" onclick="goToModuleWithData('cuestionario')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 2.83V14"/></svg>
+            Cuestionario
+          </button>
+          <button class="action-btn action-btn-purple" onclick="goToModuleWithData('evaluacion')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8"/></svg>
+            Evaluación
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    var lang = localStorage.getItem('smartstudent_lang') || 'es';
-    var selectedCourse = null;
-    var selectedSubject = null;
+    var selectedCourse = null, selectedSubject = null, selectedTopic = null;
+    var generatedContent = '';
+    var courses = ['1ro Básico','2do Básico','3ro Básico','4to Básico','5to Básico','6to Básico','7mo Básico','8vo Básico','1ro Medio','2do Medio','3ro Medio','4to Medio'];
+    var basicoSubjects = ['Matemáticas','Ciencias Naturales','Lenguaje y Comunicación','Historia y Ciencias Sociales'];
+    var medioSubjects = ['Matemáticas','Biología','Física','Química','Lenguaje y Comunicación','Historia y Ciencias Sociales'];
     
-    var courses = [
-      '1ro Básico', '2do Básico', '3ro Básico', '4to Básico',
-      '5to Básico', '6to Básico', '7mo Básico', '8vo Básico',
-      '1ro Medio', '2do Medio', '3ro Medio', '4to Medio'
-    ];
-    
-    var basicoSubjects = ['Matemáticas', 'Ciencias Naturales', 'Lenguaje y Comunicación', 'Historia y Ciencias Sociales'];
-    var medioSubjects = ['Matemáticas', 'Biología', 'Física', 'Química', 'Lenguaje y Comunicación', 'Historia y Ciencias Sociales'];
-    
-    var t = {
-      es: {
-        navTitle: 'Resúmenes', title: 'Resúmenes Inteligentes', subtitle: 'Genera resúmenes de contenido educativo',
-        courseLabel: 'Selecciona un Curso', subjectLabel: 'Selecciona una Asignatura',
-        generateBtn: 'Generar Resumen', loadingText: 'Generando resumen...', resultTitle: 'Resumen Generado'
-      },
-      en: {
-        navTitle: 'Summaries', title: 'Smart Summaries', subtitle: 'Generate educational content summaries',
-        courseLabel: 'Select a Course', subjectLabel: 'Select a Subject',
-        generateBtn: 'Generate Summary', loadingText: 'Generating summary...', resultTitle: 'Generated Summary'
-      }
+    var topicsBySubject = {
+      'Matemáticas': { basico: ['Números y operaciones','Patrones y álgebra','Geometría','Medición','Datos y probabilidades'], medio: ['Álgebra y funciones','Geometría analítica','Probabilidad y estadística','Números complejos','Límites y derivadas'] },
+      'Ciencias Naturales': { basico: ['El cuerpo humano','Los seres vivos','La materia','Fuerza y movimiento','La Tierra y el universo'] },
+      'Biología': { medio: ['Célula y genética','Evolución','Ecología','Sistema nervioso','Reproducción humana'] },
+      'Física': { medio: ['Cinemática','Dinámica','Energía y trabajo','Ondas y sonido','Electricidad y magnetismo'] },
+      'Química': { medio: ['Estructura atómica','Tabla periódica','Enlaces químicos','Reacciones químicas','Estequiometría'] },
+      'Lenguaje y Comunicación': { basico: ['Comprensión lectora','Escritura creativa','Gramática','Vocabulario','Literatura infantil'], medio: ['Análisis literario','Argumentación','Géneros literarios','Medios de comunicación','Investigación'] },
+      'Historia y Ciencias Sociales': { basico: ['Historia de Chile','Geografía','Formación ciudadana','Pueblos originarios','Democracia'], medio: ['Historia universal','Guerra Fría','Chile siglo XX','Economía','Globalización'] }
     };
     
     (function(){var th=localStorage.getItem('smartstudent_theme')||'dark';document.documentElement.setAttribute('data-theme',th)})();
-    
     function goHome(){window.location.href='/dashboard-static.html'}
     function goToModule(m){window.location.href='/modules/'+m+'.html'}
-    
-    function renderCourses(){
-      var grid = document.getElementById('course-grid');
-      grid.innerHTML = '';
-      courses.forEach(function(c){
-        var btn = document.createElement('button');
-        btn.className = 'selection-btn';
-        btn.textContent = c;
-        btn.onclick = function(){ selectCourse(c, btn); };
-        grid.appendChild(btn);
-      });
+    function goToModuleWithData(m){
+      localStorage.setItem('ss_course', selectedCourse);
+      localStorage.setItem('ss_subject', selectedSubject);
+      localStorage.setItem('ss_topic', selectedTopic);
+      window.location.href='/modules/'+m+'.html';
     }
     
-    function selectCourse(course, btn){
-      selectedCourse = course;
-      selectedSubject = null;
-      document.querySelectorAll('#course-grid .selection-btn').forEach(function(b){ b.classList.remove('active'); });
+    function renderCourses(){
+      var grid=document.getElementById('course-grid');grid.innerHTML='';
+      courses.forEach(function(c){var btn=document.createElement('button');btn.className='selection-btn';btn.textContent=c;btn.onclick=function(){selectCourse(c,btn)};grid.appendChild(btn)});
+    }
+    
+    function selectCourse(course,btn){
+      selectedCourse=course;selectedSubject=null;selectedTopic=null;
+      document.querySelectorAll('#course-grid .selection-btn').forEach(function(b){b.classList.remove('active')});
       btn.classList.add('active');
-      renderSubjects();
       document.getElementById('subject-section').classList.add('visible');
-      updateGenerateBtn();
+      document.getElementById('topic-section').classList.remove('visible');
+      document.getElementById('checkbox-container').classList.remove('visible');
+      document.getElementById('topic-input-section').classList.remove('visible');
+      renderSubjects();updateBtn();
     }
     
     function renderSubjects(){
-      var grid = document.getElementById('subject-grid');
-      grid.innerHTML = '';
-      var subjects = selectedCourse.includes('Medio') ? medioSubjects : basicoSubjects;
-      subjects.forEach(function(s){
-        var btn = document.createElement('button');
-        btn.className = 'selection-btn';
-        btn.textContent = s;
-        btn.onclick = function(){ selectSubject(s, btn); };
-        grid.appendChild(btn);
-      });
+      var grid=document.getElementById('subject-grid');grid.innerHTML='';
+      var subjects=selectedCourse.includes('Medio')?medioSubjects:basicoSubjects;
+      subjects.forEach(function(s){var btn=document.createElement('button');btn.className='selection-btn';btn.textContent=s;btn.onclick=function(){selectSubject(s,btn)};grid.appendChild(btn)});
     }
     
-    function selectSubject(subject, btn){
-      selectedSubject = subject;
-      document.querySelectorAll('#subject-grid .selection-btn').forEach(function(b){ b.classList.remove('active'); });
+    function selectSubject(subject,btn){
+      selectedSubject=subject;selectedTopic=null;
+      document.querySelectorAll('#subject-grid .selection-btn').forEach(function(b){b.classList.remove('active')});
       btn.classList.add('active');
-      updateGenerateBtn();
+      document.getElementById('topic-section').classList.add('visible');
+      document.getElementById('analyzing').style.display='flex';
+      document.getElementById('topic-select').style.display='none';
+      document.getElementById('topic-input-section').classList.remove('visible');
+      document.getElementById('checkbox-container').classList.remove('visible');
+      setTimeout(function(){loadTopics()},1500);
+      updateBtn();
     }
     
-    function updateGenerateBtn(){
-      document.getElementById('generate-btn').disabled = !(selectedCourse && selectedSubject);
+    function loadTopics(){
+      document.getElementById('analyzing').style.display='none';
+      var select=document.getElementById('topic-select');select.style.display='block';select.innerHTML='<option value="">-- Selecciona un tema --</option>';
+      var isMedio=selectedCourse.includes('Medio');
+      var topics=topicsBySubject[selectedSubject];
+      var list=topics?(isMedio&&topics.medio?topics.medio:topics.basico||[]):[];
+      list.forEach(function(t){var opt=document.createElement('option');opt.value=t;opt.textContent=t;select.appendChild(opt)});
+      select.onchange=function(){
+        selectedTopic=this.value;
+        if(selectedTopic){
+          document.getElementById('topic-input-section').classList.add('visible');
+          document.getElementById('topic-input').value=selectedTopic;
+          document.getElementById('checkbox-container').classList.add('visible');
+        }else{
+          document.getElementById('topic-input-section').classList.remove('visible');
+          document.getElementById('checkbox-container').classList.remove('visible');
+        }
+        updateBtn();
+      };
+      document.getElementById('topic-input').oninput=function(){selectedTopic=this.value;updateBtn()};
+    }
+    
+    function updateBtn(){
+      var topic=document.getElementById('topic-input').value.trim();
+      selectedTopic=topic;
+      document.getElementById('generate-btn').disabled=!(selectedCourse&&selectedSubject&&topic);
+    }
+    
+    function resetAll(){
+      selectedCourse=null;selectedSubject=null;selectedTopic=null;
+      document.getElementById('result-container').classList.remove('visible');
+      document.getElementById('selection-container').style.display='block';
+      document.getElementById('module-header').style.display='block';
+      document.getElementById('subject-section').classList.remove('visible');
+      document.getElementById('topic-section').classList.remove('visible');
+      document.getElementById('topic-input-section').classList.remove('visible');
+      document.getElementById('checkbox-container').classList.remove('visible');
+      document.getElementById('topic-input').value='';
+      document.getElementById('key-points-check').checked=false;
+      document.getElementById('generate-btn').classList.remove('loading');
+      document.getElementById('loading-overlay').classList.remove('visible');
+      document.querySelectorAll('.selection-btn').forEach(function(b){b.classList.remove('active')});
+      updateBtn();
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    
+    function buildProfessionalSummaryPdf() {
+      var content = generatedContent || '';
+      var topic = selectedTopic || '';
+      
+      // Limpiar caracteres especiales corruptos (Ø=ÜÌ y similares)
+      content = content
+        .replace(/[\u00d8\u00dc\u00cc\u00d8=\u00dc\u00cc]+/gi, '') // Eliminar Ø=ÜÌ
+        .replace(/Ø=ÜÌ/g, '')
+        .replace(/Ø/g, '')
+        .replace(/Ü/g, '')
+        .replace(/Ì/g, '');
+      
+      // Eliminar título duplicado al inicio del contenido (coincide con el tema seleccionado)
+      if (topic) {
+        // Escapar caracteres especiales de regex
+        var escapedTopic = topic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Eliminar el título si aparece al inicio con o sin #
+        var titleRegex = new RegExp('^\\s*#*\\s*' + escapedTopic + '\\s*\\n*', 'im');
+        content = content.replace(titleRegex, '');
+        // También eliminar si aparece como primera línea sin #
+        var firstLineRegex = new RegExp('^\\s*' + escapedTopic + '\\s*$', 'im');
+        content = content.replace(firstLineRegex, '');
+      }
+      
+      // Limpiar separadores y líneas vacías al inicio
+      content = content
+        .replace(/^\s*---+\s*\n*/g, '')
+        .replace(/^\s*\n+/, '')
+        .replace(/\n*---+\n*/g, '\n');
+      
+      var { jsPDF } = window.jspdf;
+      var doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+      var marginX = 16;
+      var topY = 18;
+      var pageW = doc.internal.pageSize.getWidth();
+      var pageH = doc.internal.pageSize.getHeight();
+      var usableW = pageW - marginX * 2;
+
+      // Header compacto
+      doc.setFillColor(30, 41, 59);
+      doc.rect(0, 0, pageW, 18, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('SMART STUDENT', marginX, 12);
+      
+      // Fecha a la derecha del header
+      var now = new Date();
+      var dateStr = now.toLocaleDateString('es-CL', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(dateStr, pageW - marginX, 12, { align: 'right' });
+
+      // Info: Asignatura y Curso en una línea
+      doc.setTextColor(59, 130, 246);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text((selectedSubject || '').toUpperCase() + ' - ' + (selectedCourse || ''), marginX, 28);
+
+      // Título (tema) - principal
+      doc.setTextColor(15);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      var topicLines = doc.splitTextToSize(selectedTopic || '', usableW);
+      doc.text(topicLines, marginX, 38);
+
+      var y = 38 + topicLines.length * 6 + 3;
+      doc.setDrawColor(59, 130, 246);
+      doc.setLineWidth(0.5);
+      doc.line(marginX, y, pageW - marginX, y);
+      y += 6;
+
+      // Contenido: parse básico de markdown para un PDF más "pro"
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(30);
+
+      // Función para limpiar texto de markdown
+      function cleanMarkdown(text) {
+        return (text || '')
+          .replace(/[\u00d8\u00dc\u00cc]+/gi, '') // Eliminar Ø Ü Ì
+          .replace(/Ø=ÜÌ/g, '')
+          .replace(/Ø/g, '')
+          .replace(/Ü/g, '')
+          .replace(/Ì/g, '')
+          .replace(/\*\*\*([^*]+)\*\*\*/g, '$1')  // ***bold italic***
+          .replace(/\*\*([^*]+)\*\*/g, '$1')      // **bold**
+          .replace(/\*([^*]+)\*/g, '$1')          // *italic*
+          .replace(/__([^_]+)__/g, '$1')          // __bold__
+          .replace(/_([^_]+)_/g, '$1')            // _italic_
+          .replace(/`([^`]+)`/g, '$1')            // `code`
+          .replace(/~~([^~]+)~~/g, '$1')          // ~~strikethrough~~
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [link](url)
+          .replace(/^>\s*/gm, '')                 // > blockquote
+          .replace(/^\d+\.\s+/gm, '• ')          // 1. numbered list
+          .replace(/\\n/g, ' ')                   // escaped newlines
+          .replace(/\s{2,}/g, ' ')                // multiple spaces
+          .trim();
+      }
+
+      var lines = content.split(/\r?\n/);
+      for (var i = 0; i < lines.length; i++) {
+        var ln = (lines[i] || '').trim();
+        if (!ln) {
+          y += 4;
+          continue;
+        }
+
+        // Nueva página si hace falta
+        if (y > pageH - 18) {
+          addFooter(doc);
+          doc.addPage();
+          y = topY;
+        }
+
+        // Detectar sección PUNTOS CLAVES - ignorar línea original y poner título limpio
+        if (/PUNTOS|CLAVES?|CLAVE|📌|P\s*U\s*N\s*T\s*O\s*S|C\s*L\s*A\s*V\s*E/i.test(ln) && !/^•/.test(ln)) {
+          // Saltar esta línea completamente y dibujar nuestro propio título
+          y += 6;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.setTextColor(128, 0, 128);
+          doc.text('PUNTOS CLAVES', marginX, y);
+          y += 4;
+          // Línea decorativa debajo
+          doc.setDrawColor(168, 85, 247);
+          doc.setLineWidth(0.8);
+          doc.line(marginX, y, marginX + 45, y);
+          y += 8;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(30);
+          continue;
+        }
+
+        // Headers
+        if (/^#####\s+/.test(ln)) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.setTextColor(15);
+          var t5 = cleanMarkdown(ln.replace(/^#####\s+/, ''));
+          var l5 = doc.splitTextToSize(t5, usableW);
+          doc.text(l5, marginX, y);
+          y += l5.length * 5 + 2;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(30);
+          continue;
+        }
+        if (/^####\s+/.test(ln)) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(12);
+          doc.setTextColor(15);
+          var t4 = cleanMarkdown(ln.replace(/^####\s+/, ''));
+          var l4 = doc.splitTextToSize(t4, usableW);
+          doc.text(l4, marginX, y);
+          y += l4.length * 6 + 2;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(30);
+          continue;
+        }
+        if (/^###\s+/.test(ln)) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.setTextColor(59, 130, 246);
+          var t3 = cleanMarkdown(ln.replace(/^###\s+/, ''));
+          var l3 = doc.splitTextToSize(t3, usableW);
+          doc.text(l3, marginX, y);
+          y += l3.length * 7 + 2;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(30);
+          continue;
+        }
+        if (/^##\s+/.test(ln)) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(16);
+          doc.setTextColor(15);
+          var t2 = cleanMarkdown(ln.replace(/^##\s+/, ''));
+          var l2 = doc.splitTextToSize(t2, usableW);
+          doc.text(l2, marginX, y);
+          y += l2.length * 8 + 3;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(30);
+          continue;
+        }
+
+        // Bullet
+        if (/^-\s+/.test(ln)) {
+          var bt = '• ' + cleanMarkdown(ln.replace(/^-\s+/, ''));
+          var bl = doc.splitTextToSize(bt, usableW);
+          doc.text(bl, marginX, y);
+          y += bl.length * 6 + 1;
+          continue;
+        }
+
+        // Normal paragraph
+        var cleanedText = cleanMarkdown(ln);
+        if (cleanedText) {
+          var pl = doc.splitTextToSize(cleanedText, usableW);
+          doc.text(pl, marginX, y);
+          y += pl.length * 6 + 2;
+        }
+      }
+
+      addFooter(doc);
+      return doc;
+    }
+
+    function addFooter(doc) {
+      var pageW = doc.internal.pageSize.getWidth();
+      var pageH = doc.internal.pageSize.getHeight();
+      var pageCount = doc.internal.getNumberOfPages();
+      for (var p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(120);
+        doc.text('Smart Student', 16, pageH - 10);
+        doc.text('Página ' + p + ' / ' + pageCount, pageW - 16, pageH - 10, { align: 'right' });
+      }
+    }
+
+    async function downloadPDF(){
+      if (!generatedContent) {
+        alert('No hay contenido para descargar. Genera un resumen primero.');
+        return;
+      }
+
+      try {
+        var fileName = 'Resumen_' + (selectedTopic || 'Tema').replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ]/g, '_').substring(0, 50) + '.pdf';
+        var doc = buildProfessionalSummaryPdf();
+
+        // Base64 para Capacitor
+        var dataUri = doc.output('datauristring');
+        var base64 = dataUri.split(',')[1] || '';
+
+        // Si estamos dentro de Capacitor (Android/iOS), guardar como archivo real + compartir
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+          var Filesystem = window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem;
+          var Share = window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+
+          if (Filesystem && Filesystem.writeFile) {
+            var result = await Filesystem.writeFile({
+              path: fileName,
+              data: base64,
+              directory: 'DOCUMENTS'
+            });
+
+            // Abrir el diálogo del sistema para guardar/compartir (incluye "Guardar en Descargas" en muchos equipos)
+            if (Share && Share.share) {
+              await Share.share({
+                title: fileName,
+                text: 'Resumen generado por Smart Student',
+                url: result.uri
+              });
+            } else {
+              alert('✅ PDF guardado en Documentos: ' + fileName);
+            }
+            return;
+          }
+        }
+
+        // Fallback navegador
+        doc.save(fileName);
+      } catch (e) {
+        console.error('Error al generar/guardar PDF:', e);
+        alert('No se pudo descargar el PDF. Intenta de nuevo.');
+      }
+    }
+    
+    var progressInterval = null;
+    var currentProgress = 0;
+    
+    function updateProgress(percent) {
+      currentProgress = percent;
+      document.getElementById('loading-percent').textContent = Math.round(percent) + '%';
+      document.getElementById('loading-progress-bar').style.width = percent + '%';
+    }
+    
+    function showLoadingOverlay() {
+      document.getElementById('loading-subject-info').textContent = selectedSubject + ' - ' + selectedCourse;
+      document.getElementById('loading-overlay').classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function hideLoadingOverlay() {
+      document.getElementById('loading-overlay').classList.remove('visible');
+      document.body.style.overflow = '';
+    }
+    
+    function startProgressSimulation() {
+      currentProgress = 0;
+      updateProgress(0);
+      progressInterval = setInterval(function() {
+        // Incremento variable para simular carga real
+        var increment = Math.random() * 3 + 1;
+        if (currentProgress < 30) {
+          increment = Math.random() * 5 + 2;
+        } else if (currentProgress < 60) {
+          increment = Math.random() * 3 + 1;
+        } else if (currentProgress < 85) {
+          increment = Math.random() * 2 + 0.5;
+        } else {
+          increment = Math.random() * 0.5 + 0.1;
+        }
+        currentProgress = Math.min(currentProgress + increment, 92);
+        updateProgress(currentProgress);
+      }, 200);
+    }
+    
+    function stopProgressSimulation() {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+      updateProgress(100);
     }
     
     function generateContent(){
-      document.getElementById('loading').classList.add('visible');
-      document.getElementById('result-container').classList.remove('visible');
-      setTimeout(function(){
-        document.getElementById('loading').classList.remove('visible');
+      var btn = document.getElementById('generate-btn');
+      btn.disabled = true;
+      showLoadingOverlay();
+      startProgressSimulation();
+      
+      var includeKeyPoints = document.getElementById('key-points-check').checked;
+      var isMath = selectedSubject === 'Matemáticas' || selectedSubject === 'Física' || selectedSubject === 'Química';
+      
+      var prompt = 'Eres un profesor experto en educación chilena. Genera un RESUMEN MUY EXTENSO Y DETALLADO para estudiantes de ' + selectedCourse + ' sobre el tema "' + selectedTopic + '" de la asignatura ' + selectedSubject + '.\n\n';
+      
+      prompt += 'FORMATO OBLIGATORIO (usa Markdown):\n';
+      prompt += '- Usa ## para títulos principales\n';
+      prompt += '- Usa ### para subtítulos\n';
+      prompt += '- Usa #### para sub-subtítulos\n';
+      prompt += '- Usa **texto** para negritas\n';
+      prompt += '- Usa listas con - para puntos\n\n';
+      
+      if(isMath){
+        prompt += 'IMPORTANTE - Este es un tema de ' + selectedSubject + ', DEBES incluir:\n';
+        prompt += '1. Explicación teórica MUY detallada del concepto\n';
+        prompt += '2. Todas las fórmulas y ecuaciones relevantes (escríbelas en texto claro, ej: a + b = c)\n';
+        prompt += '3. PASO A PASO detallado de cómo resolver problemas\n';
+        prompt += '4. Mínimo 4 EJEMPLOS PRÁCTICOS completos con solución paso a paso\n';
+        prompt += '5. Mínimo 3 EJERCICIOS RESUELTOS mostrando cada paso\n';
+        prompt += '6. Tips y trucos para recordar\n';
+        prompt += '7. Errores comunes a evitar\n\n';
+        prompt += 'FORMATO PARA FÓRMULAS: Escribe las fórmulas de forma clara y legible, usando texto normal.\n';
+        prompt += 'Ejemplo: "La fórmula es: Área = base × altura" o "a² + b² = c²"\n\n';
+        prompt += 'Marca los ejemplos con "**Ejemplo:**" y los ejercicios con "**Ejercicio Resuelto:**"\n\n';
+      } else {
+        prompt += 'Incluye:\n';
+        prompt += '- Introducción completa al tema\n';
+        prompt += '- Desarrollo extenso con explicaciones muy claras\n';
+        prompt += '- Múltiples ejemplos concretos\n';
+        prompt += '- Datos importantes, fechas y personajes si aplica\n';
+        prompt += '- Causas y consecuencias si aplica\n';
+        prompt += '- Conclusión detallada\n\n';
+      }
+      
+      if(includeKeyPoints){
+        prompt += 'AL FINAL, agrega una sección "📌 PUNTOS CLAVES" con los 7-10 puntos MÁS IMPORTANTES que el estudiante DEBE recordar, usando viñetas.\n\n';
+      }
+      
+      prompt += 'El resumen debe ser MUY EXTENSO (mínimo 1000 palabras), apropiado para ' + selectedCourse + ', y explicado de forma muy clara y didáctica.';
+      
+      fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer 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'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 2000
+        })
+      })
+      .then(function(response) { 
+        console.log('[Resumen] API Response status:', response.status);
+        return response.json(); 
+      })
+      .then(function(data) {
+        console.log('[Resumen] API Data received:', data);
+        stopProgressSimulation();
+        hideLoadingOverlay();
+        document.getElementById('generate-btn').disabled = false;
+        
+        // Check for API errors
+        if (data.error) {
+          console.error('[Resumen] API Error:', data.error);
+          alert('Error de la API: ' + (data.error.message || JSON.stringify(data.error)));
+          return;
+        }
+        
+        document.getElementById('selection-container').style.display='none';
+        document.getElementById('module-header').style.display='none';
         document.getElementById('result-container').classList.add('visible');
-        var txt = t[lang];
-        document.getElementById('result-content').innerHTML = '<strong>' + selectedCourse + ' - ' + selectedSubject + '</strong><br><br>Este es un resumen de ejemplo generado para la asignatura seleccionada. En la versión completa, aquí aparecerá el contenido educativo resumido utilizando inteligencia artificial.';
-      }, 2000);
-    }
-    
-    function updateTexts(){
-      var txt = t[lang];
-      document.getElementById('nav-title').textContent = txt.navTitle;
-      document.getElementById('title').textContent = txt.title;
-      document.getElementById('subtitle').textContent = txt.subtitle;
-      document.getElementById('course-label').textContent = txt.courseLabel;
-      document.getElementById('subject-label').textContent = txt.subjectLabel;
-      document.getElementById('generate-text').textContent = txt.generateBtn;
-      document.getElementById('loading-text').textContent = txt.loadingText;
-      document.getElementById('result-title').textContent = txt.resultTitle;
+        
+        document.getElementById('result-subject').textContent = selectedSubject;
+        document.getElementById('result-course').textContent = selectedCourse;
+        document.getElementById('result-topic').textContent = selectedTopic;
+        
+        var content = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : 'Error: No se recibió contenido de la IA. Respuesta: ' + JSON.stringify(data).substring(0, 200);
+        
+        // Limpiar caracteres especiales corruptos (Ø=ÜÌ y similares) ANTES de guardar
+        content = content
+          .replace(/Ø=ÜÌ/g, '')
+          .replace(/[\u00d8\u00dc\u00cc=]+/gi, '') // Eliminar Ø Ü Ì =
+          .replace(/Ø/g, '')
+          .replace(/Ü/g, '')
+          .replace(/Ì/g, '')
+          .replace(/P\s+U\s+N\s+T\s+O\s+S\s+C\s+L\s+A\s+V\s+E\s+S?/gi, 'PUNTOS CLAVES'); // Normalizar espacios en PUNTOS CLAVES
+        
+        // Guardar contenido limpio para el PDF
+        generatedContent = content;
+        
+        // Eliminar título duplicado al inicio (coincide con el tema seleccionado)
+        if (selectedTopic) {
+          var escapedTopic = selectedTopic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          var titleRegex = new RegExp('^\\s*#*\\s*' + escapedTopic + '\\s*\\n*', 'im');
+          content = content.replace(titleRegex, '');
+          var firstLineRegex = new RegExp('^\\s*' + escapedTopic + '\\s*$', 'im');
+          content = content.replace(firstLineRegex, '');
+        }
+        
+        // Limpiar separadores
+        content = content
+          .replace(/^\s*---+\s*\n*/g, '')
+          .replace(/^\s*\n+/, '')
+          .replace(/\n*---+\n*/g, '\n');
+        
+        // Formatear markdown a HTML - sin anidamiento
+        content = content
+          .replace(/^##### (.*)$/gm, '<h5>$1</h5>')
+          .replace(/^#### (.*)$/gm, '<h4>$1</h4>')
+          .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+          .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+          .replace(/^# (.*)$/gm, '<h2>$1</h2>')
+          .replace(/\*\*Ejemplo:\*\*/gi, '<div class="example-box"><strong>📗 Ejemplo:</strong>')
+          .replace(/\*\*Ejercicio Resuelto:\*\*/gi, '<div class="exercise-box"><strong>📝 Ejercicio Resuelto:</strong>')
+          .replace(/\*\*Paso (\d+):\*\*/gi, '<div class="step-box"><strong>Paso $1:</strong> ')
+          .replace(/📌 PUNTOS CLAVES/g, '<div class="key-points"><div class="key-points-title">📌 PUNTOS CLAVES</div>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\$\$([^$]+)\$\$/g, '<div class="formula">$1</div>')
+          .replace(/\$([^$]+)\$/g, '<code class="formula-inline">$1</code>')
+          .replace(/^- (.*)$/gm, '<li>$1</li>')
+          .replace(/\n\n/g, '</p><p>')
+          .replace(/\n/g, '<br>');
+        
+        document.getElementById('result-content').innerHTML = content;
+        window.scrollTo({top:0,behavior:'smooth'});
+      })
+      .catch(function(error) {
+        console.error('[Resumen] Fetch error:', error);
+        stopProgressSimulation();
+        hideLoadingOverlay();
+        document.getElementById('generate-btn').disabled = false;
+        alert('Error de conexión: ' + (error.message || error.toString()) + '\n\nVerifica tu conexión a internet e inténtalo de nuevo.');
+      });
     }
     
     renderCourses();
-    updateTexts();
   </script>
 </body>
 </html>

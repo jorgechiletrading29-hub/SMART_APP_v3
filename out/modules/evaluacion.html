@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Evaluaciones - Smart Student</title>
+  <title>Evaluación - Smart Student</title>
   <link rel="stylesheet" href="shared-styles.css">
   <style>
     .module-header { text-align: center; padding: 24px 16px; }
@@ -11,22 +11,48 @@
     .module-icon svg { width: 32px; height: 32px; }
     .module-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
     .module-subtitle { font-size: 13px; color: var(--text-muted); }
-    .selection-container { padding: 0 16px; }
+    .selection-container { padding: 0 16px; padding-bottom: 20px; }
     .selection-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-    .selection-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .topic-input-section { display: none; margin-top: 12px; }
+    .topic-input-section.visible { display: block; }
+    .topic-input { width: 100%; padding: 14px 16px; border-radius: 10px; border: 2px solid #a855f7; background: var(--bg-secondary); color: var(--text-primary); font-size: 15px; box-sizing: border-box; }
+    .topic-input:focus { outline: none; border-color: #c084fc; box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2); }
+    .topic-input-label { font-size: 11px; color: #a855f7; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; }
+    .selection-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
     .selection-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .selection-btn { padding: 12px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-secondary); font-size: 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
     .selection-btn:hover { border-color: #a855f7; }
     .selection-btn.active { background: rgba(168, 85, 247, 0.15); border-color: #a855f7; color: #a855f7; }
-    .subject-section { display: none; }
-    .subject-section.visible { display: block; }
-    .generate-btn { width: 100%; margin-top: 16px; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #a855f7, #9333ea); color: white; font-size: 15px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .result-container { display: none; padding: 0 16px; margin-top: 16px; }
+    .hidden-section { display: none; }
+    .hidden-section.visible { display: block; }
+    .topic-select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px; cursor: pointer; }
+    .topic-select option { background: var(--bg-card); color: var(--text-primary); }
+    .analyzing { display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(168, 85, 247, 0.1); border-radius: 8px; color: #a855f7; font-size: 13px; }
+    .analyzing svg { width: 18px; height: 18px; animation: spin 1s linear infinite; }
+    .generate-btn { width: 100%; margin-top: 16px; margin-bottom: 20px; padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #a855f7, #9333ea); color: white; font-size: 16px; font-weight: 700; border: 2px solid #c084fc; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+    .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; background: var(--bg-secondary); border-color: var(--border-color); box-shadow: none; color: var(--text-muted); }
+    .generate-btn:not(:disabled):active { transform: scale(0.98); }
+    .result-container { display: none; padding: 0 16px; margin-top: 16px; padding-bottom: 20px; }
     .result-container.visible { display: block; }
     .result-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; }
     .result-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
-    .result-content { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+    .eval-info { background: rgba(168, 85, 247, 0.1); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+    .eval-info-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
+    .eval-info-label { color: var(--text-muted); }
+    .eval-info-value { color: #a855f7; font-weight: 600; }
+    .question-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .question-text { font-size: 14px; color: var(--text-primary); margin-bottom: 12px; font-weight: 500; }
+    .option-btn { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); font-size: 13px; text-align: left; cursor: pointer; margin-bottom: 6px; transition: all 0.2s; }
+    .option-btn:hover { border-color: #a855f7; }
+    .option-btn.selected { background: rgba(168, 85, 247, 0.15); border-color: #a855f7; color: #a855f7; }
+    .option-btn.correct { background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #22c55e; }
+    .option-btn.incorrect { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; }
+    .submit-btn { width: 100%; margin-top: 16px; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #a855f7, #9333ea); color: white; font-size: 15px; font-weight: 600; border: none; cursor: pointer; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .score-card { text-align: center; padding: 20px; background: rgba(168, 85, 247, 0.1); border-radius: 12px; margin-bottom: 16px; display: none; }
+    .score-card.visible { display: block; }
+    .score-value { font-size: 48px; font-weight: 700; color: #a855f7; }
+    .score-label { font-size: 14px; color: var(--text-muted); }
     .loading { display: none; text-align: center; padding: 40px; color: var(--text-muted); }
     .loading.visible { display: block; }
     .loading svg { width: 40px; height: 40px; animation: spin 1s linear infinite; }
@@ -37,7 +63,7 @@
   <nav class="top-nav">
     <div class="nav-left">
       <div class="nav-logo" onclick="goHome()"><svg viewBox="0 0 100 100"><path d="M30 55 Q30 65 35 70 Q45 80 50 80 Q55 80 65 70 Q70 65 70 55 L70 50 Q70 45 65 42 Q55 35 50 35 Q45 35 35 42 Q30 45 30 50 Z" fill="#1976D2"/><path d="M15 40 L50 25 L85 40 L50 55 Z" fill="#2196F3"/><path d="M15 40 L50 55 L50 57 L13 41 Z" fill="#1565C0"/><path d="M85 40 L50 55 L50 57 L87 41 Z" fill="#1565C0"/><circle cx="50" cy="40" r="3" fill="#0D47A1"/><path d="M50 40 Q60 45 70 40 Q80 35 82 55 Q84 65 82 75" stroke="#1A1A1A" stroke-width="2" fill="none"/><rect x="78" y="73" width="8" height="4" rx="1" fill="#2A2A2A"/><path d="M79 77 L79 88 Q82 90 85 88 L85 77" fill="#1A1A1A"/></svg></div>
-      <span class="page-title" id="nav-title">Evaluaciones</span>
+      <span class="page-title">Evaluación</span>
     </div>
     <div class="nav-right">
       <button class="nav-btn" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>
@@ -50,73 +76,231 @@
 
   <div class="module-header">
     <div class="module-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h4"/></svg></div>
-    <h1 class="module-title" id="title">Evaluaciones con IA</h1>
-    <p class="module-subtitle" id="subtitle">Pon a prueba tus conocimientos</p>
+    <h1 class="module-title">Evaluación Final</h1>
+    <p class="module-subtitle">Pon a prueba tus conocimientos</p>
   </div>
 
   <div class="selection-container">
     <div class="selection-card">
-      <div class="selection-label" id="course-label">Selecciona un Curso</div>
+      <div class="selection-label">📚 Selecciona un Curso</div>
       <div class="selection-grid" id="course-grid"></div>
     </div>
 
-    <div class="selection-card subject-section" id="subject-section">
-      <div class="selection-label" id="subject-label">Selecciona una Asignatura</div>
+    <div class="selection-card hidden-section" id="subject-section">
+      <div class="selection-label">📖 Selecciona una Asignatura</div>
       <div class="selection-grid" id="subject-grid"></div>
+    </div>
+
+    <div class="selection-card hidden-section" id="topic-section">
+      <div class="selection-label">🎯 Selecciona un Tema</div>
+      <div class="analyzing" id="analyzing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
+        <span>Analizando PDF y extrayendo temas...</span>
+      </div>
+      <select class="topic-select" id="topic-select" style="display:none;">
+        <option value="">-- Selecciona un tema --</option>
+      </select>
+      <div class="topic-input-section" id="topic-input-section">
+        <div class="topic-input-label">✏️ Tema a analizar (editable)</div>
+        <input type="text" class="topic-input" id="topic-input" placeholder="Escribe o modifica el tema...">
+      </div>
     </div>
 
     <button class="generate-btn" id="generate-btn" disabled onclick="generateContent()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      <span id="generate-text">Iniciar Evaluación</span>
+      <span>Iniciar Evaluación</span>
     </button>
   </div>
 
   <div class="loading" id="loading">
     <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="20"/></svg>
-    <p id="loading-text">Preparando evaluación...</p>
+    <p>Preparando evaluación...</p>
   </div>
 
   <div class="result-container" id="result-container">
     <div class="result-card">
       <div class="result-header">
         <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" width="18" height="18"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h4"/></svg>
-        <span id="result-title">Evaluación Lista</span>
+        <span>Evaluación</span>
       </div>
-      <div class="result-content" id="result-content"></div>
+      <div class="eval-info" id="eval-info">
+        <div class="eval-info-row"><span class="eval-info-label">Tema:</span><span class="eval-info-value" id="eval-topic"></span></div>
+        <div class="eval-info-row"><span class="eval-info-label">Preguntas:</span><span class="eval-info-value">5</span></div>
+        <div class="eval-info-row"><span class="eval-info-label">Tiempo:</span><span class="eval-info-value">10 min</span></div>
+      </div>
+      <div class="score-card" id="score-card">
+        <div class="score-value" id="score-value">0%</div>
+        <div class="score-label">Tu puntuación</div>
+      </div>
+      <div id="questions-container"></div>
+      <button class="submit-btn" id="submit-btn" disabled onclick="submitEval()">Enviar Evaluación</button>
     </div>
   </div>
 
   <script>
-    var lang = localStorage.getItem('smartstudent_lang') || 'es';
-    var selectedCourse = null;
-    var selectedSubject = null;
+    var selectedCourse = null, selectedSubject = null, selectedTopic = null, answers = {};
+    var courses = ['1ro Básico','2do Básico','3ro Básico','4to Básico','5to Básico','6to Básico','7mo Básico','8vo Básico','1ro Medio','2do Medio','3ro Medio','4to Medio'];
+    var basicoSubjects = ['Matemáticas','Ciencias Naturales','Lenguaje y Comunicación','Historia y Ciencias Sociales'];
+    var medioSubjects = ['Matemáticas','Biología','Física','Química','Lenguaje y Comunicación','Historia y Ciencias Sociales'];
     
-    var courses = ['1ro Básico', '2do Básico', '3ro Básico', '4to Básico', '5to Básico', '6to Básico', '7mo Básico', '8vo Básico', '1ro Medio', '2do Medio', '3ro Medio', '4to Medio'];
-    var basicoSubjects = ['Matemáticas', 'Ciencias Naturales', 'Lenguaje y Comunicación', 'Historia y Ciencias Sociales'];
-    var medioSubjects = ['Matemáticas', 'Biología', 'Física', 'Química', 'Lenguaje y Comunicación', 'Historia y Ciencias Sociales'];
+    var topicsBySubject = {
+      'Matemáticas': { basico: ['Números y operaciones','Patrones y álgebra','Geometría','Medición','Datos y probabilidades'], medio: ['Álgebra y funciones','Geometría analítica','Probabilidad y estadística','Números complejos','Límites y derivadas'] },
+      'Ciencias Naturales': { basico: ['El cuerpo humano','Los seres vivos','La materia','Fuerza y movimiento','La Tierra y el universo'] },
+      'Biología': { medio: ['Célula y genética','Evolución','Ecología','Sistema nervioso','Reproducción humana'] },
+      'Física': { medio: ['Cinemática','Dinámica','Energía y trabajo','Ondas y sonido','Electricidad y magnetismo'] },
+      'Química': { medio: ['Estructura atómica','Tabla periódica','Enlaces químicos','Reacciones químicas','Estequiometría'] },
+      'Lenguaje y Comunicación': { basico: ['Comprensión lectora','Escritura creativa','Gramática','Vocabulario','Literatura infantil'], medio: ['Análisis literario','Argumentación','Géneros literarios','Medios de comunicación','Investigación'] },
+      'Historia y Ciencias Sociales': { basico: ['Historia de Chile','Geografía','Formación ciudadana','Pueblos originarios','Democracia'], medio: ['Historia universal','Guerra Fría','Chile siglo XX','Economía','Globalización'] }
+    };
     
-    var t = { es: { navTitle: 'Evaluaciones', title: 'Evaluaciones con IA', subtitle: 'Pon a prueba tus conocimientos', courseLabel: 'Selecciona un Curso', subjectLabel: 'Selecciona una Asignatura', generateBtn: 'Iniciar Evaluación', loadingText: 'Preparando evaluación...', resultTitle: 'Evaluación Lista' }, en: { navTitle: 'Evaluations', title: 'AI Evaluations', subtitle: 'Test your knowledge', courseLabel: 'Select a Course', subjectLabel: 'Select a Subject', generateBtn: 'Start Evaluation', loadingText: 'Preparing evaluation...', resultTitle: 'Evaluation Ready' } };
+    var questions = [];
     
     (function(){var th=localStorage.getItem('smartstudent_theme')||'dark';document.documentElement.setAttribute('data-theme',th)})();
-    
     function goHome(){window.location.href='/dashboard-static.html'}
     function goToModule(m){window.location.href='/modules/'+m+'.html'}
     
-    function renderCourses(){ var grid = document.getElementById('course-grid'); grid.innerHTML = ''; courses.forEach(function(c){ var btn = document.createElement('button'); btn.className = 'selection-btn'; btn.textContent = c; btn.onclick = function(){ selectCourse(c, btn); }; grid.appendChild(btn); }); }
+    function renderCourses(){
+      var grid=document.getElementById('course-grid');grid.innerHTML='';
+      courses.forEach(function(c){var btn=document.createElement('button');btn.className='selection-btn';btn.textContent=c;btn.onclick=function(){selectCourse(c,btn)};grid.appendChild(btn)});
+    }
     
-    function selectCourse(course, btn){ selectedCourse = course; selectedSubject = null; document.querySelectorAll('#course-grid .selection-btn').forEach(function(b){ b.classList.remove('active'); }); btn.classList.add('active'); renderSubjects(); document.getElementById('subject-section').classList.add('visible'); updateGenerateBtn(); }
+    function selectCourse(course,btn){
+      selectedCourse=course;selectedSubject=null;selectedTopic=null;
+      document.querySelectorAll('#course-grid .selection-btn').forEach(function(b){b.classList.remove('active')});
+      btn.classList.add('active');
+      document.getElementById('subject-section').classList.add('visible');
+      document.getElementById('topic-section').classList.remove('visible');
+      renderSubjects();updateBtn();
+    }
     
-    function renderSubjects(){ var grid = document.getElementById('subject-grid'); grid.innerHTML = ''; var subjects = selectedCourse.includes('Medio') ? medioSubjects : basicoSubjects; subjects.forEach(function(s){ var btn = document.createElement('button'); btn.className = 'selection-btn'; btn.textContent = s; btn.onclick = function(){ selectSubject(s, btn); }; grid.appendChild(btn); }); }
+    function renderSubjects(){
+      var grid=document.getElementById('subject-grid');grid.innerHTML='';
+      var subjects=selectedCourse.includes('Medio')?medioSubjects:basicoSubjects;
+      subjects.forEach(function(s){var btn=document.createElement('button');btn.className='selection-btn';btn.textContent=s;btn.onclick=function(){selectSubject(s,btn)};grid.appendChild(btn)});
+    }
     
-    function selectSubject(subject, btn){ selectedSubject = subject; document.querySelectorAll('#subject-grid .selection-btn').forEach(function(b){ b.classList.remove('active'); }); btn.classList.add('active'); updateGenerateBtn(); }
+    function selectSubject(subject,btn){
+      selectedSubject=subject;selectedTopic=null;
+      document.querySelectorAll('#subject-grid .selection-btn').forEach(function(b){b.classList.remove('active')});
+      btn.classList.add('active');
+      document.getElementById('topic-section').classList.add('visible');
+      document.getElementById('analyzing').style.display='flex';
+      document.getElementById('topic-select').style.display='none';
+      setTimeout(function(){loadTopics()},1500);
+      updateBtn();
+    }
     
-    function updateGenerateBtn(){ document.getElementById('generate-btn').disabled = !(selectedCourse && selectedSubject); }
+    function loadTopics(){
+      document.getElementById('analyzing').style.display='none';
+      var select=document.getElementById('topic-select');select.style.display='block';select.innerHTML='<option value="">-- Selecciona un tema --</option>';
+      var isMedio=selectedCourse.includes('Medio');
+      var topics=topicsBySubject[selectedSubject];
+      var list=topics?(isMedio&&topics.medio?topics.medio:topics.basico||[]):[];
+      list.forEach(function(t){var opt=document.createElement('option');opt.value=t;opt.textContent=t;select.appendChild(opt)});
+      select.onchange=function(){
+        selectedTopic=this.value;
+        if(selectedTopic){
+          document.getElementById('topic-input-section').classList.add('visible');
+          document.getElementById('topic-input').value=selectedTopic;
+        }else{
+          document.getElementById('topic-input-section').classList.remove('visible');
+        }
+        updateBtn();
+      };
+      document.getElementById('topic-input').oninput=function(){selectedTopic=this.value;updateBtn()};
+    }
     
-    function generateContent(){ document.getElementById('loading').classList.add('visible'); document.getElementById('result-container').classList.remove('visible'); setTimeout(function(){ document.getElementById('loading').classList.remove('visible'); document.getElementById('result-container').classList.add('visible'); document.getElementById('result-content').innerHTML = '<strong>' + selectedCourse + ' - ' + selectedSubject + '</strong><br><br>Aquí aparecerá la evaluación formal generada con IA para medir tu nivel de conocimiento.'; }, 2000); }
+    function updateBtn(){
+      var topic=document.getElementById('topic-input').value.trim();
+      selectedTopic=topic;
+      document.getElementById('generate-btn').disabled=!(selectedCourse&&selectedSubject&&topic);
+    }
     
-    function updateTexts(){ var txt = t[lang]; document.getElementById('nav-title').textContent = txt.navTitle; document.getElementById('title').textContent = txt.title; document.getElementById('subtitle').textContent = txt.subtitle; document.getElementById('course-label').textContent = txt.courseLabel; document.getElementById('subject-label').textContent = txt.subjectLabel; document.getElementById('generate-text').textContent = txt.generateBtn; document.getElementById('loading-text').textContent = txt.loadingText; document.getElementById('result-title').textContent = txt.resultTitle; }
+    function generateContent(){
+      document.getElementById('loading').classList.add('visible');
+      document.getElementById('result-container').classList.remove('visible');
+      
+      var prompt = 'Eres un profesor experto. Genera 5 preguntas de evaluación sobre "' + selectedTopic + '" para estudiantes de ' + selectedCourse + ' en ' + selectedSubject + '. Responde SOLO con un JSON válido: [{"pregunta":"texto","opciones":["A","B","C","D"],"correcta":0}]. El índice correcta es 0-3. Solo el JSON, sin texto adicional.';
+      
+      fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer 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'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 1500
+        })
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        document.getElementById('loading').classList.remove('visible');
+        document.getElementById('result-container').classList.add('visible');
+        document.getElementById('eval-topic').textContent = selectedTopic;
+        document.getElementById('score-card').classList.remove('visible');
+        answers = {};
+        try {
+          var content = data.choices[0].message.content;
+          var jsonMatch = content.match(/\[[\s\S]*\]/);
+          questions = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+          questions = questions.map(function(q) {
+            return { q: q.pregunta, opts: q.opciones, correct: q.correcta };
+          });
+          renderQuestions();
+        } catch(e) {
+          document.getElementById('questions-container').innerHTML = '<div style="color:#ef4444;padding:16px;">Error al generar la evaluación. Inténtalo de nuevo.</div>';
+        }
+        document.getElementById('result-container').scrollIntoView({ behavior: 'smooth' });
+      })
+      .catch(function(error) {
+        document.getElementById('loading').classList.remove('visible');
+        document.getElementById('result-container').classList.add('visible');
+        document.getElementById('questions-container').innerHTML = '<div style="color:#ef4444;padding:16px;">Error de conexión. Verifica tu internet.</div>';
+      });
+    }
     
-    renderCourses(); updateTexts();
+    function renderQuestions(){
+      var container=document.getElementById('questions-container');container.innerHTML='';
+      questions.forEach(function(item,qi){
+        var card=document.createElement('div');card.className='question-card';card.id='q'+qi;
+        card.innerHTML='<div class="question-text">'+(qi+1)+'. '+item.q+'</div>';
+        item.opts.forEach(function(opt,oi){
+          var btn=document.createElement('button');btn.className='option-btn';btn.textContent=opt;
+          btn.onclick=function(){selectAnswer(qi,oi)};
+          card.appendChild(btn);
+        });
+        container.appendChild(card);
+      });
+      document.getElementById('submit-btn').disabled=true;document.getElementById('submit-btn').style.display='block';
+    }
+    
+    function selectAnswer(qi,oi){
+      answers[qi]=oi;
+      var card=document.getElementById('q'+qi);
+      card.querySelectorAll('.option-btn').forEach(function(b,i){b.classList.toggle('selected',i===oi)});
+      document.getElementById('submit-btn').disabled=Object.keys(answers).length<questions.length;
+    }
+    
+    function submitEval(){
+      var correct=0;
+      questions.forEach(function(item,qi){
+        var card=document.getElementById('q'+qi);
+        card.querySelectorAll('.option-btn').forEach(function(b,i){
+          b.disabled=true;b.classList.remove('selected');
+          if(i===item.correct)b.classList.add('correct');
+          else if(answers[qi]===i)b.classList.add('incorrect');
+        });
+        if(answers[qi]===item.correct)correct++;
+      });
+      var score=Math.round((correct/questions.length)*100);
+      document.getElementById('score-value').textContent=score+'%';
+      document.getElementById('score-card').classList.add('visible');
+      document.getElementById('submit-btn').style.display='none';
+    }
+    
+    renderCourses();
   </script>
 </body>
 </html>

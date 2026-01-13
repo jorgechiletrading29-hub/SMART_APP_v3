@@ -28,6 +28,50 @@ interface GenerateSummaryResponse {
   progress: string;
 }
 
+// Helper function to clean the summary content before rendering
+// Removes duplicate title, key points section, and malformed characters
+function cleanSummaryContent(summary: string, topic: string): string {
+  if (!summary) return '';
+  
+  let cleaned = summary;
+  
+  // Normalize line endings
+  cleaned = cleaned.replace(/\r\n?/g, '\n');
+  
+  // Remove the main title that duplicates the topic (# Title or ## Title at the beginning)
+  // This handles cases like "# La Tierra y el Universo" at the start
+  const topicNormalized = topic.toLowerCase().trim();
+  const titlePatterns = [
+    // Match # Title or ## Title at the very beginning (with optional leading whitespace/newlines)
+    /^\s*#{1,2}\s+[^\n]+\n+/i,
+  ];
+  
+  // Check if the first heading matches the topic (case-insensitive, allowing for slight variations)
+  const firstHeadingMatch = cleaned.match(/^\s*#{1,2}\s+([^\n]+)/);
+  if (firstHeadingMatch) {
+    const headingText = firstHeadingMatch[1].toLowerCase().trim();
+    // If the heading is similar to the topic (contains the topic or vice versa), remove it
+    if (headingText.includes(topicNormalized) || topicNormalized.includes(headingText) ||
+        headingText.replace(/[^a-záéíóúñü\s]/gi, '') === topicNormalized.replace(/[^a-záéíóúñü\s]/gi, '')) {
+      cleaned = cleaned.replace(/^\s*#{1,2}\s+[^\n]+\n+/i, '');
+    }
+  }
+  
+  // Remove the "## Puntos Clave" / "## Key Points" section entirely (it's displayed separately)
+  cleaned = cleaned.replace(/\n*---+\n*##?\s*(?:Puntos Clave|Key Points|PUNTOS CLAVES?)[:\s]*\n[\s\S]*$/i, '');
+  cleaned = cleaned.replace(/\n*##?\s*(?:Puntos Clave|Key Points|PUNTOS CLAVES?)[:\s]*\n[\s\S]*$/i, '');
+  
+  // Remove any malformed "PUNTOS CLAVES" with special characters (like Ø=ÜÌ)
+  cleaned = cleaned.replace(/\n*---+\n*[^\n]*(?:P\s*U\s*N\s*T\s*O\s*S|PUNTOS)[^\n]*C\s*L\s*A\s*V\s*E\s*S?[^\n]*:[\s\S]*$/i, '');
+  cleaned = cleaned.replace(/[Ø=ÜÌ]+\s*P\s*U\s*N\s*T\s*O\s*S\s*C\s*L\s*A\s*V\s*E\s*S?\s*:[\s\S]*/gi, '');
+  
+  // Remove trailing separators and whitespace
+  cleaned = cleaned.replace(/\n*---+\s*$/g, '');
+  cleaned = cleaned.trim();
+  
+  return cleaned;
+}
+
 // Helper function to convert basic Markdown to HTML for the main summary
 function simpleMarkdownToHtml(mdText: string): string {
   if (!mdText) return '';
@@ -342,8 +386,9 @@ export default function ResumenPage() {
     if (!summaryResult?.summary) return;
 
     const title = `${translate('summaryTitlePrefix')} - ${currentTopicForDisplay.toUpperCase()}`;
-    // Use the same Markdown to HTML conversion for PDF content
-    const summaryHtmlForPdf = simpleMarkdownToHtml(summaryResult.summary);
+    // Clean and convert the summary for PDF content (removes duplicate title and key points section)
+    const cleanedSummaryForPdf = cleanSummaryContent(summaryResult.summary, currentTopicForDisplay);
+    const summaryHtmlForPdf = simpleMarkdownToHtml(cleanedSummaryForPdf);
 
     let contentHtml = `
       <html>
@@ -432,10 +477,77 @@ export default function ResumenPage() {
     }
   };
 
-  const formattedSummaryHtml = summaryResult?.summary ? simpleMarkdownToHtml(summaryResult.summary) : '';
+  // Clean the summary content before converting to HTML
+  const cleanedSummary = summaryResult?.summary ? cleanSummaryContent(summaryResult.summary, currentTopicForDisplay) : '';
+  const formattedSummaryHtml = cleanedSummary ? simpleMarkdownToHtml(cleanedSummary) : '';
 
   return (
     <div className="flex flex-col items-center text-center">
+      {/* Loading Overlay - Compact and elegant */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900/95 border border-blue-500/40 rounded-2xl p-6 w-72 max-w-[85vw] shadow-2xl">
+            {/* Circular Progress */}
+            <div className="flex justify-center mb-4">
+              <div className="relative w-16 h-16">
+                <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    fill="none"
+                    className="text-slate-700"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 40}`}
+                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - progress / 100)}`}
+                    className="text-blue-500 transition-all duration-300 ease-out"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+            </div>
+            
+            {/* Title */}
+            <h3 className="text-white font-semibold text-base text-center mb-1">
+              {translate('summaryGenerateBtn')}
+            </h3>
+            
+            {/* Subject and Course */}
+            <p className="text-slate-400 text-xs text-center mb-3">
+              {selectedSubject} - {selectedCourse}
+            </p>
+            
+            {/* Percentage */}
+            <p className="text-blue-400 text-2xl font-bold text-center mb-3">
+              {progress}%
+            </p>
+            
+            {/* Progress Bar */}
+            <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden mb-3">
+              <div 
+                className="h-full bg-blue-500 transition-all duration-300 ease-out rounded-full"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            
+            {/* Status Text */}
+            <p className="text-slate-400 text-xs text-center flex items-center justify-center gap-1">
+              <span className="text-yellow-400">💡</span>
+              {progressText || translate('loading')}
+            </p>
+          </div>
+        </div>
+      )}
+
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader className="items-center">
           <Newspaper className="w-10 h-10 text-blue-500 dark:text-blue-400 mb-3" />
